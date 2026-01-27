@@ -2,6 +2,7 @@
 #define GALLIUM_CLIENT_NETWORK_H
 
 #include "common/protocol.h"
+#include "ui.h"
 
 /**
  * @brief Initialize the client network subsystem.
@@ -9,7 +10,13 @@
  * @param port The port to connect to.
  * @return 0 on success, non-zero on failure.
  */
+
 int client_network_init(const char* host, int port);
+
+/**
+ * @brief Set the UI instance for callbacks.
+ */
+void client_network_set_ui(gallium_ui_t* ui);
 
 /**
  * @brief Run the client network service loop.

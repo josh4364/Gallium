@@ -2,6 +2,8 @@
 #include "ui.h"
 #include <stdlib.h>
 #include <string.h>
+#include "network.h"
+#include "common/protocol.h"
 
 #define COLOR_FOCUS_BORDER 0x00FF00 // Green
 #define COLOR_NORMAL_BORDER 0x444444 // Gray
@@ -124,9 +126,57 @@ void ui_render(gallium_ui_t* ui) {
                    ui->settings_open ? "Open" : "Closed");
 
     notcurses_render(ui->nc);
+
+    // Approval Modal
+    if (ui->pending_approval) {
+        int dimy, dimx;
+        ncplane_dim_yx(ui->stdplane, &dimy, &dimx);
+        
+        int w = 60;
+        int h = 10;
+        int y = (dimy - h) / 2;
+        int x = (dimx - w) / 2;
+        
+        struct ncplane_options opts = {
+            .y = y, .x = x, .rows = h, .cols = w,
+            .flags = NCPLANE_OPTION_HORALIGNED
+        };
+        struct ncplane* modal = ncplane_create(ui->stdplane, &opts);
+        if (modal) {
+            uint64_t channels = 0;
+            ncchannels_set_bg_rgb(&channels, 0x880000); // Red background
+            ncchannels_set_fg_rgb(&channels, 0xFFFFFF);
+            ncplane_set_base(modal, " ", 0, channels);
+            ncplane_perimeter_rounded(modal, 0, channels, 0);
+            
+            ncplane_putstr_yx(modal, 1, 2, "APPROVAL REQUIRED");
+            ncplane_putstr_yx(modal, 3, 2, ui->approval_prompt);
+            ncplane_putstr_yx(modal, h-2, 2, "Press [Y] to Approve, [N] to Reject");
+            
+            notcurses_render(ui->nc);
+            ncplane_destroy(modal);
+        }
+    }
+}
+
+void ui_show_approval(gallium_ui_t* ui, const char* prompt) {
+    if (!ui) return;
+    ui->pending_approval = true;
+    strncpy(ui->approval_prompt, prompt, sizeof(ui->approval_prompt) - 1);
 }
 
 void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
+    if (ui->pending_approval) {
+        if (key == 'y' || key == 'Y') {
+            ui->pending_approval = false;
+            client_network_send(GALLIUM_MSG_USER_INPUT, "{\"approved\": true}");
+        } else if (key == 'n' || key == 'N' || key == NCKEY_ESC) {
+            ui->pending_approval = false;
+            client_network_send(GALLIUM_MSG_USER_INPUT, "{\"approved\": false}");
+        }
+        return;
+    }
+
     switch (key) {
         case NCKEY_TAB:
             ui->focus = (ui->focus + 1) % FOCUS_COUNT;
@@ -156,6 +206,10 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
         case 'p':
         case 'P':
             ui->settings_open = !ui->settings_open;
+            break;
+        case 'b':
+        case 'B':
+            client_network_send(GALLIUM_MSG_TASK_UPDATE, "{\"task\": \"build\"}");
             break;
     }
 }

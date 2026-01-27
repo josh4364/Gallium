@@ -11,6 +11,7 @@
 
 int main(int argc, char **argv) {
     // Initialize Network
+    // Initialize Network (deferred until UI is ready)
     if (client_network_init("localhost", 7681) != 0) {
         fprintf(stderr, "Failed to initialize client network\n");
         return EXIT_FAILURE;
@@ -31,6 +32,7 @@ int main(int argc, char **argv) {
         client_network_cleanup();
         return EXIT_FAILURE;
     }
+    client_network_set_ui(ui);
 
     // Send a test message
     client_network_send(GALLIUM_MSG_INIT, "{\"client\": \"tui\", \"action\": \"handshake\"}");

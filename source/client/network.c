@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 600
+#include <wchar.h> // Ensure this is included
 #include "network.h"
 #include <libwebsockets.h>
 #include <stdio.h>
@@ -12,6 +14,7 @@ static struct lws_context *context = NULL;
 static int connected = 0;
 static int should_connect = 1;
 static int retry_count = 0;
+static gallium_ui_t* g_ui = NULL;
 static int current_backoff = 1;
 #define MAX_DEBUG_LOGS 5
 static char* debug_logs[MAX_DEBUG_LOGS];
@@ -127,10 +130,36 @@ static void try_connect() {
     client_wsi = lws_client_connect_via_info(&i);
 }
 
+void client_network_set_ui(gallium_ui_t* ui) {
+    g_ui = ui;
+}
+
+static int handle_init_ack(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)wsi; (void)header; (void)payload_obj;
+    // Handshake complete
+    return 0;
+}
+
+static int handle_user_input_request(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)wsi; (void)header;
+    struct json_object* prompt_obj = NULL;
+    if (json_object_object_get_ex(payload_obj, "prompt", &prompt_obj)) {
+        const char* prompt = json_object_get_string(prompt_obj);
+        if (g_ui) {
+            ui_show_approval(g_ui, prompt);
+        }
+    }
+    return 0;
+}
+
 int client_network_init(const char* host, int port) {
     strncpy(saved_host, host, sizeof(saved_host));
     saved_port = port;
     gallium_dispatch_init();
+    
+    gallium_dispatch_register(GALLIUM_MSG_INIT, handle_init_ack);
+    gallium_dispatch_register(GALLIUM_MSG_USER_INPUT, handle_user_input_request);
+
     lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_USER, NULL);
 
     struct lws_context_creation_info info;

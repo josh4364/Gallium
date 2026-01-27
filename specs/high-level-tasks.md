@@ -40,9 +40,9 @@ This document outlines the phased development of the Gallium AI workflow system,
 
 ## Phase 4: System Integration & Execution
 1. **Tool Sandbox & Task Runner**
-    - [ ] Implement file system isolation (sandbox) for the workspace root.
-    - [ ] Parse and execute `tasks.json` shell commands.
-    - [ ] Implement user-approval gate for out-of-sandbox actions.
+    - [x] Implement file system isolation (sandbox) for the workspace root.
+    - [x] Parse and execute `tasks.json` shell commands.
+    - [x] Implement user-approval gate for out-of-sandbox actions.
 2. **Git-Backed Workflow**
     - [ ] Implement automatic branch creation for top-level tasks.
     - [ ] Implement automatic commit logic for sub-task completion.

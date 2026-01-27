@@ -6,6 +6,7 @@
 
 #include "dispatch.h"
 #include "net_utils.h"
+#include "sandbox.h"
 
 struct per_session_data__gallium {
     // Session specific data if needed
@@ -15,6 +16,44 @@ static int handle_init(struct lws* wsi, gallium_msg_header* header, struct json_
     (void)header;
     (void)payload_obj;
     return gallium_net_send(wsi, GALLIUM_MSG_INIT, "{\"status\": \"acknowledged\"}");
+}
+
+static int handle_task_update(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)header;
+    struct json_object* task_name_obj = NULL;
+    if (json_object_object_get_ex(payload_obj, "task", &task_name_obj)) {
+        const char* task_name = json_object_get_string(task_name_obj);
+        gallium_log("network", "{\"event\": \"task_request\", \"task\": \"...\"}");
+        
+        int res = sandbox_execute_task(task_name);
+        if (res == -2) {
+            // Approval required
+            return gallium_net_send(wsi, GALLIUM_MSG_USER_INPUT, "{\"prompt\": \"Command requires approval\", \"task\": \"...\"}");
+        } else if (res == 0) {
+            return gallium_net_send(wsi, GALLIUM_MSG_TASK_UPDATE, "{\"status\": \"completed\", \"task\": \"...\"}");
+        } else {
+            return gallium_net_send(wsi, GALLIUM_MSG_ERROR, "{\"message\": \"Task failed or not found\"}");
+        }
+    }
+    return -1;
+}
+
+static int handle_user_input(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)header;
+    struct json_object* approved_obj = NULL;
+    if (json_object_object_get_ex(payload_obj, "approved", &approved_obj)) {
+        bool approved = json_object_get_boolean(approved_obj);
+        if (approved) {
+            // In a real system, we'd resume the pending command. 
+            // For now, let's just log and acknowledge.
+            printf("[Network] User approved command.\n");
+            return gallium_net_send(wsi, GALLIUM_MSG_USER_INPUT, "{\"status\": \"acknowledged\"}");
+        } else {
+            printf("[Network] User rejected command.\n");
+            return gallium_net_send(wsi, GALLIUM_MSG_USER_INPUT, "{\"status\": \"rejected\"}");
+        }
+    }
+    return -1;
 }
 
 static int callback_gallium(struct lws *wsi, enum lws_callback_reasons reason,
@@ -52,6 +91,8 @@ static struct lws_context *context = NULL;
 int network_init(int port) {
     gallium_dispatch_init();
     gallium_dispatch_register(GALLIUM_MSG_INIT, handle_init);
+    gallium_dispatch_register(GALLIUM_MSG_TASK_UPDATE, handle_task_update);
+    gallium_dispatch_register(GALLIUM_MSG_USER_INPUT, handle_user_input);
 
     lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_USER, NULL);
     struct lws_context_creation_info info;

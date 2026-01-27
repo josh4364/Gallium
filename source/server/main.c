@@ -4,6 +4,7 @@
 #include <signal.h>
 #include "db_manager.h"
 #include "network.h"
+#include "sandbox.h"
 #include "common/protocol.h"
 
 static int interrupted = 0;
@@ -16,6 +17,9 @@ int main(int argc, char **argv) {
     printf("Gallium Server Initializing...\n");
 
     signal(SIGINT, sigint_handler);
+    
+    // Initialize Sandbox
+    sandbox_init(".");
 
     // Initialize Database
     if (db_init("db/project.db") != 0) {
