@@ -14,6 +14,7 @@ typedef enum {
     FOCUS_EVENTS,
     FOCUS_FILES,
     FOCUS_AUDIT,
+    FOCUS_WATERFALL, // Added
     FOCUS_COUNT
 } ui_focus_t;
 
@@ -34,6 +35,10 @@ typedef struct {
     // State
     ui_focus_t focus;
     bool waterfall_visible;
+    bool waterfall_filter_noise; // Added
+    int waterfall_selected_idx;  // Added
+    int waterfall_visible_count; // Added
+    bool waterfall_peeking;      // Added
     bool settings_open;
     int settings_idx; // Current selection in settings
     bool panic_active;

@@ -36,7 +36,7 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Map keyboard/mouse events to UI selection and server requests.
 3. **Waterfall View**
     - [x] Implement the toggleable "Waterfall" event log overlay.
-    - [ ] Filter out raw LLM noise; allow "peek" functionality for details.
+    - [x] Filter out raw LLM noise; allow "peek" functionality for details.
 
 ## Phase 4: System Integration & Execution
 1. **Tool Sandbox & Task Runner**

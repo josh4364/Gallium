@@ -39,8 +39,8 @@ static struct ncplane* create_bordered_plane(struct ncplane* parent, int y, int 
 static void refresh_file_list(gallium_ui_t* ui);
 
 static void update_plane_borders(gallium_ui_t* ui) {
-    struct ncplane* planes[] = {ui->col_icons, ui->col_tasks, ui->col_subtasks, ui->col_events, ui->file_browser, ui->col_audit};
-    const char* titles[] = {" Projects ", " Tasks ", " Sub-Tasks ", " Events ", " File Browser ", " Audit Log "};
+    struct ncplane* planes[] = {ui->col_icons, ui->col_tasks, ui->col_subtasks, ui->col_events, ui->file_browser, ui->col_audit, ui->waterfall};
+    const char* titles[] = {" Projects ", " Tasks ", " Sub-Tasks ", " Events ", " File Browser ", " Audit Log ", " Waterfall Logs "};
     
     for (int i = 0; i < FOCUS_COUNT; i++) {
         if (!planes[i]) continue;
@@ -71,6 +71,7 @@ gallium_ui_t* ui_init(struct notcurses* nc) {
     ui->stdplane = notcurses_stdplane(nc);
     ui->focus = FOCUS_TASKS;
     ui->waterfall_visible = false;
+    ui->waterfall_filter_noise = true; // Default to filtering
     
     notify_init("Gallium");
 
@@ -429,6 +430,155 @@ static void render_audit_log(gallium_ui_t* ui) {
     }
 }
 
+static bool is_noisy_event(struct json_object* event_obj) {
+    struct json_object* source_obj;
+    if (json_object_object_get_ex(event_obj, "source", &source_obj)) {
+        const char* src = json_object_get_string(source_obj);
+        if (strcmp(src, "LLM_MONITOR") == 0) return true;
+        if (strcmp(src, "LLM_RAW") == 0) return true;
+    }
+    struct json_object* payload_obj;
+    if (json_object_object_get_ex(event_obj, "payload", &payload_obj)) {
+        if (json_object_is_type(payload_obj, json_type_object)) {
+             struct json_object* event_type;
+             if (json_object_object_get_ex(payload_obj, "event", &event_type)) {
+                 const char* type_str = json_object_get_string(event_type);
+                 if (strcmp(type_str, "context_report") == 0) return true;
+             }
+        } else if (json_object_is_type(payload_obj, json_type_string)) {
+            const char* s = json_object_get_string(payload_obj);
+            if (strstr(s, "context_report")) return true;
+        }
+    }
+    return false;
+}
+
+static void render_waterfall(gallium_ui_t* ui) {
+    if (!ui->waterfall || !ui->waterfall_visible) return;
+    ncplane_erase(ui->waterfall);
+    update_plane_borders(ui);
+    
+    ncplane_printf_yx(ui->waterfall, 1, 2, "Waterfall (Filter: %s) [N] to toggle", ui->waterfall_filter_noise ? "ON" : "OFF");
+    
+    if (!ui->event_logs_array) {
+         ncplane_putstr_yx(ui->waterfall, 3, 2, "(No events)");
+         return;
+    }
+
+    int len = json_object_array_length(ui->event_logs_array);
+    int dimy, dimx;
+    ncplane_dim_yx(ui->waterfall, &dimy, &dimx);
+    int y = 3;
+    
+    int visual_idx = 0;
+    
+    // Simple render (top down)
+    for (int i = 0; i < len; i++) {
+        struct json_object* val = json_object_array_get_idx(ui->event_logs_array, i);
+        
+        if (ui->waterfall_filter_noise && is_noisy_event(val)) {
+            continue;
+        }
+
+        if (y < dimy - 1) {
+            struct json_object* source_obj;
+            struct json_object* timestamp_obj;
+            struct json_object* payload_obj;
+            
+            const char* source = "";
+            const char* ts = "";
+            const char* payload = "";
+            
+            if (json_object_object_get_ex(val, "source", &source_obj)) source = json_object_get_string(source_obj);
+            if (json_object_object_get_ex(val, "timestamp", &timestamp_obj)) ts = json_object_get_string(timestamp_obj);
+            
+            if (json_object_object_get_ex(val, "payload", &payload_obj)) {
+                if (json_object_is_type(payload_obj, json_type_string)) {
+                    payload = json_object_get_string(payload_obj);
+                } else {
+                    payload = json_object_to_json_string(payload_obj);
+                }
+            }
+            
+            uint64_t channels = 0;
+            if (ui->focus == FOCUS_WATERFALL && visual_idx == ui->waterfall_selected_idx) {
+                 ncchannels_set_fg_rgb(&channels, 0x000000);
+                 ncchannels_set_bg_rgb(&channels, 0x00FF00);
+            }
+            
+            ncplane_set_channels(ui->waterfall, channels);
+            ncplane_printf_yx(ui->waterfall, y++, 2, "[%s] %s: %.40s...", ts, source, payload);
+            ncplane_set_base(ui->waterfall, " ", 0, 0); // Reset
+        }
+        visual_idx++;
+    }
+    ui->waterfall_visible_count = visual_idx;
+}
+
+static struct ncplane* create_peek_modal(gallium_ui_t* ui) {
+    if (!ui->event_logs_array) return NULL;
+    
+    int len = json_object_array_length(ui->event_logs_array);
+    struct json_object* target = NULL;
+    int visual_idx = 0;
+    
+    for (int i = 0; i < len; i++) {
+         struct json_object* val = json_object_array_get_idx(ui->event_logs_array, i);
+         if (ui->waterfall_filter_noise && is_noisy_event(val)) continue;
+         
+         if (visual_idx == ui->waterfall_selected_idx) {
+             target = val;
+             break;
+         }
+         visual_idx++;
+    }
+    
+    if (!target) return NULL;
+    
+    int dimy, dimx;
+    ncplane_dim_yx(ui->stdplane, &dimy, &dimx);
+    
+    int w = dimx - 10;
+    int h = dimy - 6;
+    int y = 3;
+    int x = 5;
+    
+    struct ncplane_options opts = {
+        .y = y, .x = x, .rows = h, .cols = w,
+    };
+    struct ncplane* modal = ncplane_create(ui->stdplane, &opts);
+    if (!modal) return NULL;
+
+    uint64_t channels = 0;
+    ncchannels_set_bg_rgb(&channels, 0x000044); // Dark Blue
+    ncchannels_set_fg_rgb(&channels, 0xFFFFFF);
+    ncplane_set_base(modal, " ", 0, channels);
+    ncplane_perimeter_rounded(modal, 0, channels, 0);
+    
+    ncplane_putstr_yx(modal, 0, 2, " Event Details (Press Esc/Enter to Close) ");
+    
+    const char* json_str = json_object_to_json_string_ext(target, JSON_C_TO_STRING_PRETTY);
+    
+    // Very simple wrapping printer or just print as much as fits
+    int line = 2;
+    int col = 2;
+    const char* p = json_str;
+    while (*p && line < h - 1) {
+        if (*p == '\n') {
+            line++;
+            col = 2;
+            p++;
+            continue;
+        }
+        if (col < w - 2) {
+            ncplane_putchar_yx(modal, line, col++, *p);
+        }
+        p++;
+    }
+    
+    return modal;
+}
+
 void ui_render(gallium_ui_t* ui) {
     time_t now = time(NULL);
 
@@ -461,6 +611,7 @@ void ui_render(gallium_ui_t* ui) {
     update_plane_borders(ui);
     render_file_browser(ui);
     render_audit_log(ui);
+    render_waterfall(ui);
 
     // Notification Overlay (Simple)
     if (ui->show_notification) {
@@ -503,11 +654,17 @@ void ui_render(gallium_ui_t* ui) {
         input_modal = create_input_modal(ui);
     }
 
+    struct ncplane* peek_modal = NULL;
+    if (ui->waterfall_peeking) {
+        peek_modal = create_peek_modal(ui);
+    }
+
     notcurses_render(ui->nc);
 
     if (settings_modal) ncplane_destroy(settings_modal);
     if (approval_modal) ncplane_destroy(approval_modal);
     if (input_modal) ncplane_destroy(input_modal);
+    if (peek_modal) ncplane_destroy(peek_modal);
 }
 
 void ui_deinit(gallium_ui_t* ui) {
@@ -535,6 +692,14 @@ void ui_show_input_prompt(gallium_ui_t* ui, const char* prompt) {
 }
 
 void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
+    // 0. Peek Modal (Highest priority)
+    if (ui->waterfall_peeking) {
+        if (key == NCKEY_ESC || key == NCKEY_ENTER) {
+            ui->waterfall_peeking = false;
+        }
+        return;
+    }
+
     // 0. Input Modal
     if (ui->waiting_for_input) {
         if (key == NCKEY_ENTER) {
@@ -618,88 +783,54 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
 
     // 3. Navigation
     if (key == NCKEY_TAB) {
-        ui->focus = (ui->focus + 1) % FOCUS_COUNT;
+        do {
+            ui->focus = (ui->focus + 1) % FOCUS_COUNT;
+        } while ((ui->focus == FOCUS_WATERFALL && !ui->waterfall_visible) || 
+                 (ui->focus == FOCUS_FILES && !ui->file_browser));
         update_plane_borders(ui);
         return;
     }
 
-    // Directional Navigation between panes
-    if (key == NCKEY_DOWN) {
-        if (ui->focus != FOCUS_FILES && ui->focus != FOCUS_EVENTS) { // Allow down to file browser
-             // From columns to file browser
-             if (ui->file_browser) {
-                 ui->focus = FOCUS_FILES;
-                 update_plane_borders(ui);
-                 return;
-             }
-        } else if (ui->focus == FOCUS_FILES) {
-            // Scroll file list
-            if (ui->file_selected_idx < ui->file_count - 1) {
-                ui->file_selected_idx++;
-            }
-            return;
-        }
-    }
-    if (key == NCKEY_UP) {
-        if (ui->focus == FOCUS_FILES) {
-            // If at top of list, move focus up to Tasks?
-            /* 
-            if (ui->file_selected_idx == 0) {
-                ui->focus = FOCUS_TASKS;
-                update_plane_borders(ui);
-                return; 
-            }
-            */
-            // Better: Strict Pane navigation logic or Scroll logic.
-            // Let's implement Scroll only for now, rely on Tab or special keys for Pane switching?
-            // Or use Shift+Arrow?
-            // "Logic: Use arrow keys or Tab to cycle focus."
-            // Simple: Left/Right cycles columns. Up/Down moves inside list.
-            // How to get to File Browser? Tab. Or Down from Columns?
-            // Let's keep Tab for cycling.
-            
-            if (ui->file_selected_idx > 0) {
-                ui->file_selected_idx--;
-            }
-            return;
-        }
-    }
-
+    // Directional Navigation
     if (key == NCKEY_RIGHT) {
-        if (ui->focus < FOCUS_COUNT - 1) {
-            ui->focus++;
-            update_plane_borders(ui);
-        }
+        int start = ui->focus;
+        do {
+            ui->focus = (ui->focus + 1) % FOCUS_COUNT;
+        } while ((ui->focus == FOCUS_WATERFALL && !ui->waterfall_visible) || 
+                 (ui->focus == FOCUS_FILES && !ui->file_browser));
+        update_plane_borders(ui);
+        return;
     }
     if (key == NCKEY_LEFT) {
-        if (ui->focus > 0) {
-            ui->focus--;
-            update_plane_borders(ui);
-        }
+        int start = ui->focus;
+        do {
+            ui->focus = (ui->focus - 1 + FOCUS_COUNT) % FOCUS_COUNT;
+        } while ((ui->focus == FOCUS_WATERFALL && !ui->waterfall_visible) || 
+                 (ui->focus == FOCUS_FILES && !ui->file_browser));
+        update_plane_borders(ui);
+        return;
     }
 
     // 4. Content Interaction
     if (ui->focus == FOCUS_FILES) {
+        if (key == NCKEY_DOWN) {
+            if (ui->file_selected_idx < ui->file_count - 1) ui->file_selected_idx++;
+        }
+        if (key == NCKEY_UP) {
+            if (ui->file_selected_idx > 0) ui->file_selected_idx--;
+        }
         if (key == NCKEY_ENTER) {
             if (ui->file_selected_idx < ui->file_count) {
                 struct dirent* ent = ui->file_list[ui->file_selected_idx];
                 bool is_dir = (ent->d_type == DT_DIR);
-                // Handle DT_UNKNOWN if needed, but keeping simple for now
-                
                 if (is_dir) {
                     if (strcmp(ent->d_name, ".") == 0) return;
-                    
                     int ret;
-                    if (strcmp(ent->d_name, "..") == 0) {
-                        ret = chdir("..");
-                    } else {
-                        ret = chdir(ent->d_name);
-                    }
+                    if (strcmp(ent->d_name, "..") == 0) ret = chdir("..");
+                    else ret = chdir(ent->d_name);
                     
                     if (ret == 0) {
-                        if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) {
-                            strcpy(ui->current_dir, "Error getting path");
-                        }
+                        if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) strcpy(ui->current_dir, "Error");
                         refresh_file_list(ui);
                         ui->file_selected_idx = 0;
                     }
@@ -707,12 +838,23 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
             }
         } else if (key == NCKEY_BACKSPACE) {
             if (chdir("..") == 0) {
-                if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) {
-                    strcpy(ui->current_dir, "Error getting path");
-                }
+                if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) strcpy(ui->current_dir, "Error");
                 refresh_file_list(ui);
                 ui->file_selected_idx = 0;
             }
+        }
+    } else if (ui->focus == FOCUS_WATERFALL) {
+        if (key == 'n' || key == 'N') {
+            ui->waterfall_filter_noise = !ui->waterfall_filter_noise;
+        }
+        if (key == NCKEY_UP && ui->waterfall_selected_idx > 0) {
+            ui->waterfall_selected_idx--;
+        }
+        if (key == NCKEY_DOWN && ui->waterfall_selected_idx < ui->waterfall_visible_count - 1) {
+             ui->waterfall_selected_idx++;
+        }
+        if (key == NCKEY_ENTER) {
+            ui->waterfall_peeking = true;
         }
     }
 }
