@@ -151,3 +151,10 @@ Use our existing game engine or other projects as a reference and have the ai cr
 * obviouslly a vulkan game engine for validation against current one and for a super large project
 * TUI text editor to replace emacs and vscode for me
 
+
+
+## Ideas
+For memory instead of embedding models lets do this:
+Each time the model uses file/directory scans, have a bit of llm guessing "you searched for debug view, did you mean assets/shaders/debug_view.comp" based on frequency of accessing that file after that query. 
+Basically catalog what the inital search was, and what the likely point where it found what it wanted, giving a improving over time chance to find the thing it wanted much faster.
+
