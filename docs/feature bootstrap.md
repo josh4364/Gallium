@@ -1,55 +1,13 @@
-## Thinking through the startup / bootstrap process
+# feature prompting
 
-First up is structuring the project, did the following:
-created vscode workspace
-created docs, specs, source, source/client, source/server
+## User response
 
-next im asking myself these questions
+Using this top level overview and these user interview questsions, generate several feature spec documents for each described feature. 
+do not omit anything included in the interview.
+@project.md 
 
-* top level what do you want?
-    * I want to create a new AI workflow system with a server and client archetecture.
-    * the server manages connections to various llms and also has lots of state machine logic within to keep the llms on track working towards a common high level prompt
-    * the server has a top level manager, a task manager and indivdual sub task agents with different profiles depending on their sub task goal, chosen by the task manager
-    * I know that I want a server that does the ai logic and operates on local files, similar to gemini cli allowing for MCP tool use and directly talking to gemini api and other models. also local model talking to local llama.cpp for local smaller model logic
-    * I know that I want both a text ui client to start out with and also a web UI client later on communicating with websockets. so web sockets for the client to server communication and later on the server should serve that web app UI.
 
-* what OSes should be supported?
-    * cross platform, linux, windows
-
-* what language is the server written in?
-    * perfer C for everything, fallback to encapsulated cpp when needed to wrap a cpp library
-
-* what language is the text client written in?
-    * perfer C for everything, fallback to encapsulated cpp when needed to wrap a cpp library
-
-* NOTE: when developing this plan interactively it should display both the server and clients design doc in real time
-
-* what third party dependices do I know of right now that I want to use?
-    * notcurses for the clients TUI
-    * any good simple C dependency for the websockets
-    * sqllite3 for the local server database per project
-
-* how should the network messages be decoded and encoded?
-    * simple binary serialization with length prefixed strings
-    other examples:
-    * json strings
-    * yaml
-    * bson blobs
-    * protobuff
-
-* what testing framework should be used?
-    * none
-    * unity
-    * gtest
-    * create a manual local one that does simple standard out assets, fail or pass.
-
-* how should the api access to various apis like gemini, llama work?
-    * user local config file to store their api keys in called keys.json at the program/workspace root
-    * system config for the project should allow choosing what each agent role and senario should use for the ai model. example: "role: task-manager model: gemini-3-flash"
-
-now it would be nice to have the model do something like, describe features and tell me when to move onto the next
-
-* describe a feature the project should have, use simple declaritive language like <module> should be able to <blank>. typically if you start to make a run on sentance like, and and then, you should force yourself to split into discrete smaller feature requirements.
+* describe a feature the project should have, use simple declaritive language like <module> should be able to <blank>. 
     * client should be able to view the top level projects, displayed on the top menu bar at all time which project is open
     * client should be able to click between top level tasks to view their constantly updating sub tasks
     * when a task manager notices it needs user input or validation the task should light up red
@@ -114,7 +72,27 @@ now it would be nice to have the model do something like, describe features and 
             * a completion event is produced which the client flashes green 3 times to signfiy completion
 
 
+Generate several feature spec documents to `specs/feature-*.md`
 
-* NOTE: during this interview process each one of these requirements would produce a individual feature spec document
+
+## gemini3 flash
+
+I have generated several feature specification documents in the specs/ directory, categorizing the requirements from the project overview and user interview questions into logical functional modules.
+
+Generated Specification Documents
+feature-client-tui.md
+Focus: User interface layout and interactivity.
+Highlights: Multi-column navigation (Projects, Tasks, Sub-tasks, Events), Waterfall view logic, File Browser integration, Status indicators (context window usage, red/green visual alerts), and the Server Settings UI.
+feature-server-orchestration.md
+Focus: Backend infrastructure and data handling.
+Highlights: SQLite3 database persistence for audits and history, WebSocket event streaming subscriptions, Workspace sandboxing (folder isolation), and API management (exponential backoff).
+feature-task-workflow.md
+Focus: Agent logic, automation loops, and Git integration.
+Highlights: Branch-per-task and commit-per-subtask strategy, "Architecture Mode" logic, specialized agent types (Coder, Researcher, Debugger), loop/stuck detection, and the automated code editing/linting loop.
+feature-project-init.md
+Focus: Start-of-project user experience.
+Highlights: The structured 6-step user interview, transitioning into LLM-generated clarification, synthesis of the requirements document, and the initial project setup in Git.
+Each document uses declarative language (e.g., "client should be able to...") and preserves all specific details from your request, including bottleneck reporting, task-alt branch naming, and the "Big Panic" button functionality.
+
 
 
