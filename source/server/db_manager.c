@@ -275,3 +275,20 @@ int db_recover_tasks() {
 
     return recovered_count;
 }
+
+long long db_get_total_tokens() {
+    if (!g_db) return 0;
+
+    const char *sql = "SELECT SUM(tokens) FROM llm_logs;";
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(g_db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return 0;
+
+    long long total = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        total = sqlite3_column_int64(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+    return total;
+}

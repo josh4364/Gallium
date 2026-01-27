@@ -83,4 +83,10 @@ int db_update_task_status(int task_id, TaskStatus status);
  */
 int db_recover_tasks();
 
+/**
+ * @brief Get the total number of tokens used across all LLM interactions.
+ * @return Total token count.
+ */
+long long db_get_total_tokens();
+
 #endif // DB_MANAGER_H

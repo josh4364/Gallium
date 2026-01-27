@@ -198,6 +198,30 @@ void run_recovery_test() {
     printf("Recovery Test PASSED.\n");
 }
 
+void run_context_test() {
+    printf("Running Context Usage Test...\n");
+    const char* db_path = "context_test.db";
+    remove(db_path);
+    if (db_init(db_path) != 0) return;
+
+    // Simulate LLM Logs
+    gallium_log_llm("agent1", "prompt", "response", 100);
+    gallium_log_llm("agent1", "prompt", "response", 250);
+    gallium_log_llm("agent1", "prompt", "response", 50);
+
+    long long total = db_get_total_tokens();
+    printf("Total tokens: %lld\n", total);
+
+    if (total != 400) {
+        printf("FAILED: Expected 400 tokens, got %lld\n", total);
+    } else {
+        printf("Context Usage Test PASSED.\n");
+    }
+    
+    db_close();
+    remove(db_path);
+}
+
 int main(int argc, char **argv) {
     if (argc > 1 && strcmp(argv[1], "--test-git") == 0) {
         run_git_test();
@@ -213,6 +237,10 @@ int main(int argc, char **argv) {
     }
     if (argc > 1 && strcmp(argv[1], "--test-recovery") == 0) {
         run_recovery_test();
+        return 0;
+    }
+    if (argc > 1 && strcmp(argv[1], "--test-context") == 0) {
+        run_context_test();
         return 0;
     }
 

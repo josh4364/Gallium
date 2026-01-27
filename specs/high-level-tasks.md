@@ -72,5 +72,5 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Visual urgency cues (Red tasks for input required).
 3. **Final Hardening**
     - [x] Audit-log viewer and historical state playback.
-    - [ ] Context window usage monitoring and reporting.
+    - [x] Context window usage monitoring and reporting.
     - [x] Pause/Panic "Big Button" backup and checkpointing.
