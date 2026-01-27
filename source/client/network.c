@@ -65,6 +65,7 @@ static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons re
             retry_count = 0;
             current_backoff = 1;
             add_debug_log("Connected to server");
+            client_network_get_events();
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
@@ -134,6 +135,14 @@ void client_network_set_ui(gallium_ui_t* ui) {
     g_ui = ui;
 }
 
+static int handle_event_list(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)wsi; (void)header;
+    if (g_ui) {
+        ui_update_event_log(g_ui, payload_obj);
+    }
+    return 0;
+}
+
 static int handle_init_ack(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
     (void)wsi; (void)header; (void)payload_obj;
     // Handshake complete
@@ -164,6 +173,39 @@ static int handle_user_input_request(struct lws* wsi, gallium_msg_header* header
     return 0;
 }
 
+static int handle_notification(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)wsi; (void)header;
+    struct json_object* title_obj, *body_obj, *success_obj;
+    const char* title = "Notification";
+    const char* body = "";
+    bool success = true;
+
+    if (json_object_object_get_ex(payload_obj, "title", &title_obj)) title = json_object_get_string(title_obj);
+    if (json_object_object_get_ex(payload_obj, "body", &body_obj)) body = json_object_get_string(body_obj);
+    if (json_object_object_get_ex(payload_obj, "success", &success_obj)) success = json_object_get_boolean(success_obj);
+
+    if (g_ui) {
+        ui_show_notification(g_ui, title, body, success);
+        if (success && strcmp(title, "Project Complete") == 0) {
+            ui_flash_success(g_ui);
+        }
+    }
+    return 0;
+}
+
+static int handle_panic(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)wsi; (void)header;
+    struct json_object* active_obj;
+    if (json_object_object_get_ex(payload_obj, "active", &active_obj)) {
+        bool active = json_object_get_boolean(active_obj);
+        if (g_ui) {
+            g_ui->panic_active = active;
+            if (active) ui_show_notification(g_ui, "PANIC", "Server entered panic state.", false);
+        }
+    }
+    return 0;
+}
+
 int client_network_init(const char* host, int port) {
     strncpy(saved_host, host, sizeof(saved_host));
     saved_port = port;
@@ -171,8 +213,9 @@ int client_network_init(const char* host, int port) {
     
     gallium_dispatch_register(GALLIUM_MSG_INIT, handle_init_ack);
     gallium_dispatch_register(GALLIUM_MSG_USER_INPUT, handle_user_input_request);
-
-    lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_USER, NULL);
+    gallium_dispatch_register(GALLIUM_MSG_NOTIFICATION, handle_notification);
+    gallium_dispatch_register(GALLIUM_MSG_PANIC, handle_panic);
+    gallium_dispatch_register(GALLIUM_MSG_EVENT_LIST, handle_event_list);
 
     struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
@@ -234,4 +277,8 @@ int client_network_is_connected() {
 int client_network_get_debug_logs(char*** out_logs) {
     *out_logs = debug_logs;
     return (debug_log_count < MAX_DEBUG_LOGS) ? debug_log_count : MAX_DEBUG_LOGS;
+}
+
+int client_network_get_events() {
+    return client_network_send(GALLIUM_MSG_GET_EVENTS, "{}");
 }

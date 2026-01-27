@@ -2,6 +2,7 @@
 #define DB_MANAGER_H
 
 #include <sqlite3.h>
+#include <json-c/json.h>
 
 /**
  * @brief Initialize the database connection and create schema if it doesn't exist.
@@ -36,5 +37,12 @@ void gallium_log(const char *source, const char *payload_json);
  * @param tokens The number of tokens used.
  */
 void gallium_log_llm(const char *agent_id, const char *prompt, const char *response, int tokens);
+
+/**
+ * @brief Get the last N events from the database.
+ * @param limit The maximum number of events to retrieve.
+ * @return A JSON array string (must be freed by caller), or NULL on error.
+ */
+char* db_get_events(int limit);
 
 #endif // DB_MANAGER_H

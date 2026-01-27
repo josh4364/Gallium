@@ -8,9 +8,13 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <limits.h>
+#include <libnotify/notify.h>
+#include <time.h>
+#include <json-c/json.h>
 
 #define COLOR_FOCUS_BORDER 0x00FF00 // Green
 #define COLOR_NORMAL_BORDER 0x444444 // Gray
+#define COLOR_URGENT_BORDER 0xFF0000 // Red
 #define COLOR_TOP_BAR_BG 0x222222
 #define COLOR_WATERFALL_BG 0x111111
 
@@ -35,13 +39,21 @@ static struct ncplane* create_bordered_plane(struct ncplane* parent, int y, int 
 static void refresh_file_list(gallium_ui_t* ui);
 
 static void update_plane_borders(gallium_ui_t* ui) {
-    struct ncplane* planes[] = {ui->col_icons, ui->col_tasks, ui->col_subtasks, ui->col_events, ui->file_browser};
-    const char* titles[] = {" Projects ", " Tasks ", " Sub-Tasks ", " Events ", " File Browser "};
+    struct ncplane* planes[] = {ui->col_icons, ui->col_tasks, ui->col_subtasks, ui->col_events, ui->file_browser, ui->col_audit};
+    const char* titles[] = {" Projects ", " Tasks ", " Sub-Tasks ", " Events ", " File Browser ", " Audit Log "};
     
     for (int i = 0; i < FOCUS_COUNT; i++) {
         if (!planes[i]) continue;
         uint64_t channels = 0;
-        if (ui->focus == (ui_focus_t)i) {
+        
+        bool urgent = false;
+        // Logic for urgency cues: Tasks requiring input are Red
+        if (i == FOCUS_TASKS && ui->pending_approval) urgent = true;
+        if (i == FOCUS_SUBTASKS && ui->waiting_for_input) urgent = true;
+
+        if (urgent) {
+            ncchannels_set_fg_rgb(&channels, COLOR_URGENT_BORDER);
+        } else if (ui->focus == (ui_focus_t)i) {
             ncchannels_set_fg_rgb(&channels, COLOR_FOCUS_BORDER);
         } else {
             ncchannels_set_fg_rgb(&channels, COLOR_NORMAL_BORDER);
@@ -60,6 +72,8 @@ gallium_ui_t* ui_init(struct notcurses* nc) {
     ui->focus = FOCUS_TASKS;
     ui->waterfall_visible = false;
     
+    notify_init("Gallium");
+
     // Init Defaults
     if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) {
         strcpy(ui->current_dir, ".");
@@ -83,6 +97,7 @@ void ui_resize(gallium_ui_t* ui) {
     if (ui->col_tasks) ncplane_destroy(ui->col_tasks);
     if (ui->col_subtasks) ncplane_destroy(ui->col_subtasks);
     if (ui->col_events) ncplane_destroy(ui->col_events);
+    if (ui->col_audit) ncplane_destroy(ui->col_audit);
     if (ui->file_browser) ncplane_destroy(ui->file_browser);
     if (ui->waterfall) ncplane_destroy(ui->waterfall);
 
@@ -109,14 +124,16 @@ void ui_resize(gallium_ui_t* ui) {
     
     int icons_w = 10;
     int remaining_w = dimx - icons_w;
-    int tasks_w = remaining_w * 0.25;
-    int subtasks_w = remaining_w * 0.25;
-    int events_w = dimx - icons_w - tasks_w - subtasks_w;
+    int tasks_w = remaining_w * 0.20;
+    int subtasks_w = remaining_w * 0.20;
+    int events_w = remaining_w * 0.30;
+    int audit_w = remaining_w - tasks_w - subtasks_w - events_w;
 
     ui->col_icons = create_bordered_plane(ui->stdplane, main_y, 0, main_h, icons_w, " Projects ");
     ui->col_tasks = create_bordered_plane(ui->stdplane, main_y, icons_w, main_h, tasks_w, " Tasks ");
     ui->col_subtasks = create_bordered_plane(ui->stdplane, main_y, icons_w + tasks_w, main_h, subtasks_w, " Sub-Tasks ");
     ui->col_events = create_bordered_plane(ui->stdplane, main_y, icons_w + tasks_w + subtasks_w, main_h, events_w, " Events ");
+    ui->col_audit = create_bordered_plane(ui->stdplane, main_y, icons_w + tasks_w + subtasks_w + events_w, main_h, audit_w, " Audit Log ");
 
     if (files_h > 0) {
         ui->file_browser = create_bordered_plane(ui->stdplane, main_y + main_h, 0, files_h, dimx, " File Browser ");
@@ -327,15 +344,148 @@ static struct ncplane* create_input_modal(gallium_ui_t* ui) {
     return modal;
 }
 
+void ui_show_notification(gallium_ui_t* ui, const char* title, const char* body, bool is_success) {
+    if (!ui) return;
+    ui->show_notification = true;
+    strncpy(ui->notify_title, title, sizeof(ui->notify_title) - 1);
+    strncpy(ui->notify_body, body, sizeof(ui->notify_body) - 1);
+    ui->notify_is_success = is_success;
+    ui->notify_expiry = time(NULL) + 5; // Show for 5 seconds
+
+    // System Notification via libnotify
+    NotifyNotification* n = notify_notification_new(title, body, is_success ? "emblem-success" : "dialog-error");
+    notify_notification_show(n, NULL);
+    g_object_unref(G_OBJECT(n));
+}
+
+void ui_flash_success(gallium_ui_t* ui) {
+    if (!ui) return;
+    ui->success_flash_count = 6; // 3 flashes = 6 state changes (on/off)
+    ui->last_flash_time = 0;
+    ui->flash_on = false;
+}
+
+void ui_trigger_panic(gallium_ui_t* ui) {
+    if (!ui) return;
+    ui->panic_active = !ui->panic_active;
+    if (ui->panic_active) {
+        client_network_send(GALLIUM_MSG_PANIC, "{\"active\": true}");
+        ui_show_notification(ui, "PANIC", "Panic mode activated! All agents suspended.", false);
+    } else {
+        client_network_send(GALLIUM_MSG_PANIC, "{\"active\": false}");
+        ui_show_notification(ui, "PANIC", "Panic mode deactivated.", true);
+    }
+}
+
+void ui_update_event_log(gallium_ui_t* ui, struct json_object* events_array) {
+    if (!ui) return;
+    if (ui->event_logs_array) {
+        json_object_put(ui->event_logs_array);
+    }
+    ui->event_logs_array = json_object_get(events_array);
+}
+
+static void render_audit_log(gallium_ui_t* ui) {
+    if (!ui->col_audit) return;
+    ncplane_erase(ui->col_audit);
+    update_plane_borders(ui);
+    
+    ncplane_putstr_yx(ui->col_audit, 1, 2, "Historical Events:");
+    
+    if (!ui->event_logs_array) {
+         ncplane_putstr_yx(ui->col_audit, 3, 2, "(No events fetched)");
+         return;
+    }
+
+    int len = json_object_array_length(ui->event_logs_array);
+    int y = 3;
+    int dimy, dimx;
+    ncplane_dim_yx(ui->col_audit, &dimy, &dimx);
+    
+    for (int i = 0; i < len; i++) {
+        if (y >= dimy - 1) break;
+        
+        struct json_object* val = json_object_array_get_idx(ui->event_logs_array, i);
+        struct json_object* source_obj;
+        struct json_object* timestamp_obj;
+        struct json_object* payload_obj;
+        
+        const char* source = "";
+        const char* ts = "";
+        const char* payload = "";
+        
+        if (json_object_object_get_ex(val, "source", &source_obj)) source = json_object_get_string(source_obj);
+        if (json_object_object_get_ex(val, "timestamp", &timestamp_obj)) ts = json_object_get_string(timestamp_obj);
+        
+        if (json_object_object_get_ex(val, "payload", &payload_obj)) {
+            if (json_object_is_type(payload_obj, json_type_string)) {
+                payload = json_object_get_string(payload_obj);
+            } else {
+                payload = json_object_to_json_string(payload_obj);
+            }
+        }
+        
+        ncplane_printf_yx(ui->col_audit, y++, 2, "[%s] %s: %.30s...", ts, source, payload);
+    }
+}
+
 void ui_render(gallium_ui_t* ui) {
+    time_t now = time(NULL);
+
+    // Handle Success Flash
+    if (ui->success_flash_count > 0) {
+        if (now > ui->last_flash_time) {
+            ui->flash_on = !ui->flash_on;
+            ui->success_flash_count--;
+            ui->last_flash_time = now; // Flash once per second for simplicity in this loop
+            // In a real TUI, we might want faster flashes using usleep or timer
+        }
+    } else {
+        ui->flash_on = false;
+    }
+
+    if (ui->flash_on) {
+        uint64_t flash_channels = 0;
+        ncchannels_set_bg_rgb(&flash_channels, 0x00AA00);
+        ncplane_set_base(ui->stdplane, " ", 0, flash_channels);
+    } else {
+        ncplane_set_base(ui->stdplane, " ", 0, 0);
+    }
+
     // Update top bar with state
     ncplane_cursor_move_yx(ui->top_bar, 0, 0);
     ncplane_printf(ui->top_bar, " GALLIUM | Project: Alpha | [S]top: %s | [P]refs: %s ", 
-                   ui->panic_pressed ? "!!! PANIC !!!" : "Running",
+                   ui->panic_active ? "!!! PANIC !!!" : "Running",
                    ui->settings_open ? "Open" : "Closed");
 
     update_plane_borders(ui);
     render_file_browser(ui);
+    render_audit_log(ui);
+
+    // Notification Overlay (Simple)
+    if (ui->show_notification) {
+        if (now > ui->notify_expiry) {
+            ui->show_notification = false;
+        } else {
+            int dy, dx;
+            ncplane_dim_yx(ui->stdplane, &dy, &dx);
+            struct ncplane_options n_opts = {
+                .y = 2, .x = dx - 35, .rows = 4, .cols = 30,
+            };
+            struct ncplane* n_plane = ncplane_create(ui->stdplane, &n_opts);
+            if (n_plane) {
+                uint64_t n_chan = 0;
+                ncchannels_set_bg_rgb(&n_chan, ui->notify_is_success ? 0x004400 : 0x440000);
+                ncchannels_set_fg_rgb(&n_chan, 0xFFFFFF);
+                ncplane_set_base(n_plane, " ", 0, n_chan);
+                ncplane_perimeter_rounded(n_plane, 0, n_chan, 0);
+                ncplane_putstr_yx(n_plane, 1, 2, ui->notify_title);
+                ncplane_putstr_yx(n_plane, 2, 2, ui->notify_body);
+                notcurses_render(ui->nc); // Render to show overlay
+                ncplane_destroy(n_plane);
+            }
+        }
+    }
 
     // Transients
     struct ncplane* settings_modal = NULL;
@@ -366,6 +516,7 @@ void ui_deinit(gallium_ui_t* ui) {
         for(int i=0; i<ui->file_count; i++) free(ui->file_list[i]);
         free(ui->file_list);
     }
+    if (ui->event_logs_array) json_object_put(ui->event_logs_array);
     free(ui);
 }
 
@@ -453,7 +604,11 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
         return;
     }
     if (key == 's' || key == 'S') {
-        ui->panic_pressed = !ui->panic_pressed;
+        ui_trigger_panic(ui);
+        return;
+    }
+    if (key == 'f' || key == 'F') { // Hidden test key for success flash
+        ui_flash_success(ui);
         return;
     }
     if (key == 'p' || key == 'P') {

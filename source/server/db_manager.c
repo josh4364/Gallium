@@ -1,6 +1,7 @@
 #include "db_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 static sqlite3 *g_db = NULL;
@@ -124,4 +125,46 @@ void gallium_log_llm(const char *agent_id, const char *prompt, const char *respo
     }
 
     sqlite3_finalize(stmt);
+}
+
+char* db_get_events(int limit) {
+    if (!g_db) return NULL;
+    
+    char sql[128];
+    snprintf(sql, sizeof(sql), "SELECT source, payload, timestamp FROM events ORDER BY id DESC LIMIT %d", limit);
+    
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(g_db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return NULL;
+    }
+
+    struct json_object *jarray = json_object_new_array();
+    
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        const char *source = (const char*)sqlite3_column_text(stmt, 0);
+        const char *payload = (const char*)sqlite3_column_text(stmt, 1);
+        const char *timestamp = (const char*)sqlite3_column_text(stmt, 2);
+
+        struct json_object *jobj = json_object_new_object();
+        json_object_object_add(jobj, "source", json_object_new_string(source ? source : ""));
+        
+        struct json_object *payload_obj = json_tokener_parse(payload);
+        if (payload_obj) {
+            json_object_object_add(jobj, "payload", payload_obj);
+        } else {
+             json_object_object_add(jobj, "payload", json_object_new_string(payload ? payload : ""));
+        }
+        
+        json_object_object_add(jobj, "timestamp", json_object_new_string(timestamp ? timestamp : ""));
+        
+        json_object_array_add(jarray, jobj);
+    }
+    
+    sqlite3_finalize(stmt);
+    
+    const char* json_str = json_object_to_json_string(jarray);
+    char* result = strdup(json_str);
+    json_object_put(jarray); // Free
+    return result;
 }

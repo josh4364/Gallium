@@ -11,6 +11,8 @@ pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 pkg_check_modules(LWS REQUIRED libwebsockets)
 pkg_check_modules(JSONC REQUIRED json-c)
 pkg_check_modules(NOTCURSES REQUIRED notcurses)
+pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
+pkg_check_modules(GLIB REQUIRED glib-2.0)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/source
@@ -18,6 +20,8 @@ include_directories(
     ${LWS_INCLUDE_DIRS}
     ${JSONC_INCLUDE_DIRS}
     ${NOTCURSES_INCLUDE_DIRS}
+    ${LIBNOTIFY_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
 )
 
 link_directories(
@@ -25,6 +29,8 @@ link_directories(
     ${LWS_LIBRARY_DIRS}
     ${JSONC_LIBRARY_DIRS}
     ${NOTCURSES_LIBRARY_DIRS}
+    ${LIBNOTIFY_LIBRARY_DIRS}
+    ${GLIB_LIBRARY_DIRS}
 )
 
 add_subdirectory(source/common)

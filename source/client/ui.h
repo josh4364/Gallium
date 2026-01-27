@@ -5,12 +5,15 @@
 #include <stdbool.h>
 #include <dirent.h>
 
+struct json_object;
+
 typedef enum {
     FOCUS_ICONS = 0,
     FOCUS_TASKS,
     FOCUS_SUBTASKS,
     FOCUS_EVENTS,
     FOCUS_FILES,
+    FOCUS_AUDIT,
     FOCUS_COUNT
 } ui_focus_t;
 
@@ -24,6 +27,7 @@ typedef struct {
     struct ncplane* col_tasks;
     struct ncplane* col_subtasks;
     struct ncplane* col_events;
+    struct ncplane* col_audit;
     struct ncplane* waterfall;
     struct ncplane* file_browser;
     
@@ -32,7 +36,7 @@ typedef struct {
     bool waterfall_visible;
     bool settings_open;
     int settings_idx; // Current selection in settings
-    bool panic_pressed;
+    bool panic_active;
     
     // File Browser State
     char current_dir[1024];
@@ -54,6 +58,21 @@ typedef struct {
     char input_prompt[256];
     char input_buffer[1024];
     int input_cursor;
+
+    // Notifications
+    bool show_notification;
+    char notify_title[64];
+    char notify_body[256];
+    bool notify_is_success;
+    time_t notify_expiry;
+
+    // Success Flash
+    int success_flash_count;
+    time_t last_flash_time;
+    bool flash_on;
+
+    // Audit Log
+    struct json_object* event_logs_array;
 } gallium_ui_t;
 
 gallium_ui_t* ui_init(struct notcurses* nc);
@@ -63,5 +82,9 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key);
 void ui_resize(gallium_ui_t* ui);
 void ui_show_approval(gallium_ui_t* ui, const char* prompt);
 void ui_show_input_prompt(gallium_ui_t* ui, const char* prompt);
+void ui_show_notification(gallium_ui_t* ui, const char* title, const char* body, bool is_success);
+void ui_flash_success(gallium_ui_t* ui);
+void ui_trigger_panic(gallium_ui_t* ui);
+void ui_update_event_log(gallium_ui_t* ui, struct json_object* events_array);
 
 #endif // GALLIUM_UI_H

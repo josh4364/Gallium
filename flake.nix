@@ -26,6 +26,9 @@
             openssl
             zlib
             curl
+            libnotify
+            gdk-pixbuf
+            glib
           ];
 
           shellHook = ''

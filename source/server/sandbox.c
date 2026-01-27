@@ -4,11 +4,28 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <json-c/json.h>
 #include "common/protocol.h"
 #include "db_manager.h"
+#include <signal.h>
 
 static char g_workspace_root[PATH_MAX] = {0};
+
+#define MAX_CHILDREN 64
+static pid_t g_children[MAX_CHILDREN];
+static int g_num_children = 0;
+
+void sandbox_kill_all() {
+    printf("[Sandbox] PANIC: Killing all child processes...\n");
+    for (int i = 0; i < g_num_children; i++) {
+        if (g_children[i] > 0) {
+            kill(g_children[i], SIGKILL);
+        }
+    }
+    g_num_children = 0;
+}
 
 void sandbox_init(const char* workspace_root) {
     if (realpath(workspace_root, g_workspace_root) == NULL) {
@@ -55,39 +72,40 @@ int sandbox_validate_path(const char* path, char* resolved_path) {
 
 int sandbox_execute_command(const char* command, bool requires_approval) {
     if (requires_approval) {
-        // In a real implementation, we would send a message to the client and wait.
-        // For this task, we will log that it requires approval.
-        // The spec says: "Send a MSG_USER_INPUT to the client and wait for a signed approval message"
         printf("[Sandbox] Command requires approval: %s\n", command);
-        // gallium_log("sandbox", "{\"event\": \"approval_required\", \"command\": \"...\"}");
-        return -2; // Special code for "pending approval"
+        return -2;
     }
 
     printf("[Sandbox] Executing command: %s\n", command);
     
-    FILE* fp = popen(command, "r");
-    if (fp == NULL) {
-        perror("popen");
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child
+        execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+        exit(1);
+    } else if (pid > 0) {
+        // Parent
+        if (g_num_children < MAX_CHILDREN) {
+            g_children[g_num_children++] = pid;
+        }
+        
+        int status;
+        waitpid(pid, &status, 0);
+        
+        // Remove from tracking
+        for (int i = 0; i < g_num_children; i++) {
+            if (g_children[i] == pid) {
+                g_children[i] = g_children[g_num_children - 1];
+                g_num_children--;
+                break;
+            }
+        }
+        
+        return WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : -1;
+    } else {
+        perror("fork");
         return -1;
     }
-
-    char buffer[1024];
-    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        // In a real implementation, we might send this output to the client via MSG_EVENT_LOG
-        // For now, just print it and maybe log to DB
-        printf("[Sandbox Output] %s", buffer);
-        
-        // Log to database
-        struct json_object* log_obj = json_object_new_object();
-        json_object_object_add(log_obj, "type", json_object_new_string("stdout"));
-        json_object_object_add(log_obj, "line", json_object_new_string(buffer));
-        const char* log_str = json_object_to_json_string(log_obj);
-        gallium_log("sandbox", log_str);
-        json_object_put(log_obj);
-    }
-
-    int status = pclose(fp);
-    return status == 0 ? 0 : -1;
 }
 
 int sandbox_execute_task(const char* task_name) {

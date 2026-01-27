@@ -36,4 +36,9 @@ int sandbox_execute_task(const char* task_name);
  */
 int sandbox_execute_command(const char* command, bool requires_approval);
 
+/**
+ * @brief Kill all tracked child processes.
+ */
+void sandbox_kill_all();
+
 #endif // GALLIUM_SANDBOX_H

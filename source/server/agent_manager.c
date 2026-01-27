@@ -2,6 +2,7 @@
 #include "agent_manager.h"
 #include "agent_profiles.h"
 #include "llm_client.h"
+#include "network.h"
 #include "../common/protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +32,11 @@ static void* agent_thread_func(void* arg) {
     gallium_log(source, "{\"event\": \"started\"}");
 
     while (agent->running) {
+        if (network_is_panic_active()) {
+            usleep(500000); // Sleep 500ms and check again
+            continue;
+        }
+
         gallium_msg msg;
         if (gallium_queue_try_pop(&agent->queue, &msg)) {
             

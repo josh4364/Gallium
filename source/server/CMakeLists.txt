@@ -24,6 +24,8 @@ target_link_libraries(gallium-server
     ${LWS_LIBRARIES}
     ${JSONC_LIBRARIES}
     ${CURL_LIBRARIES}
+    ${LIBNOTIFY_LIBRARIES}
+    ${GLIB_LIBRARIES}
     m
 )
 

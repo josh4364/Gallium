@@ -14,4 +14,6 @@ target_link_libraries(gallium-tui
     ${NOTCURSES_LIBRARIES}
     ${LWS_LIBRARIES}
     ${JSONC_LIBRARIES}
+    ${LIBNOTIFY_LIBRARIES}
+    ${GLIB_LIBRARIES}
 )

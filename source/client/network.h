@@ -45,4 +45,9 @@ int client_network_is_connected();
  */
 int client_network_get_debug_logs(char*** out_logs);
 
+/**
+ * @brief Request event log from the server.
+ */
+int client_network_get_events();
+
 #endif // GALLIUM_CLIENT_NETWORK_H

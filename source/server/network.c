@@ -14,6 +14,48 @@ struct per_session_data__gallium {
 
 #include "project_init.h"
 
+static int g_panic_active = 0;
+
+int network_is_panic_active() {
+    return g_panic_active;
+}
+
+static int handle_panic(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)header;
+    struct json_object* active_obj = NULL;
+    if (json_object_object_get_ex(payload_obj, "active", &active_obj)) {
+        g_panic_active = json_object_get_boolean(active_obj);
+        printf("[Network] Panic state changed to: %s\n", g_panic_active ? "ACTIVE" : "INACTIVE");
+        
+        if (g_panic_active) {
+            // Log to database
+            gallium_log("server", "{\"event\": \"panic_activated\"}");
+            sandbox_kill_all();
+            // Broadcast to other clients if any
+            network_broadcast(GALLIUM_MSG_PANIC, "{\"active\": true}");
+        } else {
+            gallium_log("server", "{\"event\": \"panic_deactivated\"}");
+            network_broadcast(GALLIUM_MSG_PANIC, "{\"active\": false}");
+        }
+        return 0;
+    }
+    return -1;
+}
+
+static int handle_get_events(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)header; (void)payload_obj;
+    int limit = 50;
+    
+    char* events_json = db_get_events(limit);
+    if (events_json) {
+        int ret = gallium_net_send(wsi, GALLIUM_MSG_EVENT_LIST, events_json);
+        free(events_json);
+        return ret;
+    } else {
+        return gallium_net_send(wsi, GALLIUM_MSG_EVENT_LIST, "[]");
+    }
+}
+
 static int handle_init(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
     (void)header;
     (void)payload_obj;
@@ -113,6 +155,8 @@ int network_init(int port) {
     gallium_dispatch_register(GALLIUM_MSG_INIT, handle_init);
     gallium_dispatch_register(GALLIUM_MSG_TASK_UPDATE, handle_task_update);
     gallium_dispatch_register(GALLIUM_MSG_USER_INPUT, handle_user_input);
+    gallium_dispatch_register(GALLIUM_MSG_PANIC, handle_panic);
+    gallium_dispatch_register(GALLIUM_MSG_GET_EVENTS, handle_get_events);
 
     lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_USER, NULL);
     struct lws_context_creation_info info;

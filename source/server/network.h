@@ -22,6 +22,11 @@ void network_service();
 void network_cleanup();
 
 /**
+ * @brief Check if the server is in a panic state.
+ */
+int network_is_panic_active();
+
+/**
  * @brief Send a message to all connected clients (broadcast).
  */
 void network_broadcast(GALLIUM_MSG_ID msg_id, const char* json_payload);
