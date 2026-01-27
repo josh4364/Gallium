@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 #include "db_manager.h"
 #include "network.h"
 #include "sandbox.h"
 #include "common/protocol.h"
 
 #include "git_workflow.h"
+#include "agent_manager.h"
 
 // ... imports ...
 
@@ -66,9 +68,60 @@ void run_git_test() {
     printf("Inspect %s to see git log.\n", test_dir);
 }
 
+void run_agent_test() {
+    printf("Running Agent Orchestration Test...\n");
+    
+    // DB Init required for logging
+    if (db_init("agent_test.db") != 0) {
+        printf("FAILED: DB Init\n");
+        return;
+    }
+
+    gallium_agent_manager_init();
+
+    // 1. Spawn Agents
+    Agent* top_manager = gallium_agent_spawn(AGENT_ROLE_TOP_MANAGER);
+    Agent* task_manager = gallium_agent_spawn(AGENT_ROLE_TASK_MANAGER);
+    
+    if (!top_manager || !task_manager) {
+        printf("FAILED: Agent Spawn\n");
+        return;
+    }
+    printf("Agents spawned successfully.\n");
+
+    // 2. Concurrency Test
+    // Send messages simultaneously
+    gallium_agent_send(top_manager, "Analyze the project structure.");
+    gallium_agent_send(task_manager, "Task Manager: Break down 'Build a Rocket'.");
+    
+    // Wait for processing (simple sleep for test)
+    sleep(2);
+
+    // 3. Loop Detection Test
+    printf("Testing Loop Detection...\n");
+    Agent* loopy = gallium_agent_spawn(AGENT_ROLE_CODER);
+    gallium_agent_send(loopy, "Edit file A");
+    gallium_agent_send(loopy, "Edit file A");
+    gallium_agent_send(loopy, "Edit file A"); // Should trigger loop logic on processing
+    
+    sleep(1);
+
+    // Cleanup
+    gallium_agent_shutdown(top_manager);
+    gallium_agent_shutdown(task_manager);
+    gallium_agent_shutdown(loopy);
+    db_close();
+
+    printf("Agent Test Completed. Check agent_test.db or stdout logs.\n");
+}
+
 int main(int argc, char **argv) {
     if (argc > 1 && strcmp(argv[1], "--test-git") == 0) {
         run_git_test();
+        return 0;
+    }
+    if (argc > 1 && strcmp(argv[1], "--test-agents") == 0) {
+        run_agent_test();
         return 0;
     }
 

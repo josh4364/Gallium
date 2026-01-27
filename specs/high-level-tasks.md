@@ -50,16 +50,16 @@ This document outlines the phased development of the Gallium AI workflow system,
 
 ## Phase 5: AI Orchestration (The "Brains")
 1. **Agent Logic Manager**
-    - [ ] Implement the "Thread-per-Agent" orchestration model.
-    - [ ] Develop the **Top-Level Manager** (Goal interpretation).
-    - [ ] Develop the **Task Manager** (Breakdown to sub-tasks).
+    - [x] Implement the "Thread-per-Agent" orchestration model.
+    - [x] Develop the **Top-Level Manager** (Goal interpretation).
+    - [x] Develop the **Task Manager** (Breakdown to sub-tasks).
 2. **LLM Integration Layer**
     - [ ] Implement Gemini API client with exponential backoff.
     - [ ] Implement optional `llama.cpp` local model support.
     - [ ] Implement MCP Host functionality to orchestrate external MCP tools.
 3. **Advanced Flow Control**
     - [ ] Implement state machine for tracking task progress/recovery.
-    - [ ] Implement loop detection (redundancy analysis).
+    - [x] Implement loop detection (redundancy analysis).
     - [ ] Implement bottleneck assessment logs at task completion.
 
 ## Phase 6: Specialist Workflows & Polish

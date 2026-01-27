@@ -4,6 +4,8 @@ add_executable(gallium-server
     network.c
     sandbox.c
     git_workflow.c
+    agent_manager.c
+    llm_client.c
 )
 
 set_target_properties(gallium-server PROPERTIES 
