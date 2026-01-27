@@ -20,6 +20,13 @@ Integrate Git into the task lifecycle to provide versioned history for every AI 
 ### 2.4 Final Merge/Flatten
 - **Action**: Implement a "Goal Complete" finalize step that merges the task branch into the main project branch.
 
+### 2.5 Push Configuration
+- **Action**: Implement configurable `git push` behaviors.
+- **Logic**:
+    - **Sub-Task Push**: If enabled, run `git push origin task-<id>` after every sub-task checkpoint.
+    - **Final Push**: If enabled, run `git push origin <main-branch>` after flattening.
+    - Default both to OFF for safety.
+
 ## 3. Verification Steps
 1. **Git Log Check**: After running a test task, run `git log` to verify automatic commits were created with proper messages.
 2. **Branch Cleanup**: Verify that task branches are correctly created and not left in a "detached HEAD" state.
