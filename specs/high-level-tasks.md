@@ -11,9 +11,9 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Setup root and sub-directory `CMakeLists.txt`.
     - [x] Implementation of placeholder applications.
 2. **Protocol Definition (`gallium_common`)**
-    - [ ] Define binary header format (`MessageID`, `Length`).
-    - [ ] Implement `json-c` wrappers for structured payload serialization.
-    - [ ] Create shared message queue structures for agent communication.
+    - [x] Define binary header format (`MessageID`, `Length`).
+    - [x] Implement `json-c` wrappers for structured payload serialization.
+    - [x] Create shared message queue structures for agent communication.
 
 ## Phase 2: Server Core & Persistence
 1. **Database Layer**
