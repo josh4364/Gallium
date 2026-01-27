@@ -67,10 +67,10 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Implement "Interview Mode" for requirements gathering.
     - [x] Implement "Requirements Synthesis" to generate project specs.
 2. **Feedback & Notifications**
-    - [ ] Integrate system-level notifications (`libnotify`).
-    - [ ] Implement screen-flash signals for goal completion.
-    - [ ] Visual urgency cues (Red tasks for input required).
+    - [x] Integrate system-level notifications (`libnotify`).
+    - [x] Implement screen-flash signals for goal completion.
+    - [x] Visual urgency cues (Red tasks for input required).
 3. **Final Hardening**
-    - [ ] Audit-log viewer and historical state playback.
+    - [x] Audit-log viewer and historical state playback.
     - [ ] Context window usage monitoring and reporting.
-    - [ ] Pause/Panic "Big Button" backup and checkpointing.
+    - [x] Pause/Panic "Big Button" backup and checkpointing.
