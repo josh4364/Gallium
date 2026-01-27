@@ -28,14 +28,14 @@ This document outlines the phased development of the Gallium AI workflow system,
 
 ## Phase 3: Client TUI Development
 1. **Layout Engine (`notcurses`)**
-    - [ ] Implement the 4-column main layout (Icons, Tasks, Sub-Tasks, Events).
-    - [ ] Develop the top menu bar (Projects, Project Name, Panic Button, Settings).
-    - [ ] Create the focused-section highlighting system.
+    - [x] Implement the 4-column main layout (Icons, Tasks, Sub-Tasks, Events).
+    - [x] Develop the top menu bar (Projects, Project Name, Panic Button, Settings).
+    - [x] Create the focused-section highlighting system.
 2. **Navigation & Interaction**
-    - [ ] Implement a TUI file browser for the local workspace.
-    - [ ] Map keyboard/mouse events to UI selection and server requests.
+    - [x] Implement a TUI file browser for the local workspace.
+    - [x] Map keyboard/mouse events to UI selection and server requests.
 3. **Waterfall View**
-    - [ ] Implement the toggleable "Waterfall" event log overlay.
+    - [x] Implement the toggleable "Waterfall" event log overlay.
     - [ ] Filter out raw LLM noise; allow "peek" functionality for details.
 
 ## Phase 4: System Integration & Execution

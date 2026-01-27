@@ -3,12 +3,14 @@
 
 #include <notcurses/notcurses.h>
 #include <stdbool.h>
+#include <dirent.h>
 
 typedef enum {
     FOCUS_ICONS = 0,
     FOCUS_TASKS,
     FOCUS_SUBTASKS,
     FOCUS_EVENTS,
+    FOCUS_FILES,
     FOCUS_COUNT
 } ui_focus_t;
 
@@ -23,13 +25,26 @@ typedef struct {
     struct ncplane* col_subtasks;
     struct ncplane* col_events;
     struct ncplane* waterfall;
+    struct ncplane* file_browser;
     
     // State
     ui_focus_t focus;
     bool waterfall_visible;
     bool settings_open;
+    int settings_idx; // Current selection in settings
     bool panic_pressed;
     
+    // File Browser State
+    char current_dir[1024];
+    int file_selected_idx;
+    struct dirent** file_list;
+    int file_count;
+    
+    // Settings State
+    char api_key[64];
+    bool push_on_subtask;
+    bool push_on_final;
+
     // Approval
     bool pending_approval;
     char approval_prompt[256];
