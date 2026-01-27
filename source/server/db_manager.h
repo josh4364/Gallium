@@ -28,4 +28,13 @@ void db_close(void);
  */
 void gallium_log(const char *source, const char *payload_json);
 
+/**
+ * @brief Log an LLM interaction to the llm_logs table.
+ * @param agent_id The ID of the agent making the request.
+ * @param prompt The system+user prompt sent.
+ * @param response The response received.
+ * @param tokens The number of tokens used.
+ */
+void gallium_log_llm(const char *agent_id, const char *prompt, const char *response, int tokens);
+
 #endif // DB_MANAGER_H

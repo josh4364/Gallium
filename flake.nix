@@ -25,6 +25,7 @@
             json_c
             openssl
             zlib
+            curl
           ];
 
           shellHook = ''

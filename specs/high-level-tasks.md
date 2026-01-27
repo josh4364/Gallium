@@ -54,9 +54,9 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Develop the **Top-Level Manager** (Goal interpretation).
     - [x] Develop the **Task Manager** (Breakdown to sub-tasks).
 2. **LLM Integration Layer**
-    - [ ] Implement Gemini API client with exponential backoff.
-    - [ ] Implement optional `llama.cpp` local model support.
-    - [ ] Implement MCP Host functionality to orchestrate external MCP tools.
+    - [x] Implement Gemini API client with exponential backoff.
+    - [x] Implement optional `llama.cpp` local model support.
+    - [x] Implement MCP Host functionality to orchestrate external MCP tools.
 3. **Advanced Flow Control**
     - [ ] Implement state machine for tracking task progress/recovery.
     - [x] Implement loop detection (redundancy analysis).

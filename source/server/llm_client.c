@@ -1,25 +1,49 @@
 #include "llm_client.h"
+#include "llm_gemini.h"
+#include "db_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 char* gallium_llm_generate(const char* system_prompt, const char* user_prompt) {
-    // STUB: Real implementation will be in Task 7 (LLM Integration).
-    // For now, return a placeholder.
-    fprintf(stderr, "[LLM] System: %s\n", system_prompt);
-    fprintf(stderr, "[LLM] User: %s\n", user_prompt);
+    char* response = llm_gemini_send(system_prompt, user_prompt);
     
-    return strdup("Placeholder LLM Response");
+    if (response) {
+        int tokens = llm_gemini_get_last_token_usage();
+        gallium_log_llm("unknown_agent", user_prompt, response, tokens); // TODO: Pass agent ID
+    } else {
+        fprintf(stderr, "[LLM] Failed to generate response.\n");
+    }
+    
+    return response;
 }
 
 struct json_object* gallium_llm_generate_json(const char* system_prompt, const char* user_prompt) {
-    fprintf(stderr, "[LLM JSON] System: %s\n", system_prompt);
-    fprintf(stderr, "[LLM JSON] User: %s\n", user_prompt);
-
-    // STUB: Return a mock task list if it looks like a task breakdown request
-    if (strstr(system_prompt, "Task Manager")) {
-        return json_tokener_parse("[\"Subtask A\", \"Subtask B\", \"Subtask C\"]");
+    char* response_text = gallium_llm_generate(system_prompt, user_prompt);
+    if (!response_text) {
+        return NULL;
     }
 
-    return json_object_new_object();
+    struct json_object* json = json_tokener_parse(response_text);
+    // If response is markdown wrapped ```json ... ```, we might need to clean it.
+    // Basic cleaning: find first { or [
+    if (!json) {
+        char *start = strchr(response_text, '{');
+        char *start_arr = strchr(response_text, '[');
+        if (start_arr && (!start || start_arr < start)) start = start_arr;
+        
+        if (start) {
+            char *end = strrchr(start, '}');
+            char *end_arr = strrchr(start, ']');
+            if (end_arr && (!end || end_arr > end)) end = end_arr;
+            
+            if (end) {
+                *(end + 1) = '\0';
+                json = json_tokener_parse(start);
+            }
+        }
+    }
+    
+    free(response_text);
+    return json;
 }

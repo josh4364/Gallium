@@ -100,3 +100,28 @@ void gallium_log(const char *source, const char *payload_json) {
 
     sqlite3_finalize(stmt);
 }
+
+void gallium_log_llm(const char *agent_id, const char *prompt, const char *response, int tokens) {
+    if (!g_db) return;
+
+    sqlite3_stmt *stmt;
+    const char *sql = "INSERT INTO llm_logs (agent_id, prompt, response, tokens) VALUES (?, ?, ?, ?);";
+    
+    int rc = sqlite3_prepare_v2(g_db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare log llm statement: %s\n", sqlite3_errmsg(g_db));
+        return;
+    }
+
+    sqlite3_bind_text(stmt, 1, agent_id, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, prompt, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, response, -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 4, tokens);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Failed to execute log llm statement: %s\n", sqlite3_errmsg(g_db));
+    }
+
+    sqlite3_finalize(stmt);
+}
