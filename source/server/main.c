@@ -1,22 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sqlite3.h>
+#include <string.h>
 #include <libwebsockets.h>
+#include "db_manager.h"
 #include "common/protocol.h"
 
 int main(int argc, char **argv) {
     printf("Gallium Server Initializing...\n");
 
-    // SQLite Initialization
-    sqlite3 *db;
-    int rc = sqlite3_open("db/gallium.db", &db);
-    if (rc) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+    // Initialize Database
+    if (db_init("db/project.db") != 0) {
+        fprintf(stderr, "Failed to initialize database\n");
         return 1;
-    } else {
-        printf("Opened database successfully\n");
     }
-    sqlite3_close(db);
+    printf("Opened database successfully\n");
+
+    // Test Audit Log
+    gallium_log("server", "{\"message\": \"Server started\", \"version\": \"0.1.0\"}");
 
     // libwebsockets Initialization
     struct lws_context_creation_info info;
@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
     }
 
     lws_context_destroy(context);
+    db_close();
     printf("Gallium Server exhiting cleanly.\n");
 
     return 0;

@@ -1,5 +1,6 @@
 add_executable(gallium-server
     main.c
+    db_manager.c
 )
 
 set_target_properties(gallium-server PROPERTIES 
