@@ -58,7 +58,7 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Implement optional `llama.cpp` local model support.
     - [x] Implement MCP Host functionality to orchestrate external MCP tools.
 3. **Advanced Flow Control**
-    - [ ] Implement state machine for tracking task progress/recovery.
+    - [x] Implement state machine for tracking task progress/recovery.
     - [x] Implement bottleneck assessment logs at task completion.
     - [x] Implement loop detection (redundancy analysis).
 

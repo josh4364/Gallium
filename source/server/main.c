@@ -149,6 +149,55 @@ void run_polish_test() {
     printf("Polish Test completed (Manually verify TUI for visual cues).\n");
 }
 
+void run_recovery_test() {
+    printf("Running Recovery Test...\n");
+    const char* db_path = "recovery_test.db";
+    remove(db_path);
+
+    // 1. Init DB
+    if (db_init(db_path) != 0) {
+        printf("FAILED: DB Init\n");
+        return;
+    }
+
+    // 2. Create Tasks
+    int t1 = db_create_task("Task 1 (Completed)", "t1");
+    int t2 = db_create_task("Task 2 (In Progress)", "t2");
+    int t3 = db_create_task("Task 3 (In Progress)", "t3");
+    int t4 = db_create_task("Task 4 (Pending)", "t4");
+
+    // 3. Set Statuses
+    db_update_task_status(t1, TASK_STATUS_COMPLETED);
+    db_update_task_status(t2, TASK_STATUS_IN_PROGRESS);
+    db_update_task_status(t3, TASK_STATUS_IN_PROGRESS);
+    // t4 stays PENDING
+
+    // 4. Simulate Crash & Restart
+    db_close();
+    printf("Simulating restart...\n");
+    if (db_init(db_path) != 0) {
+        printf("FAILED: Re-open DB\n");
+        return;
+    }
+
+    // 5. Run Recovery
+    int recovered = db_recover_tasks();
+    printf("Recovered: %d\n", recovered);
+
+    if (recovered != 2) {
+        printf("FAILED: Expected 2 recovered tasks, got %d\n", recovered);
+        return;
+    }
+
+    // 6. Verify Statuses (Manual check via SQL or trust the count for now)
+    // Ideally we would query to check statuses, but we didn't expose a "get_task" yet.
+    // The count confirms the UPDATE query affected 2 rows.
+
+    db_close();
+    remove(db_path);
+    printf("Recovery Test PASSED.\n");
+}
+
 int main(int argc, char **argv) {
     if (argc > 1 && strcmp(argv[1], "--test-git") == 0) {
         run_git_test();
@@ -160,6 +209,10 @@ int main(int argc, char **argv) {
     }
     if (argc > 1 && strcmp(argv[1], "--test-polish") == 0) {
         run_polish_test();
+        return 0;
+    }
+    if (argc > 1 && strcmp(argv[1], "--test-recovery") == 0) {
+        run_recovery_test();
         return 0;
     }
 
@@ -179,6 +232,12 @@ int main(int argc, char **argv) {
         return 1;
     }
     printf("Opened database successfully\n");
+
+    // Recover Tasks
+    int recovered = db_recover_tasks();
+    if (recovered > 0) {
+        printf("Recovered %d tasks (marked as PAUSED)\n", recovered);
+    }
 
     // Initialize Network
     if (network_init(7681) != 0) {

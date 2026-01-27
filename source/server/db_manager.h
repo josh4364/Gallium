@@ -45,4 +45,42 @@ void gallium_log_llm(const char *agent_id, const char *prompt, const char *respo
  */
 char* db_get_events(int limit);
 
+// --- Task State Management ---
+
+typedef enum {
+    TASK_STATUS_PENDING,
+    TASK_STATUS_IN_PROGRESS,
+    TASK_STATUS_COMPLETED,
+    TASK_STATUS_FAILED,
+    TASK_STATUS_PAUSED
+} TaskStatus;
+
+/**
+ * @brief Convert TaskStatus enum to string.
+ */
+const char* db_task_status_to_string(TaskStatus status);
+
+/**
+ * @brief Create a new task.
+ * @param name Task name.
+ * @param git_branch Associated git branch.
+ * @return Task ID on success, -1 on failure.
+ */
+int db_create_task(const char *name, const char *git_branch);
+
+/**
+ * @brief Update the status of a task.
+ * @param task_id The ID of the task.
+ * @param status The new status.
+ * @return 0 on success, non-zero on failure.
+ */
+int db_update_task_status(int task_id, TaskStatus status);
+
+/**
+ * @brief Recover tasks that were interrupted (e.g., stuck in IN_PROGRESS).
+ * Should be called at server startup.
+ * @return Number of recovered tasks.
+ */
+int db_recover_tasks();
+
 #endif // DB_MANAGER_H
