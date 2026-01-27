@@ -29,3 +29,17 @@ Refactor and harden the network layer to reduce boilerplate, improve debugging v
 1. **Stress Test**: Kill and restart the server repeatedly; verify the client reconnects reliably without manual intervention.
 2. **Modular Dispatch**: Add a new dummy `MSG_ID` and handler in a separate file; verify it triggers without touching `network.c`.
 3. **Spy Tool**: Run `gallium-spy` alongside a TUI session and verify all packets are captured and displayed.
+
+## 4. Future Self Summary
+
+I have refactored the network layer into a modular, robust subsystem. Here is what you need to know for future development:
+
+### New Components
+- **The Dispatcher (`dispatch.c/h`)**: Centralized message handling. Instead of editing `network.c`, use `gallium_dispatch_register(msg_id, handler_func)` to add new features. Handlers now receive a pre-parsed `json_object*` for immediate use.
+- **Network Utilities (`net_utils.c/h`)**: Use `gallium_net_send(wsi, msg_id, json_str)` to send data. Metadata, byte-ordering, and LWS padding are handled automatically.
+- **Gallium Spy**: A standalone tool located in `source/tools/spy`. Run it to see exactly what is flying over the wire. It's the primary way to debug protocol drifts.
+
+### Key UX Improvements
+- **Build & Kill**: `build.sh` now aggressively kills old server/client instances. No more port conflicts when iterating.
+- **TUI Debug**: Press **'d'** in the TUI to toggle the network debug panel. It shows the connection state and the last 5 events, which is great for seeing if the exponential backoff (1s -> 30s) is working.
+- **Fail-Fast JSON**: The dispatcher now validates JSON at the entry point. If a remote sends malformed data, it never reaches the business logic handlers.

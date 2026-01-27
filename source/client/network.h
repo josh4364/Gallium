@@ -31,4 +31,11 @@ int client_network_send(GALLIUM_MSG_ID msg_id, const char* json_payload);
  */
 int client_network_is_connected();
 
+/**
+ * @brief Get the last 5 network debug messages.
+ * @param logs Array of 5 strings to be filled.
+ * @return Number of logs filled.
+ */
+int client_network_get_debug_logs(char*** out_logs);
+
 #endif // GALLIUM_CLIENT_NETWORK_H

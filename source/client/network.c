@@ -3,11 +3,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "dispatch.h"
+#include "net_utils.h"
+#include "network_internal.h"
 
 static struct lws *client_wsi = NULL;
 static struct lws_context *context = NULL;
 static int connected = 0;
 static int should_connect = 1;
+static int retry_count = 0;
+static int current_backoff = 1;
+#define MAX_DEBUG_LOGS 5
+static char* debug_logs[MAX_DEBUG_LOGS];
+static int debug_log_count = 0;
+
+static void add_debug_log(const char* log) {
+    if (debug_logs[debug_log_count % MAX_DEBUG_LOGS]) {
+        free(debug_logs[debug_log_count % MAX_DEBUG_LOGS]);
+    }
+    debug_logs[debug_log_count % MAX_DEBUG_LOGS] = strdup(log);
+    debug_log_count++;
+}
 
 struct msg_node {
     GALLIUM_MSG_ID msg_id;
@@ -43,10 +59,15 @@ static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons re
     switch (reason) {
         case LWS_CALLBACK_CLIENT_ESTABLISHED:
             connected = 1;
+            retry_count = 0;
+            current_backoff = 1;
+            add_debug_log("Connected to server");
             break;
 
         case LWS_CALLBACK_CLIENT_RECEIVE:
-            // Handle incoming messages from server
+            if (gallium_dispatch_message(wsi, in, len) < 0) {
+                add_debug_log("Dispatch failed or no handler");
+            }
             break;
 
         case LWS_CALLBACK_CLIENT_WRITEABLE: {
@@ -55,22 +76,13 @@ static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons re
             struct msg_node* node = send_queue;
             send_queue = node->next;
 
-            size_t total_len = sizeof(gallium_msg_header) + node->payload_len;
-            unsigned char* buf = malloc(LWS_PRE + total_len);
+            size_t total_len = 0;
+            unsigned char* buf = gallium_net_pack(node->msg_id, node->payload, &total_len);
             
-            gallium_msg_header header;
-            header.msg_id = node->msg_id;
-            header.payload_len = node->payload_len;
-            gallium_header_hton(&header);
-
-            memcpy(buf + LWS_PRE, &header, sizeof(gallium_msg_header));
-            if (node->payload) {
-                memcpy(buf + LWS_PRE + sizeof(gallium_msg_header), node->payload, node->payload_len);
+            if (buf) {
+                lws_write(wsi, buf + LWS_PRE, total_len, LWS_WRITE_BINARY);
+                free(buf);
             }
-
-            lws_write(wsi, buf + LWS_PRE, total_len, LWS_WRITE_BINARY);
-
-            free(buf);
             free(node->payload);
             free(node);
 
@@ -84,6 +96,7 @@ static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons re
         case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
             connected = 0;
             client_wsi = NULL;
+            add_debug_log("Disconnected/Connection Error");
             break;
 
         default:
@@ -117,6 +130,7 @@ static void try_connect() {
 int client_network_init(const char* host, int port) {
     strncpy(saved_host, host, sizeof(saved_host));
     saved_port = port;
+    gallium_dispatch_init();
     lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_USER, NULL);
 
     struct lws_context_creation_info info;
@@ -142,9 +156,15 @@ void client_network_service() {
         static time_t last_heartbeat = 0;
         time_t now = time(NULL);
 
-        if (!connected && !client_wsi && (now - last_try > 2)) {
+        if (!connected && !client_wsi && (now - last_try > current_backoff)) {
             last_try = now;
             try_connect();
+            
+            // Exponential backoff: 1, 2, 4, 8, 16, 30...
+            if (current_backoff < 30) {
+                current_backoff *= 2;
+                if (current_backoff > 30) current_backoff = 30;
+            }
         }
 
         if (connected && (now - last_heartbeat > 10)) {
@@ -168,4 +188,9 @@ int client_network_send(GALLIUM_MSG_ID msg_id, const char* json_payload) {
 
 int client_network_is_connected() {
     return connected;
+}
+
+int client_network_get_debug_logs(char*** out_logs) {
+    *out_logs = debug_logs;
+    return (debug_log_count < MAX_DEBUG_LOGS) ? debug_log_count : MAX_DEBUG_LOGS;
 }

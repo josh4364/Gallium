@@ -30,3 +30,4 @@ link_directories(
 add_subdirectory(source/common)
 add_subdirectory(source/server)
 add_subdirectory(source/client)
+add_subdirectory(source/tools/spy)

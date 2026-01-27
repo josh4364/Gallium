@@ -3,6 +3,10 @@ add_library(gallium_common STATIC
     common.c
     queue.h
     queue.c
+    dispatch.h
+    dispatch.c
+    net_utils.h
+    net_utils.c
 )
 
 target_include_directories(gallium_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

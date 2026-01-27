@@ -1,6 +1,10 @@
 # Exit on error
 set -e
 
+echo "Killing existing Gallium processes..."
+pkill -f gallium-server || true
+pkill -f gallium-tui || true
+
 echo "Starting Gallium build process..."
 
 # Create build directory if it doesn't exist

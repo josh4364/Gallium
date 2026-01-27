@@ -43,6 +43,7 @@ int main(int argc, char **argv) {
 
     // Main loop
     int running = 1;
+    int show_debug = 0;
     while (running) {
         client_network_service();
 
@@ -52,6 +53,8 @@ int main(int argc, char **argv) {
         if (val != 0) {
             if (val == 'q' || val == NCKEY_ESC) {
                 running = 0;
+            } else if (val == 'd') {
+                show_debug = !show_debug;
             }
         }
 
@@ -62,6 +65,24 @@ int main(int argc, char **argv) {
         } else {
             const char* offline = "Status: Offline";
             ncplane_putstr_yx(ncp, dimy / 2 + 1, (dimx - strlen(offline)) / 2, offline);
+        }
+
+        if (show_debug) {
+            char** logs;
+            int count = client_network_get_debug_logs(&logs);
+            ncplane_set_fg_rgb(ncp, 0xFFFF00); // Yellow
+            ncplane_putstr_yx(ncp, 2, 2, "--- Network Debug ---");
+            for (int i = 0; i < count; i++) {
+                if (logs[i]) {
+                    ncplane_putstr_yx(ncp, 3 + i, 2, logs[i]);
+                }
+            }
+            ncplane_set_fg_rgb(ncp, 0x00FF00); // Reset to green
+        } else {
+            // Clear debug area (simple way: overwrite with spaces)
+            for (int i = 0; i < 7; i++) {
+                ncplane_putstr_yx(ncp, 2 + i, 2, "                                        ");
+            }
         }
         
         notcurses_render(nc);

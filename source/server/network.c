@@ -4,29 +4,17 @@
 #include <string.h>
 #include "db_manager.h"
 
+#include "dispatch.h"
+#include "net_utils.h"
+
 struct per_session_data__gallium {
     // Session specific data if needed
 };
 
-static int network_send_to(struct lws* wsi, GALLIUM_MSG_ID msg_id, const char* json_payload) {
-    if (!wsi) return -1;
-    size_t payload_len = json_payload ? strlen(json_payload) : 0;
-    size_t total_len = sizeof(gallium_msg_header) + payload_len;
-    unsigned char* buf = malloc(LWS_PRE + total_len);
-
-    gallium_msg_header header;
-    header.msg_id = msg_id;
-    header.payload_len = payload_len;
-    gallium_header_hton(&header);
-
-    memcpy(buf + LWS_PRE, &header, sizeof(gallium_msg_header));
-    if (json_payload) {
-        memcpy(buf + LWS_PRE + sizeof(gallium_msg_header), json_payload, payload_len);
-    }
-
-    int n = lws_write(wsi, buf + LWS_PRE, total_len, LWS_WRITE_BINARY);
-    free(buf);
-    return n;
+static int handle_init(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
+    (void)header;
+    (void)payload_obj;
+    return gallium_net_send(wsi, GALLIUM_MSG_INIT, "{\"status\": \"acknowledged\"}");
 }
 
 static int callback_gallium(struct lws *wsi, enum lws_callback_reasons reason,
@@ -37,26 +25,8 @@ static int callback_gallium(struct lws *wsi, enum lws_callback_reasons reason,
             break;
 
         case LWS_CALLBACK_RECEIVE: {
-            if (len < sizeof(gallium_msg_header)) {
-                break;
-            }
-
-            gallium_msg_header header;
-            memcpy(&header, in, sizeof(gallium_msg_header));
-            gallium_header_ntoh(&header);
-
-            if (len < sizeof(gallium_msg_header) + header.payload_len) {
-                break;
-            }
-
-            // Log the message
-            char log_msg[512];
-            snprintf(log_msg, sizeof(log_msg), "{\"msg_id\": %d, \"payload_len\": %u}", header.msg_id, header.payload_len);
-            gallium_log("network", log_msg);
-
-            // Echo back if it's an INIT
-            if (header.msg_id == GALLIUM_MSG_INIT) {
-                network_send_to(wsi, GALLIUM_MSG_INIT, "{\"status\": \"acknowledged\"}");
+            if (gallium_dispatch_message(wsi, in, len) < 0) {
+                // Could not dispatch or handler failed
             }
             break;
         }
@@ -80,6 +50,9 @@ static struct lws_protocols protocols[] = {
 static struct lws_context *context = NULL;
 
 int network_init(int port) {
+    gallium_dispatch_init();
+    gallium_dispatch_register(GALLIUM_MSG_INIT, handle_init);
+
     lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_USER, NULL);
     struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
@@ -88,7 +61,8 @@ int network_init(int port) {
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;
-    info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+    info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT | 
+                   LWS_SERVER_OPTION_ALLOW_LISTEN_SHARE;
 
     context = lws_create_context(&info);
     if (!context) {
