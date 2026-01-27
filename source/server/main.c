@@ -1,12 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libwebsockets.h>
+#include <signal.h>
 #include "db_manager.h"
+#include "network.h"
 #include "common/protocol.h"
+
+static int interrupted = 0;
+
+void sigint_handler(int sig) {
+    interrupted = 1;
+}
 
 int main(int argc, char **argv) {
     printf("Gallium Server Initializing...\n");
+
+    signal(SIGINT, sigint_handler);
 
     // Initialize Database
     if (db_init("db/project.db") != 0) {
@@ -15,33 +24,26 @@ int main(int argc, char **argv) {
     }
     printf("Opened database successfully\n");
 
+    // Initialize Network
+    if (network_init(7681) != 0) {
+        fprintf(stderr, "Failed to initialize network\n");
+        db_close();
+        return 1;
+    }
+    printf("Gallium Server running on port 7681...\n");
+
     // Test Audit Log
     gallium_log("server", "{\"message\": \"Server started\", \"version\": \"0.1.0\"}");
 
-    // libwebsockets Initialization
-    struct lws_context_creation_info info;
-    memset(&info, 0, sizeof(info));
-    info.port = 7681;
-    info.protocols = NULL; // We'll add protocols later
-    info.gid = -1;
-    info.uid = -1;
-
-    struct lws_context *context = lws_create_context(&info);
-    if (!context) {
-        fprintf(stderr, "lws_create_context failed\n");
-        return 1;
+    // Main Loop
+    while (!interrupted) {
+        network_service();
     }
 
-    printf("Gallium Server running on port %d...\n", info.port);
-
-    // Minimal loop (just for bootstrap, normally this would run infinitely)
-    for (int i = 0; i < 5; i++) {
-        lws_service(context, 50);
-    }
-
-    lws_context_destroy(context);
+    printf("Shutting down...\n");
+    network_cleanup();
     db_close();
-    printf("Gallium Server exhiting cleanly.\n");
+    printf("Gallium Server exiting cleanly.\n");
 
     return 0;
 }
