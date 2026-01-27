@@ -1,6 +1,8 @@
 add_executable(gallium-tui
     main.c
     network.c
+    ui.c
+    ui.h
 )
 
 set_target_properties(gallium-tui PROPERTIES 
