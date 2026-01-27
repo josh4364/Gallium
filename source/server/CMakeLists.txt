@@ -3,6 +3,7 @@ add_executable(gallium-server
     db_manager.c
     network.c
     sandbox.c
+    git_workflow.c
 )
 
 set_target_properties(gallium-server PROPERTIES 

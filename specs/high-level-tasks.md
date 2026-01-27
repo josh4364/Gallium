@@ -17,14 +17,14 @@ This document outlines the phased development of the Gallium AI workflow system,
 
 ## Phase 2: Server Core & Persistence
 1. **Database Layer**
-    - [ ] Implement SQLite3 manager for per-project databases.
-    - [ ] Define initial schema: `events`, `llm_logs`, `tasks`, `sub_tasks`.
-    - [ ] Implement "Log-every-action" utility for full audit trails.
+    - [x] Implement SQLite3 manager for per-project databases.
+    - [x] Define initial schema: `events`, `llm_logs`, `tasks`, `sub_tasks`.
+    - [x] Implement "Log-every-action" utility for full audit trails.
 2. **Communication Hub (`libwebsockets`)**
-    - [ ] Implement Server WebSocket listener.
-    - [ ] Implement Client WebSocket connector.
-    - [ ] Develop the custom binary frame dispatcher (ID-based routing).
-    - [ ] Implement heartbeat/reconnection logic.
+    - [x] Implement Server WebSocket listener.
+    - [x] Implement Client WebSocket connector.
+    - [x] Develop the custom binary frame dispatcher (ID-based routing).
+    - [x] Implement heartbeat/reconnection logic.
 
 ## Phase 3: Client TUI Development
 1. **Layout Engine (`notcurses`)**
@@ -44,9 +44,9 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Parse and execute `tasks.json` shell commands.
     - [x] Implement user-approval gate for out-of-sandbox actions.
 2. **Git-Backed Workflow**
-    - [ ] Implement automatic branch creation for top-level tasks.
-    - [ ] Implement automatic commit logic for sub-task completion.
-    - [ ] Develop branch flattening and alternative implementation logic.
+    - [x] Implement automatic branch creation for top-level tasks.
+    - [x] Implement automatic commit logic for sub-task completion.
+    - [x] Develop branch flattening and alternative implementation logic.
 
 ## Phase 5: AI Orchestration (The "Brains")
 1. **Agent Logic Manager**

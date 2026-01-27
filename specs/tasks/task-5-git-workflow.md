@@ -1,4 +1,5 @@
 # Task: Git-Backed Workflow
+*Status: Completed*
 
 ## 1. Goal
 Integrate Git into the task lifecycle to provide versioned history for every AI action.
@@ -30,3 +31,35 @@ Integrate Git into the task lifecycle to provide versioned history for every AI 
 ## 3. Verification Steps
 1. **Git Log Check**: After running a test task, run `git log` to verify automatic commits were created with proper messages.
 2. **Branch Cleanup**: Verify that task branches are correctly created and not left in a "detached HEAD" state.
+
+## 4. Implementation Summary (Future Self)
+*Date: 2026-01-27*
+
+The Git-Backed Workflow is fully implemented in `source/server/git_workflow.c`.
+
+**Key Features:**
+*   **Module**: `git_workflow` handles all git operations directly via `system()` calls using `git -C`.
+*   **Branching Strategy**:
+    *   Top-level tasks create `task-<id>`.
+    *   Alternative attempts create `task-<id>-alt-<attempt>`.
+*   **Checkpoints**: Sub-task completion triggers `git add .` and `git commit`.
+*   **Push Control**: Granular control via `git_workflow_set_push_checkpoint(bool)` and `git_workflow_set_push_finalize(bool)`. Defaults to `false` (no push).
+*   **Testing**: A built-in test harness is available in `main.c` via the `--test-git` flag. This creates a temporary repo in `build/test_git_workspace` to verify the full flow (Branch -> Commit -> Merge).
+
+**Usage:**
+```c
+// Init
+git_workflow_init("/path/to/workspace");
+
+// Start Task
+git_workflow_start_task("101");
+
+// Checkpoint (after sub-task)
+git_workflow_checkpoint("subtask-name");
+
+// Try Alt
+git_workflow_start_alt_task("101", 1);
+
+// Finish
+git_workflow_finalize_task("101", "main");
+```
