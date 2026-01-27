@@ -1,0 +1,7 @@
+build/
+db/*.db
+keys.json
+.direnv/
+.venv/
+*.o
+*.a

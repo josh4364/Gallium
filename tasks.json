@@ -1,0 +1,12 @@
+{
+  "tasks": [
+    {
+      "name": "build",
+      "command": "./build.sh"
+    },
+    {
+      "name": "test",
+      "command": "./build/bin/server/gallium-server"
+    }
+  ]
+}
