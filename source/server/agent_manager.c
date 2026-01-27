@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 static int g_next_agent_id = 1;
 
@@ -39,6 +40,8 @@ static void* agent_thread_func(void* arg) {
 
         gallium_msg msg;
         if (gallium_queue_try_pop(&agent->queue, &msg)) {
+            struct timespec start_ts, end_ts;
+            clock_gettime(CLOCK_MONOTONIC, &start_ts);
             
             // Log reception
             char log_msg[512];
@@ -72,6 +75,15 @@ static void* agent_thread_func(void* arg) {
 
                 free(response);
             }
+
+            clock_gettime(CLOCK_MONOTONIC, &end_ts);
+            double duration_sec = (end_ts.tv_sec - start_ts.tv_sec) + 
+                                  (end_ts.tv_nsec - start_ts.tv_nsec) / 1e9;
+            
+            char assessment_log[256];
+            snprintf(assessment_log, sizeof(assessment_log), 
+                     "{\"event\": \"bottleneck_assessment\", \"duration_sec\": %.3f}", duration_sec);
+            gallium_log(source, assessment_log);
 
             gallium_msg_free(&msg);
         } else {
