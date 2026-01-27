@@ -5,65 +5,118 @@
 #include <string.h>
 #include <wchar.h>
 #include <time.h>
-#include "common/protocol.h"
+#include <errno.h>
+#include <unistd.h>
+#include <poll.h>
+#include <sys/time.h>
 #include "network.h"
 #include "ui.h"
 
+double get_ms() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0;
+}
+
 int main(int argc, char **argv) {
-    // Initialize Network
-    // Initialize Network (deferred until UI is ready)
-    if (client_network_init("localhost", 7681) != 0) {
-        fprintf(stderr, "Failed to initialize client network\n");
+    if (freopen("client_debug.log", "w", stdout) == NULL) return EXIT_FAILURE;
+    if (freopen("client_debug.log", "w", stderr) == NULL) return EXIT_FAILURE;
+
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IOLBF, 0);
+
+    fprintf(stderr, "Starting Gallium Client (Full Mode)...\n");
+
+    struct notcurses_options nopts = {
+        .flags = NCOPTION_SUPPRESS_BANNERS | NCOPTION_DRAIN_INPUT | NCOPTION_NO_WINCH_SIGHANDLER,
+    };
+    
+    FILE* ttyfp = fopen("/dev/tty", "r+");
+    if (!ttyfp) {
+        fprintf(stderr, "Failed to open /dev/tty: %s\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
+    setvbuf(ttyfp, NULL, _IONBF, 0);
+
+    struct notcurses* nc = notcurses_init(&nopts, ttyfp);
+    if(nc == NULL){
+        fprintf(stderr, "Failed to initialize notcurses\n");
+        fclose(ttyfp);
         return EXIT_FAILURE;
     }
 
-    struct notcurses_options nopts = {
-        .flags = NCOPTION_SUPPRESS_BANNERS,
-    };
-    struct notcurses* nc = notcurses_init(&nopts, NULL);
-    if(nc == NULL){
-        client_network_cleanup();
-        return EXIT_FAILURE;
-    }
+    notcurses_mice_enable(nc, NCMICE_BUTTON_EVENT);
 
     gallium_ui_t* ui = ui_init(nc);
     if (!ui) {
+        fprintf(stderr, "Failed to initialize UI\n");
         notcurses_stop(nc);
-        client_network_cleanup();
+        fclose(ttyfp);
         return EXIT_FAILURE;
     }
-    client_network_set_ui(ui);
 
-    // Send a test message
+    client_network_set_ui(ui);
+    if (client_network_init("127.0.0.1", 7681) != 0) {
+        fprintf(stderr, "Network init failed\n");
+    }
+
     client_network_send(GALLIUM_MSG_INIT, "{\"client\": \"tui\", \"action\": \"handshake\"}");
 
-    // Main loop
-    int running = 1;
-    while (running) {
-        client_network_service();
+    int input_fd = notcurses_inputready_fd(nc);
 
-        struct ncinput ni;
-        struct timespec zero_ts = {0, 0};
-        uint32_t val = notcurses_get(nc, &zero_ts, &ni);
-        if (val != 0) {
-            if (val == 'q' || val == NCKEY_ESC) {
-                running = 0;
-            } else if (val == NCKEY_RESIZE) {
-                ui_resize(ui);
-            } else {
-                ui_handle_input(ui, val);
+    int running = 1;
+    double last_render_time = 0;
+
+    while (running) {
+        double now = get_ms();
+        
+        ui_process_network_messages(ui);
+
+        if (ui->needs_render || (now - last_render_time > 500.0)) {
+            if (now - last_render_time > 33.33) {
+                pthread_mutex_lock(&ui->state_mutex);
+                ui_render(ui);
+                ui->needs_render = false;
+                pthread_mutex_unlock(&ui->state_mutex);
+                last_render_time = now;
             }
         }
 
-        ui_render(ui);
-        
-        // Don't burn CPU
-        struct timespec ts = {0, 10000000}; // 10ms
-        nanosleep(&ts, NULL);
+        struct pollfd fds[1];
+        fds[0].fd = input_fd;
+        fds[0].events = POLLIN;
+
+        int ret = poll(fds, 1, 10);
+
+        if (ret > 0 && (fds[0].revents & POLLIN)) {
+            struct ncinput ni;
+            uint32_t val;
+            struct timespec ts_zero = {0, 0};
+            while ((val = notcurses_get(nc, &ts_zero, &ni)) != 0) {
+                if (val == (uint32_t)-1) break;
+                if (val == 'q' || (val == NCKEY_ESC && !ni.alt && !ni.ctrl)) {
+                    running = 0;
+                    break;
+                } else if (val == NCKEY_RESIZE) {
+                    pthread_mutex_lock(&ui->state_mutex);
+                    ui_resize(ui);
+                    ui->needs_render = true;
+                    pthread_mutex_unlock(&ui->state_mutex);
+                } else {
+                    pthread_mutex_lock(&ui->state_mutex);
+                    ui_handle_input(ui, &ni);
+                    ui->needs_render = true;
+                    pthread_mutex_unlock(&ui->state_mutex);
+                }
+            }
+        } else if (ret < 0 && errno != EINTR) {
+            break;
+        }
     }
 
     ui_deinit(ui);
     notcurses_stop(nc);
+    if (ttyfp) fclose(ttyfp);
     client_network_cleanup();
     return EXIT_SUCCESS;
 }

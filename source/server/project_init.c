@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <pthread.h>
 #include "llm_gemini.h"
 #include "db_manager.h"
 
@@ -81,6 +82,51 @@ void project_init_start(struct lws* wsi) {
     }
 }
 
+typedef struct {
+    struct lws* wsi;
+    char* prompt;
+} SynthesisArgs;
+
+static void* synthesis_thread_func(void* arg) {
+    SynthesisArgs* args = (SynthesisArgs*)arg;
+    struct lws* wsi = args->wsi;
+    char* prompt = args->prompt;
+
+    printf("[Project Init] Synthesizing specs via LLM in background thread...\n");
+    char* result = llm_gemini_send(NULL, prompt);
+    
+    if (result) {
+        if (system("mkdir -p specs") != 0) perror("mkdir failed");
+        FILE* f = fopen("specs/project_generated.md", "w");
+        if (f) {
+            fprintf(f, "%s", result);
+            fclose(f);
+        }
+        free(result);
+    }
+    
+    if (system("git checkout -b init-project || git checkout init-project") == -1) {
+        perror("git checkout failed");
+    }
+    if (system("git add specs/project_generated.md") == -1) {
+        perror("git add failed");
+    }
+    if (system("git commit -m 'Initial project specs' || echo 'Nothing to commit'") == -1) {
+        perror("git commit failed");
+    }
+    
+    if (system("touch project_init_complete.flag") == -1) {
+        perror("touch failed");
+    }
+
+    current_state = INIT_STATE_DONE;
+    gallium_net_send(wsi, GALLIUM_MSG_TASK_UPDATE, "{\"task\": \"Project Init\", \"status\": \"completed\"}");
+    
+    free(prompt);
+    free(args);
+    return NULL;
+}
+
 int project_init_handle_input(struct lws* wsi, const char* input) {
     printf("[Project Init] Received input: %s\n", input);
     
@@ -91,43 +137,26 @@ int project_init_handle_input(struct lws* wsi, const char* input) {
             current_state = INIT_STATE_SYNTHESIZE;
             gallium_net_send(wsi, GALLIUM_MSG_TASK_UPDATE, "{\"task\": \"Project Init\", \"status\": \"synthesizing...\"}");
             
-            printf("[Project Init] Synthesizing specs via LLM...\n");
             gallium_log("project_init", "{\"event\": \"synthesis_started\"}");
              
-            char prompt[8192];
-            snprintf(prompt, sizeof(prompt), 
+            SynthesisArgs* args = malloc(sizeof(SynthesisArgs));
+            args->wsi = wsi;
+            args->prompt = malloc(8192);
+            snprintf(args->prompt, 8192, 
                  "Generate a project.md file for a software project with these requirements:\n"
                  "Goal: %s\nOS: %s\nLang: %s\nDeps: %s\nIntegration: %s\nVending: %s\n"
                  "Output only the markdown content. Do not include ```markdown blocks.",
                  answers[0], answers[1], answers[2], answers[3], answers[4], answers[5]);
 
-            char* result = llm_gemini_send(NULL, prompt);
-            if (result) {
-                 if (system("mkdir -p specs") != 0) perror("mkdir failed");
-                 FILE* f = fopen("specs/project_generated.md", "w");
-                 if (f) {
-                     fprintf(f, "%s", result);
-                     fclose(f);
-                 }
-                 free(result);
+            pthread_t tid;
+            if (pthread_create(&tid, NULL, synthesis_thread_func, args) != 0) {
+                fprintf(stderr, "[Project Init] Error: Failed to create synthesis thread\n");
+                free(args->prompt);
+                free(args);
+                current_state = INIT_STATE_DONE;
+            } else {
+                pthread_detach(tid);
             }
-             
-            if (system("git checkout -b init-project || git checkout init-project") == -1) {
-                perror("git checkout failed");
-            }
-            if (system("git add specs/project_generated.md") == -1) {
-                perror("git add failed");
-            }
-            if (system("git commit -m 'Initial project specs' || echo 'Nothing to commit'") == -1) {
-                perror("git commit failed");
-            }
-             
-            if (system("touch project_init_complete.flag") == -1) {
-                perror("touch failed");
-            }
-
-            current_state = INIT_STATE_DONE;
-            gallium_net_send(wsi, GALLIUM_MSG_TASK_UPDATE, "{\"task\": \"Project Init\", \"status\": \"completed\"}");
         } else {
              // Restart
              current_state = INIT_STATE_Q1_GOAL;

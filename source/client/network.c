@@ -1,10 +1,11 @@
 #define _XOPEN_SOURCE 600
-#include <wchar.h> // Ensure this is included
+#include <wchar.h> 
 #include "network.h"
 #include <libwebsockets.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "dispatch.h"
 #include "net_utils.h"
 #include "network_internal.h"
@@ -12,20 +13,25 @@
 static struct lws *client_wsi = NULL;
 static struct lws_context *context = NULL;
 static int connected = 0;
-static int should_connect = 1;
 static int retry_count = 0;
 static gallium_ui_t* g_ui = NULL;
 static int current_backoff = 1;
+static pthread_t network_thread;
+static int network_thread_running = 0;
+static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define MAX_DEBUG_LOGS 5
 static char* debug_logs[MAX_DEBUG_LOGS];
 static int debug_log_count = 0;
 
 static void add_debug_log(const char* log) {
+    pthread_mutex_lock(&queue_mutex);
     if (debug_logs[debug_log_count % MAX_DEBUG_LOGS]) {
         free(debug_logs[debug_log_count % MAX_DEBUG_LOGS]);
     }
     debug_logs[debug_log_count % MAX_DEBUG_LOGS] = strdup(log);
     debug_log_count++;
+    pthread_mutex_unlock(&queue_mutex);
 }
 
 struct msg_node {
@@ -44,6 +50,7 @@ static void queue_message(GALLIUM_MSG_ID msg_id, const char* json_payload) {
     node->payload = json_payload ? strdup(json_payload) : NULL;
     node->next = NULL;
 
+    pthread_mutex_lock(&queue_mutex);
     if (!send_queue) {
         send_queue = node;
     } else {
@@ -55,6 +62,10 @@ static void queue_message(GALLIUM_MSG_ID msg_id, const char* json_payload) {
     if (client_wsi) {
         lws_callback_on_writable(client_wsi);
     }
+    if (context) {
+        lws_cancel_service(context);
+    }
+    pthread_mutex_unlock(&queue_mutex);
 }
 
 static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons reason,
@@ -68,17 +79,36 @@ static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons re
             client_network_get_events();
             break;
 
-        case LWS_CALLBACK_CLIENT_RECEIVE:
-            if (gallium_dispatch_message(wsi, in, len) < 0) {
-                add_debug_log("Dispatch failed or no handler");
+        case LWS_CALLBACK_CLIENT_RECEIVE: {
+            // Push to UI queue instead of handling directly
+            if (len < sizeof(gallium_msg_header)) break;
+            gallium_msg msg;
+            memcpy(&msg.header, in, sizeof(gallium_msg_header));
+            gallium_header_ntoh(&msg.header);
+            
+            msg.payload = malloc(msg.header.payload_len + 1);
+            memcpy(msg.payload, (char*)in + sizeof(gallium_msg_header), msg.header.payload_len);
+            msg.payload[msg.header.payload_len] = '\0';
+
+            if (g_ui) {
+                gallium_queue_push(&g_ui->network_queue, msg);
+                g_ui->needs_render = true;
+            } else {
+                gallium_msg_free(&msg);
             }
             break;
+        }
 
         case LWS_CALLBACK_CLIENT_WRITEABLE: {
-            if (!send_queue) break;
+            pthread_mutex_lock(&queue_mutex);
+            if (!send_queue) {
+                pthread_mutex_unlock(&queue_mutex);
+                break;
+            }
 
             struct msg_node* node = send_queue;
             send_queue = node->next;
+            pthread_mutex_unlock(&queue_mutex);
 
             size_t total_len = 0;
             unsigned char* buf = gallium_net_pack(node->msg_id, node->payload, &total_len);
@@ -90,9 +120,11 @@ static int callback_gallium_client(struct lws *wsi, enum lws_callback_reasons re
             free(node->payload);
             free(node);
 
+            pthread_mutex_lock(&queue_mutex);
             if (send_queue) {
                 lws_callback_on_writable(wsi);
             }
+            pthread_mutex_unlock(&queue_mutex);
             break;
         }
 
@@ -121,7 +153,7 @@ static void try_connect() {
     struct lws_client_connect_info i;
     memset(&i, 0, sizeof(i));
     i.context = context;
-    i.address = "127.0.0.1";
+    i.address = saved_host;
     i.port = saved_port;
     i.path = "/";
     i.host = i.address;
@@ -131,79 +163,38 @@ static void try_connect() {
     client_wsi = lws_client_connect_via_info(&i);
 }
 
+void* network_thread_func(void* arg) {
+    (void)arg;
+    while (network_thread_running) {
+        if (context) {
+            lws_service(context, 50);
+            
+            static time_t last_try = 0;
+            static time_t last_heartbeat = 0;
+            time_t now = time(NULL);
+
+            if (!connected && !client_wsi && (now - last_try > current_backoff)) {
+                last_try = now;
+                try_connect();
+                if (current_backoff < 30) {
+                    current_backoff *= 2;
+                    if (current_backoff > 30) current_backoff = 30;
+                }
+            }
+
+            if (connected && (now - last_heartbeat > 10)) {
+                last_heartbeat = now;
+                client_network_send(GALLIUM_MSG_HEARTBEAT, "{}");
+            }
+        } else {
+            usleep(100000);
+        }
+    }
+    return NULL;
+}
+
 void client_network_set_ui(gallium_ui_t* ui) {
     g_ui = ui;
-}
-
-static int handle_event_list(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
-    (void)wsi; (void)header;
-    if (g_ui) {
-        ui_update_event_log(g_ui, payload_obj);
-    }
-    return 0;
-}
-
-static int handle_init_ack(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
-    (void)wsi; (void)header; (void)payload_obj;
-    // Handshake complete
-    return 0;
-}
-
-static int handle_user_input_request(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
-    (void)wsi; (void)header;
-    struct json_object* prompt_obj = NULL;
-    struct json_object* input_obj = NULL;
-    
-    if (json_object_object_get_ex(payload_obj, "prompt", &prompt_obj)) {
-        const char* prompt = json_object_get_string(prompt_obj);
-        bool is_input = false;
-        
-        if (json_object_object_get_ex(payload_obj, "input", &input_obj)) {
-             is_input = json_object_get_boolean(input_obj);
-        }
-
-        if (g_ui) {
-            if (is_input) {
-                ui_show_input_prompt(g_ui, prompt);
-            } else {
-                ui_show_approval(g_ui, prompt);
-            }
-        }
-    }
-    return 0;
-}
-
-static int handle_notification(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
-    (void)wsi; (void)header;
-    struct json_object* title_obj, *body_obj, *success_obj;
-    const char* title = "Notification";
-    const char* body = "";
-    bool success = true;
-
-    if (json_object_object_get_ex(payload_obj, "title", &title_obj)) title = json_object_get_string(title_obj);
-    if (json_object_object_get_ex(payload_obj, "body", &body_obj)) body = json_object_get_string(body_obj);
-    if (json_object_object_get_ex(payload_obj, "success", &success_obj)) success = json_object_get_boolean(success_obj);
-
-    if (g_ui) {
-        ui_show_notification(g_ui, title, body, success);
-        if (success && strcmp(title, "Project Complete") == 0) {
-            ui_flash_success(g_ui);
-        }
-    }
-    return 0;
-}
-
-static int handle_panic(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
-    (void)wsi; (void)header;
-    struct json_object* active_obj;
-    if (json_object_object_get_ex(payload_obj, "active", &active_obj)) {
-        bool active = json_object_get_boolean(active_obj);
-        if (g_ui) {
-            g_ui->panic_active = active;
-            if (active) ui_show_notification(g_ui, "PANIC", "Server entered panic state.", false);
-        }
-    }
-    return 0;
 }
 
 int client_network_init(const char* host, int port) {
@@ -211,15 +202,8 @@ int client_network_init(const char* host, int port) {
     saved_port = port;
     gallium_dispatch_init();
     
-    gallium_dispatch_register(GALLIUM_MSG_INIT, handle_init_ack);
-    gallium_dispatch_register(GALLIUM_MSG_USER_INPUT, handle_user_input_request);
-    gallium_dispatch_register(GALLIUM_MSG_NOTIFICATION, handle_notification);
-    gallium_dispatch_register(GALLIUM_MSG_PANIC, handle_panic);
-    gallium_dispatch_register(GALLIUM_MSG_EVENT_LIST, handle_event_list);
-
     struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
-
     info.port = CONTEXT_PORT_NO_LISTEN;
     info.protocols = protocols;
     info.gid = -1;
@@ -228,37 +212,23 @@ int client_network_init(const char* host, int port) {
     context = lws_create_context(&info);
     if (!context) return -1;
 
-    try_connect();
+    network_thread_running = 1;
+    if (pthread_create(&network_thread, NULL, network_thread_func, NULL) != 0) {
+        lws_context_destroy(context);
+        context = NULL;
+        return -1;
+    }
+
     return 0;
 }
 
 void client_network_service() {
-    if (context) {
-        lws_service(context, 50);
-        
-        static time_t last_try = 0;
-        static time_t last_heartbeat = 0;
-        time_t now = time(NULL);
-
-        if (!connected && !client_wsi && (now - last_try > current_backoff)) {
-            last_try = now;
-            try_connect();
-            
-            // Exponential backoff: 1, 2, 4, 8, 16, 30...
-            if (current_backoff < 30) {
-                current_backoff *= 2;
-                if (current_backoff > 30) current_backoff = 30;
-            }
-        }
-
-        if (connected && (now - last_heartbeat > 10)) {
-            last_heartbeat = now;
-            client_network_send(GALLIUM_MSG_HEARTBEAT, "{}");
-        }
-    }
 }
 
 void client_network_cleanup() {
+    network_thread_running = 0;
+    if (context) lws_cancel_service(context);
+    pthread_join(network_thread, NULL);
     if (context) {
         lws_context_destroy(context);
         context = NULL;
@@ -275,8 +245,11 @@ int client_network_is_connected() {
 }
 
 int client_network_get_debug_logs(char*** out_logs) {
+    pthread_mutex_lock(&queue_mutex);
     *out_logs = debug_logs;
-    return (debug_log_count < MAX_DEBUG_LOGS) ? debug_log_count : MAX_DEBUG_LOGS;
+    int count = (debug_log_count < MAX_DEBUG_LOGS) ? debug_log_count : MAX_DEBUG_LOGS;
+    pthread_mutex_unlock(&queue_mutex);
+    return count;
 }
 
 int client_network_get_events() {

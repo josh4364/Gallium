@@ -83,6 +83,9 @@ gallium_ui_t* ui_init(struct notcurses* nc) {
     ui->push_on_subtask = false;
     ui->push_on_final = true;
 
+    gallium_queue_init(&ui->network_queue);
+    pthread_mutex_init(&ui->state_mutex, NULL);
+
     refresh_file_list(ui);
     ui_resize(ui);
     return ui;
@@ -90,7 +93,8 @@ gallium_ui_t* ui_init(struct notcurses* nc) {
 
 void ui_resize(gallium_ui_t* ui) {
     int dimy, dimx;
-    ncplane_dim_yx(ui->stdplane, &dimy, &dimx);
+    notcurses_stddim_yx(ui->nc, &dimy, &dimx);
+    fprintf(stderr, "ui_resize: new dimensions %dx%d\n", dimx, dimy);
 
     // Destroy existing planes if they exist
     if (ui->top_bar) ncplane_destroy(ui->top_bar);
@@ -107,12 +111,7 @@ void ui_resize(gallium_ui_t* ui) {
         .y = 0, .x = 0, .rows = 1, .cols = dimx,
     };
     ui->top_bar = ncplane_create(ui->stdplane, &top_opts);
-    uint64_t top_channels = 0;
-    ncchannels_set_bg_rgb(&top_channels, COLOR_TOP_BAR_BG);
-    ncchannels_set_fg_rgb(&top_channels, 0xFFFFFF);
-    ncplane_set_base(ui->top_bar, " ", 0, top_channels);
-    ncplane_putstr_yx(ui->top_bar, 0, 2, "GALLIUM | Project: Alpha | [S]top | [Set]tings");
-
+    
     // Layout math
     int bar_h = 1;
     int files_h = (dimy - bar_h) / 4;
@@ -148,12 +147,6 @@ void ui_resize(gallium_ui_t* ui) {
             .y = main_y, .x = dimx / 2, .rows = main_h, .cols = dimx / 2,
         };
         ui->waterfall = ncplane_create(ui->stdplane, &wf_opts);
-        uint64_t wf_channels = 0;
-        ncchannels_set_bg_rgb(&wf_channels, COLOR_WATERFALL_BG);
-        ncplane_set_base(ui->waterfall, " ", 0, wf_channels);
-        ncplane_cursor_move_yx(ui->waterfall, 0, 0);
-        ncplane_perimeter_rounded(ui->waterfall, 0, 0, 0);
-        ncplane_putstr_yx(ui->waterfall, 0, 2, " Waterfall Logs ");
     }
 
     update_plane_borders(ui);
@@ -215,20 +208,12 @@ static void render_file_browser(gallium_ui_t* ui) {
         
         ncplane_set_base(ui->file_browser, " ", 0, 0); // Reset
         ncplane_putstr_yx(ui->file_browser, i + 1, 1, " "); // Padding
-        ncplane_putstr_yx(ui->file_browser, i + 1, 2, ent->d_name);
         
         // Highlight full bar width
         if (idx == ui->file_selected_idx) {
              ncplane_cursor_move_yx(ui->file_browser, i+1, 1);
              ncplane_set_channels(ui->file_browser, channels);
-             for(int k=0; k<content_w; k++) {
-                 // Print spaces to fill background, overwriting text color effectively?
-                 // Notcurses is tricky. 
-                 // Simpler: Just set channels before printing name.
-             }
-             // Let's rely on standard printing.
              ncplane_putstr_yx(ui->file_browser, i + 1, 1, ent->d_name);
-             // Fill rest with spaces for selection bar?
              int len = strlen(ent->d_name);
              for(int s=len; s<content_w-2; s++) ncplane_putchar(ui->file_browser, ' ');
         } else {
@@ -287,7 +272,7 @@ static struct ncplane* create_settings_modal(gallium_ui_t* ui) {
 
 static struct ncplane* create_approval_modal(gallium_ui_t* ui) {
     int dimy, dimx;
-    ncplane_dim_yx(ui->stdplane, &dimy, &dimx);
+    notcurses_stddim_yx(ui->nc, &dimy, &dimx);
     
     int w = 60;
     int h = 10;
@@ -296,7 +281,6 @@ static struct ncplane* create_approval_modal(gallium_ui_t* ui) {
     
     struct ncplane_options opts = {
         .y = y, .x = x, .rows = h, .cols = w,
-        .flags = NCPLANE_OPTION_HORALIGNED
     };
     struct ncplane* modal = ncplane_create(ui->stdplane, &opts);
     if (!modal) return NULL;
@@ -314,7 +298,7 @@ static struct ncplane* create_approval_modal(gallium_ui_t* ui) {
 
 static struct ncplane* create_input_modal(gallium_ui_t* ui) {
     int dimy, dimx;
-    ncplane_dim_yx(ui->stdplane, &dimy, &dimx);
+    notcurses_stddim_yx(ui->nc, &dimy, &dimx);
     
     int w = 70;
     int h = 8;
@@ -323,7 +307,6 @@ static struct ncplane* create_input_modal(gallium_ui_t* ui) {
     
     struct ncplane_options opts = {
         .y = y, .x = x, .rows = h, .cols = w,
-        .flags = NCPLANE_OPTION_HORALIGNED
     };
     struct ncplane* modal = ncplane_create(ui->stdplane, &opts);
     if (!modal) return NULL;
@@ -347,29 +330,33 @@ static struct ncplane* create_input_modal(gallium_ui_t* ui) {
 
 void ui_show_notification(gallium_ui_t* ui, const char* title, const char* body, bool is_success) {
     if (!ui) return;
+    pthread_mutex_lock(&ui->state_mutex);
     ui->show_notification = true;
+    ui->needs_render = true;
     strncpy(ui->notify_title, title, sizeof(ui->notify_title) - 1);
     strncpy(ui->notify_body, body, sizeof(ui->notify_body) - 1);
     ui->notify_is_success = is_success;
     ui->notify_expiry = time(NULL) + 5; // Show for 5 seconds
-
-    // System Notification via libnotify
-    NotifyNotification* n = notify_notification_new(title, body, is_success ? "emblem-success" : "dialog-error");
-    notify_notification_show(n, NULL);
-    g_object_unref(G_OBJECT(n));
+    pthread_mutex_unlock(&ui->state_mutex);
 }
 
 void ui_flash_success(gallium_ui_t* ui) {
     if (!ui) return;
+    pthread_mutex_lock(&ui->state_mutex);
     ui->success_flash_count = 6; // 3 flashes = 6 state changes (on/off)
     ui->last_flash_time = 0;
     ui->flash_on = false;
+    pthread_mutex_unlock(&ui->state_mutex);
 }
 
 void ui_trigger_panic(gallium_ui_t* ui) {
     if (!ui) return;
+    pthread_mutex_lock(&ui->state_mutex);
     ui->panic_active = !ui->panic_active;
-    if (ui->panic_active) {
+    bool active = ui->panic_active;
+    pthread_mutex_unlock(&ui->state_mutex);
+
+    if (active) {
         client_network_send(GALLIUM_MSG_PANIC, "{\"active\": true}");
         ui_show_notification(ui, "PANIC", "Panic mode activated! All agents suspended.", false);
     } else {
@@ -380,10 +367,13 @@ void ui_trigger_panic(gallium_ui_t* ui) {
 
 void ui_update_event_log(gallium_ui_t* ui, struct json_object* events_array) {
     if (!ui) return;
+    pthread_mutex_lock(&ui->state_mutex);
     if (ui->event_logs_array) {
         json_object_put(ui->event_logs_array);
     }
     ui->event_logs_array = json_object_get(events_array);
+    ui->needs_render = true;
+    pthread_mutex_unlock(&ui->state_mutex);
 }
 
 static void render_audit_log(gallium_ui_t* ui) {
@@ -422,7 +412,7 @@ static void render_audit_log(gallium_ui_t* ui) {
             if (json_object_is_type(payload_obj, json_type_string)) {
                 payload = json_object_get_string(payload_obj);
             } else {
-                payload = json_object_to_json_string(payload_obj);
+                payload = "(JSON)";
             }
         }
         
@@ -587,8 +577,7 @@ void ui_render(gallium_ui_t* ui) {
         if (now > ui->last_flash_time) {
             ui->flash_on = !ui->flash_on;
             ui->success_flash_count--;
-            ui->last_flash_time = now; // Flash once per second for simplicity in this loop
-            // In a real TUI, we might want faster flashes using usleep or timer
+            ui->last_flash_time = now;
         }
     } else {
         ui->flash_on = false;
@@ -603,17 +592,30 @@ void ui_render(gallium_ui_t* ui) {
     }
 
     // Update top bar with state
-    ncplane_cursor_move_yx(ui->top_bar, 0, 0);
-    ncplane_printf(ui->top_bar, " GALLIUM | Project: Alpha | [S]top: %s | [P]refs: %s ", 
-                   ui->panic_active ? "!!! PANIC !!!" : "Running",
-                   ui->settings_open ? "Open" : "Closed");
+    ncplane_erase(ui->top_bar);
+    uint64_t top_channels = 0;
+    ncchannels_set_bg_rgb(&top_channels, COLOR_TOP_BAR_BG);
+    ncchannels_set_fg_rgb(&top_channels, 0xFFFFFF);
+    ncplane_set_base(ui->top_bar, " ", 0, top_channels);
+    ncplane_putstr_yx(ui->top_bar, 0, 2, "GALLIUM | Project: Alpha | ");
+    
+    if (ui->panic_active) {
+        ncplane_set_fg_rgb(ui->top_bar, 0xFF0000);
+        ncplane_putstr(ui->top_bar, "[S]top: !!! PANIC !!!");
+    } else {
+        ncplane_putstr(ui->top_bar, "[S]top: Running");
+    }
+    
+    ncplane_set_fg_rgb(ui->top_bar, 0xFFFFFF);
+    ncplane_printf(ui->top_bar, " | [P]refs: %s ", ui->settings_open ? "Open" : "Closed");
 
     update_plane_borders(ui);
     render_file_browser(ui);
     render_audit_log(ui);
     render_waterfall(ui);
 
-    // Notification Overlay (Simple)
+    struct ncplane* n_plane = NULL;
+    // Notification Overlay
     if (ui->show_notification) {
         if (now > ui->notify_expiry) {
             ui->show_notification = false;
@@ -623,7 +625,7 @@ void ui_render(gallium_ui_t* ui) {
             struct ncplane_options n_opts = {
                 .y = 2, .x = dx - 35, .rows = 4, .cols = 30,
             };
-            struct ncplane* n_plane = ncplane_create(ui->stdplane, &n_opts);
+            n_plane = ncplane_create(ui->stdplane, &n_opts);
             if (n_plane) {
                 uint64_t n_chan = 0;
                 ncchannels_set_bg_rgb(&n_chan, ui->notify_is_success ? 0x004400 : 0x440000);
@@ -632,39 +634,26 @@ void ui_render(gallium_ui_t* ui) {
                 ncplane_perimeter_rounded(n_plane, 0, n_chan, 0);
                 ncplane_putstr_yx(n_plane, 1, 2, ui->notify_title);
                 ncplane_putstr_yx(n_plane, 2, 2, ui->notify_body);
-                notcurses_render(ui->nc); // Render to show overlay
-                ncplane_destroy(n_plane);
             }
         }
     }
 
-    // Transients
-    struct ncplane* settings_modal = NULL;
+    struct ncplane* m_plane = NULL;
+    // Modal Overlays - Created only when needed
     if (ui->settings_open) {
-        settings_modal = create_settings_modal(ui);
-    }
-    
-    struct ncplane* approval_modal = NULL;
-    if (ui->pending_approval) {
-        approval_modal = create_approval_modal(ui);
-    }
-
-    struct ncplane* input_modal = NULL;
-    if (ui->waiting_for_input) {
-        input_modal = create_input_modal(ui);
-    }
-
-    struct ncplane* peek_modal = NULL;
-    if (ui->waterfall_peeking) {
-        peek_modal = create_peek_modal(ui);
+        m_plane = create_settings_modal(ui);
+    } else if (ui->waterfall_peeking) {
+        m_plane = create_peek_modal(ui);
+    } else if (ui->pending_approval) {
+        m_plane = create_approval_modal(ui);
+    } else if (ui->waiting_for_input) {
+        m_plane = create_input_modal(ui);
     }
 
     notcurses_render(ui->nc);
 
-    if (settings_modal) ncplane_destroy(settings_modal);
-    if (approval_modal) ncplane_destroy(approval_modal);
-    if (input_modal) ncplane_destroy(input_modal);
-    if (peek_modal) ncplane_destroy(peek_modal);
+    if (n_plane) ncplane_destroy(n_plane);
+    if (m_plane) ncplane_destroy(m_plane);
 }
 
 void ui_deinit(gallium_ui_t* ui) {
@@ -674,27 +663,107 @@ void ui_deinit(gallium_ui_t* ui) {
         free(ui->file_list);
     }
     if (ui->event_logs_array) json_object_put(ui->event_logs_array);
+    gallium_queue_destroy(&ui->network_queue);
+    pthread_mutex_destroy(&ui->state_mutex);
     free(ui);
 }
 
 void ui_show_approval(gallium_ui_t* ui, const char* prompt) {
     if (!ui) return;
+    pthread_mutex_lock(&ui->state_mutex);
     ui->pending_approval = true;
+    ui->needs_render = true;
     strncpy(ui->approval_prompt, prompt, sizeof(ui->approval_prompt) - 1);
+    pthread_mutex_unlock(&ui->state_mutex);
 }
 
 void ui_show_input_prompt(gallium_ui_t* ui, const char* prompt) {
     if (!ui) return;
+    pthread_mutex_lock(&ui->state_mutex);
     ui->waiting_for_input = true;
+    ui->needs_render = true;
     strncpy(ui->input_prompt, prompt, sizeof(ui->input_prompt) - 1);
     memset(ui->input_buffer, 0, sizeof(ui->input_buffer));
     ui->input_cursor = 0;
+    pthread_mutex_unlock(&ui->state_mutex);
 }
 
-void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
+static bool is_mouse_in_plane(struct ncplane* p, int my, int mx) {
+    if (!p) return false;
+    int py, px, dy, dx;
+    ncplane_abs_yx(p, &py, &px);
+    ncplane_dim_yx(p, &dy, &dx);
+    return (my >= py && my < py + dy && mx >= px && mx < px + dx);
+}
+
+void ui_handle_input(gallium_ui_t* ui, const struct ncinput* ni) {
+    uint32_t key = ni->id;
+    bool is_mouse = nckey_mouse_p(key);
+    int my = ni->y, mx = ni->x;
+
+    // Handle Mouse
+    if (is_mouse) {
+        if (ni->evtype != NCTYPE_RELEASE && ni->evtype != NCTYPE_PRESS) {
+            return; // Ignore motion/drag/scroll to avoid event floods
+        }
+        
+        if (ni->evtype == NCTYPE_PRESS) { // Only process on press for immediate feedback
+            // Top Bar Clicks
+            if (is_mouse_in_plane(ui->top_bar, my, mx)) {
+                // Heuristic based on rendered string:
+                // " GALLIUM | Project: Alpha | [S]top: Running | [P]refs: Closed "
+                // [S]top is around x=25-45
+                // [P]refs is around x=45-65
+                if (mx >= 25 && mx < 45) {
+                    ui_trigger_panic(ui);
+                } else if (mx >= 45 && mx < 65) {
+                    ui->settings_open = !ui->settings_open;
+                }
+                return;
+            }
+
+            // Column Focus Clicks
+            struct ncplane* columns[] = {ui->col_icons, ui->col_tasks, ui->col_subtasks, ui->col_events, ui->file_browser, ui->col_audit, ui->waterfall};
+            for (int i = 0; i < FOCUS_COUNT; i++) {
+                if (is_mouse_in_plane(columns[i], my, mx)) {
+                    ui->focus = (ui_focus_t)i;
+                    if (i == FOCUS_FILES) {
+                        int py, px;
+                        ncplane_abs_yx(ui->file_browser, &py, &px);
+                        int relative_y = my - py - 1;
+                        if (relative_y >= 0 && relative_y < ui->file_count) {
+                            if (ui->file_selected_idx == relative_y) {
+                                struct dirent* ent = ui->file_list[ui->file_selected_idx];
+                                if (ent->d_type == DT_DIR) {
+                                    if (strcmp(ent->d_name, ".") != 0) {
+                                        if (strcmp(ent->d_name, "..") == 0) chdir("..");
+                                        else chdir(ent->d_name);
+                                        getcwd(ui->current_dir, sizeof(ui->current_dir));
+                                        refresh_file_list(ui);
+                                        ui->file_selected_idx = 0;
+                                    }
+                                }
+                            } else {
+                                ui->file_selected_idx = relative_y;
+                            }
+                        }
+                    }
+                    update_plane_borders(ui);
+                    return;
+                }
+            }
+        }
+        return; // Handled mouse (even if we did nothing)
+    }
+
+    // Handle Keyboard
+    if (ni->evtype != NCTYPE_PRESS) {
+        return; // Only keyboard press events
+    }
+
     // 0. Peek Modal (Highest priority)
     if (ui->waterfall_peeking) {
-        if (key == NCKEY_ESC || key == NCKEY_ENTER) {
+        if (key == NCKEY_ESC || key == NCKEY_ENTER || key == '\n' || key == '\r') {
             ui->waterfall_peeking = false;
         }
         return;
@@ -702,20 +771,19 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
 
     // 0. Input Modal
     if (ui->waiting_for_input) {
-        if (key == NCKEY_ENTER) {
+        if (key == NCKEY_ENTER || key == '\n' || key == '\r') {
             ui->waiting_for_input = false;
-            // Send input json
             struct json_object* jobj = json_object_new_object();
             json_object_object_add(jobj, "text", json_object_new_string(ui->input_buffer));
             const char* json_str = json_object_to_json_string(jobj);
             client_network_send(GALLIUM_MSG_USER_INPUT, json_str);
-            json_object_put(jobj); // free
-        } else if (key == NCKEY_BACKSPACE) {
+            json_object_put(jobj);
+        } else if (key == NCKEY_BACKSPACE || key == 127 || key == '\b') {
             if (ui->input_cursor > 0) {
                 ui->input_cursor--;
                 ui->input_buffer[ui->input_cursor] = '\0';
             }
-        } else if (key >= 0x20 && key <= 0x7E) { // Printable ASCII
+        } else if (key >= 0x20 && key <= 0x7E) {
             if (ui->input_cursor < (int)sizeof(ui->input_buffer) - 1) {
                 ui->input_buffer[ui->input_cursor++] = (char)key;
                 ui->input_buffer[ui->input_cursor] = '\0';
@@ -744,14 +812,11 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
             case NCKEY_DOWN:
                 if (ui->settings_idx < 2) ui->settings_idx++;
                 break;
+            case '\n':
+            case '\r':
             case NCKEY_ENTER:
-                if (ui->settings_idx == 0) {
-                    // API Key - mock input
-                } else if (ui->settings_idx == 1) {
-                    ui->push_on_subtask = !ui->push_on_subtask;
-                } else if (ui->settings_idx == 2) {
-                    ui->push_on_final = !ui->push_on_final;
-                }
+                if (ui->settings_idx == 1) ui->push_on_subtask = !ui->push_on_subtask;
+                else if (ui->settings_idx == 2) ui->push_on_final = !ui->push_on_final;
                 break;
             case 'p':
             case 'P':
@@ -772,7 +837,7 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
         ui_trigger_panic(ui);
         return;
     }
-    if (key == 'f' || key == 'F') { // Hidden test key for success flash
+    if (key == 'f' || key == 'F') {
         ui_flash_success(ui);
         return;
     }
@@ -791,9 +856,7 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
         return;
     }
 
-    // Directional Navigation
     if (key == NCKEY_RIGHT) {
-        int start = ui->focus;
         do {
             ui->focus = (ui->focus + 1) % FOCUS_COUNT;
         } while ((ui->focus == FOCUS_WATERFALL && !ui->waterfall_visible) || 
@@ -802,7 +865,6 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
         return;
     }
     if (key == NCKEY_LEFT) {
-        int start = ui->focus;
         do {
             ui->focus = (ui->focus - 1 + FOCUS_COUNT) % FOCUS_COUNT;
         } while ((ui->focus == FOCUS_WATERFALL && !ui->waterfall_visible) || 
@@ -822,39 +884,97 @@ void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
         if (key == NCKEY_ENTER) {
             if (ui->file_selected_idx < ui->file_count) {
                 struct dirent* ent = ui->file_list[ui->file_selected_idx];
-                bool is_dir = (ent->d_type == DT_DIR);
-                if (is_dir) {
+                if (ent->d_type == DT_DIR) {
                     if (strcmp(ent->d_name, ".") == 0) return;
-                    int ret;
-                    if (strcmp(ent->d_name, "..") == 0) ret = chdir("..");
-                    else ret = chdir(ent->d_name);
-                    
-                    if (ret == 0) {
-                        if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) strcpy(ui->current_dir, "Error");
-                        refresh_file_list(ui);
-                        ui->file_selected_idx = 0;
-                    }
+                    if (strcmp(ent->d_name, "..") == 0) chdir("..");
+                    else chdir(ent->d_name);
+                    getcwd(ui->current_dir, sizeof(ui->current_dir));
+                    refresh_file_list(ui);
+                    ui->file_selected_idx = 0;
                 }
             }
         } else if (key == NCKEY_BACKSPACE) {
             if (chdir("..") == 0) {
-                if (getcwd(ui->current_dir, sizeof(ui->current_dir)) == NULL) strcpy(ui->current_dir, "Error");
+                getcwd(ui->current_dir, sizeof(ui->current_dir));
                 refresh_file_list(ui);
                 ui->file_selected_idx = 0;
             }
         }
     } else if (ui->focus == FOCUS_WATERFALL) {
-        if (key == 'n' || key == 'N') {
-            ui->waterfall_filter_noise = !ui->waterfall_filter_noise;
+        if (key == 'n' || key == 'N') ui->waterfall_filter_noise = !ui->waterfall_filter_noise;
+        if (key == NCKEY_UP && ui->waterfall_selected_idx > 0) ui->waterfall_selected_idx--;
+        if (key == NCKEY_DOWN && ui->waterfall_selected_idx < ui->waterfall_visible_count - 1) ui->waterfall_selected_idx++;
+        if (key == NCKEY_ENTER) ui->waterfall_peeking = true;
+    }
+}
+
+void ui_process_network_messages(gallium_ui_t* ui) {
+    if (!ui) return;
+    gallium_msg msg;
+    while (gallium_queue_try_pop(&ui->network_queue, &msg)) {
+        struct json_object* payload_obj = NULL;
+        if (msg.header.payload_len > 0) {
+            payload_obj = gallium_json_parse(msg.payload, msg.header.payload_len);
         }
-        if (key == NCKEY_UP && ui->waterfall_selected_idx > 0) {
-            ui->waterfall_selected_idx--;
+
+        switch (msg.header.msg_id) {
+            case GALLIUM_MSG_EVENT_LIST:
+                ui_update_event_log(ui, payload_obj);
+                break;
+            case GALLIUM_MSG_USER_INPUT: {
+                if (payload_obj) {
+                    struct json_object* prompt_obj = NULL;
+                    struct json_object* input_obj = NULL;
+                    if (json_object_object_get_ex(payload_obj, "prompt", &prompt_obj)) {
+                        const char* prompt = json_object_get_string(prompt_obj);
+                        bool is_input = false;
+                        if (json_object_object_get_ex(payload_obj, "input", &input_obj)) {
+                            is_input = json_object_get_boolean(input_obj);
+                        }
+                        if (is_input) ui_show_input_prompt(ui, prompt);
+                        else ui_show_approval(ui, prompt);
+                    }
+                }
+                break;
+            }
+            case GALLIUM_MSG_NOTIFICATION: {
+                if (payload_obj) {
+                    struct json_object *title_obj, *body_obj, *success_obj;
+                    const char *title = "Notification", *body = "";
+                    bool success = true;
+                    if (json_object_object_get_ex(payload_obj, "title", &title_obj)) title = json_object_get_string(title_obj);
+                    if (json_object_object_get_ex(payload_obj, "body", &body_obj)) body = json_object_get_string(body_obj);
+                    if (json_object_object_get_ex(payload_obj, "success", &success_obj)) success = json_object_get_boolean(success_obj);
+                    ui_show_notification(ui, title, body, success);
+                    if (success && strcmp(title, "Project Complete") == 0) ui_flash_success(ui);
+                }
+                break;
+            }
+            case GALLIUM_MSG_PANIC: {
+                if (payload_obj) {
+                    struct json_object* active_obj;
+                    if (json_object_object_get_ex(payload_obj, "active", &active_obj)) {
+                        bool active = json_object_get_boolean(active_obj);
+                        pthread_mutex_lock(&ui->state_mutex);
+                        ui->panic_active = active;
+                        pthread_mutex_unlock(&ui->state_mutex);
+                        if (active) ui_show_notification(ui, "PANIC", "Server entered panic state.", false);
+                    }
+                }
+                break;
+            }
+            case GALLIUM_MSG_ERROR: {
+                if (payload_obj) {
+                    struct json_object* msg_obj;
+                    if (json_object_object_get_ex(payload_obj, "message", &msg_obj)) {
+                        ui_show_notification(ui, "Error", json_object_get_string(msg_obj), false);
+                    }
+                }
+                break;
+            }
+            default: break;
         }
-        if (key == NCKEY_DOWN && ui->waterfall_selected_idx < ui->waterfall_visible_count - 1) {
-             ui->waterfall_selected_idx++;
-        }
-        if (key == NCKEY_ENTER) {
-            ui->waterfall_peeking = true;
-        }
+        if (payload_obj) json_object_put(payload_obj);
+        gallium_msg_free(&msg);
     }
 }
