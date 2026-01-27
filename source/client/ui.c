@@ -289,9 +289,40 @@ static struct ncplane* create_approval_modal(gallium_ui_t* ui) {
     ncplane_set_base(modal, " ", 0, channels);
     ncplane_perimeter_rounded(modal, 0, channels, 0);
     
-    ncplane_putstr_yx(modal, 1, 2, "APPROVAL REQUIRED");
-    ncplane_putstr_yx(modal, 3, 2, ui->approval_prompt);
     ncplane_putstr_yx(modal, h-2, 2, "Press [Y] to Approve, [N] to Reject");
+
+    return modal;
+}
+
+static struct ncplane* create_input_modal(gallium_ui_t* ui) {
+    int dimy, dimx;
+    ncplane_dim_yx(ui->stdplane, &dimy, &dimx);
+    
+    int w = 70;
+    int h = 8;
+    int y = (dimy - h) / 2;
+    int x = (dimx - w) / 2;
+    
+    struct ncplane_options opts = {
+        .y = y, .x = x, .rows = h, .cols = w,
+        .flags = NCPLANE_OPTION_HORALIGNED
+    };
+    struct ncplane* modal = ncplane_create(ui->stdplane, &opts);
+    if (!modal) return NULL;
+
+    uint64_t channels = 0;
+    ncchannels_set_bg_rgb(&channels, 0x000088); // Blue background
+    ncchannels_set_fg_rgb(&channels, 0xFFFFFF);
+    ncplane_set_base(modal, " ", 0, channels);
+    ncplane_perimeter_rounded(modal, 0, channels, 0);
+    
+    ncplane_putstr_yx(modal, 1, 2, ui->input_prompt);
+    
+    // Draw input field
+    ncplane_cursor_move_yx(modal, 3, 2);
+    ncplane_printf(modal, "> %s_", ui->input_buffer); // _ as cursor
+
+    ncplane_putstr_yx(modal, h-2, 2, "Type your answer and press [Enter]");
 
     return modal;
 }
@@ -317,10 +348,16 @@ void ui_render(gallium_ui_t* ui) {
         approval_modal = create_approval_modal(ui);
     }
 
+    struct ncplane* input_modal = NULL;
+    if (ui->waiting_for_input) {
+        input_modal = create_input_modal(ui);
+    }
+
     notcurses_render(ui->nc);
 
     if (settings_modal) ncplane_destroy(settings_modal);
     if (approval_modal) ncplane_destroy(approval_modal);
+    if (input_modal) ncplane_destroy(input_modal);
 }
 
 void ui_deinit(gallium_ui_t* ui) {
@@ -338,7 +375,39 @@ void ui_show_approval(gallium_ui_t* ui, const char* prompt) {
     strncpy(ui->approval_prompt, prompt, sizeof(ui->approval_prompt) - 1);
 }
 
+void ui_show_input_prompt(gallium_ui_t* ui, const char* prompt) {
+    if (!ui) return;
+    ui->waiting_for_input = true;
+    strncpy(ui->input_prompt, prompt, sizeof(ui->input_prompt) - 1);
+    memset(ui->input_buffer, 0, sizeof(ui->input_buffer));
+    ui->input_cursor = 0;
+}
+
 void ui_handle_input(gallium_ui_t* ui, uint32_t key) {
+    // 0. Input Modal
+    if (ui->waiting_for_input) {
+        if (key == NCKEY_ENTER) {
+            ui->waiting_for_input = false;
+            // Send input json
+            struct json_object* jobj = json_object_new_object();
+            json_object_object_add(jobj, "text", json_object_new_string(ui->input_buffer));
+            const char* json_str = json_object_to_json_string(jobj);
+            client_network_send(GALLIUM_MSG_USER_INPUT, json_str);
+            json_object_put(jobj); // free
+        } else if (key == NCKEY_BACKSPACE) {
+            if (ui->input_cursor > 0) {
+                ui->input_cursor--;
+                ui->input_buffer[ui->input_cursor] = '\0';
+            }
+        } else if (key >= 0x20 && key <= 0x7E) { // Printable ASCII
+            if (ui->input_cursor < (int)sizeof(ui->input_buffer) - 1) {
+                ui->input_buffer[ui->input_cursor++] = (char)key;
+                ui->input_buffer[ui->input_cursor] = '\0';
+            }
+        }
+        return;
+    }
+
     // 1. Modal Interactions
     if (ui->pending_approval) {
         if (key == 'y' || key == 'Y') {

@@ -48,6 +48,12 @@ typedef struct {
     // Approval
     bool pending_approval;
     char approval_prompt[256];
+
+    // Text Input
+    bool waiting_for_input;
+    char input_prompt[256];
+    char input_buffer[1024];
+    int input_cursor;
 } gallium_ui_t;
 
 gallium_ui_t* ui_init(struct notcurses* nc);
@@ -56,5 +62,6 @@ void ui_render(gallium_ui_t* ui);
 void ui_handle_input(gallium_ui_t* ui, uint32_t key);
 void ui_resize(gallium_ui_t* ui);
 void ui_show_approval(gallium_ui_t* ui, const char* prompt);
+void ui_show_input_prompt(gallium_ui_t* ui, const char* prompt);
 
 #endif // GALLIUM_UI_H

@@ -143,10 +143,22 @@ static int handle_init_ack(struct lws* wsi, gallium_msg_header* header, struct j
 static int handle_user_input_request(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
     (void)wsi; (void)header;
     struct json_object* prompt_obj = NULL;
+    struct json_object* input_obj = NULL;
+    
     if (json_object_object_get_ex(payload_obj, "prompt", &prompt_obj)) {
         const char* prompt = json_object_get_string(prompt_obj);
+        bool is_input = false;
+        
+        if (json_object_object_get_ex(payload_obj, "input", &input_obj)) {
+             is_input = json_object_get_boolean(input_obj);
+        }
+
         if (g_ui) {
-            ui_show_approval(g_ui, prompt);
+            if (is_input) {
+                ui_show_input_prompt(g_ui, prompt);
+            } else {
+                ui_show_approval(g_ui, prompt);
+            }
         }
     }
     return 0;

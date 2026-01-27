@@ -12,10 +12,18 @@ struct per_session_data__gallium {
     // Session specific data if needed
 };
 
+#include "project_init.h"
+
 static int handle_init(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
     (void)header;
     (void)payload_obj;
-    return gallium_net_send(wsi, GALLIUM_MSG_INIT, "{\"status\": \"acknowledged\"}");
+    int ret = gallium_net_send(wsi, GALLIUM_MSG_INIT, "{\"status\": \"acknowledged\"}");
+    
+    // Check if we need to start interview
+    if (project_init_needs_start()) {
+        project_init_start(wsi);
+    }
+    return ret;
 }
 
 static int handle_task_update(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
@@ -40,6 +48,15 @@ static int handle_task_update(struct lws* wsi, gallium_msg_header* header, struc
 
 static int handle_user_input(struct lws* wsi, gallium_msg_header* header, struct json_object* payload_obj) {
     (void)header;
+    
+    // Check for Init Mode Input (Text)
+    struct json_object* text_obj = NULL;
+    if (json_object_object_get_ex(payload_obj, "text", &text_obj)) {
+        const char* text = json_object_get_string(text_obj);
+        return project_init_handle_input(wsi, text);
+    }
+
+    // Default Approval Logic
     struct json_object* approved_obj = NULL;
     if (json_object_object_get_ex(payload_obj, "approved", &approved_obj)) {
         bool approved = json_object_get_boolean(approved_obj);
@@ -61,6 +78,9 @@ static int callback_gallium(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
         case LWS_CALLBACK_ESTABLISHED:
             gallium_log("network", "{\"event\": \"client_connected\"}");
+            if (project_init_needs_start()) {
+                project_init_start(wsi);
+            }
             break;
 
         case LWS_CALLBACK_RECEIVE: {

@@ -9,6 +9,7 @@ add_executable(gallium-server
     llm_gemini.c
     llm_local.c
     mcp_host.c
+    project_init.c
 )
 
 set_target_properties(gallium-server PROPERTIES 

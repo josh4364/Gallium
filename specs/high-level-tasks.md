@@ -64,8 +64,8 @@ This document outlines the phased development of the Gallium AI workflow system,
 
 ## Phase 6: Specialist Workflows & Polish
 1. **Project Initialization**
-    - [ ] Implement "Interview Mode" for requirements gathering.
-    - [ ] Implement "Requirements Synthesis" to generate project specs.
+    - [x] Implement "Interview Mode" for requirements gathering.
+    - [x] Implement "Requirements Synthesis" to generate project specs.
 2. **Feedback & Notifications**
     - [ ] Integrate system-level notifications (`libnotify`).
     - [ ] Implement screen-flash signals for goal completion.
