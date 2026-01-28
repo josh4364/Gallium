@@ -1,44 +1,693 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>Gallium Web Interface</title>
+    <meta charset="UTF-8">
+    <title>Gallium Simulation Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script>
+        // Configure Monaco Loader
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+    </script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #1e1e1e; color: #fff; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007acc; border: none; color: white; border-radius: 4px; }
-        button:hover { background: #005f9e; }
-        #status { margin-top: 10px; color: #888; }
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #bb86fc;
+            --secondary-color: #03dac6;
+            --error-color: #cf6679;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        #connection-status {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 1fr;
+            /* 3 columns: Files, Editor, Stats/Logs */
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .container.collapsed-files {
+            grid-template-columns: 40px 1fr 1fr;
+        }
+
+        /* Layout Column 3 (Right) - Stack Stats and Log */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+            position: relative;
+            min-height: 200px;
+            /* Minimum height for panels */
+        }
+
+        /* Editor Panel Specifics */
+        #editor-panel {
+            padding: 0;
+            /* Monaco needs no padding */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #monaco-container {
+            width: 100%;
+            height: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* File Explorer Styles */
+        #file-panel-content {
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            /* keep as flex for column layout */
+            flex-direction: column;
+            padding-top: 10px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .file-item:hover {
+            color: var(--text-primary);
+            background: #2a2a2a;
+        }
+
+        .file-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .file-type-dir {
+            color: #ffd700;
+        }
+
+        .file-type-file {
+            color: #9e9e9e;
+        }
+
+        #file-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px;
+            z-index: 10;
+        }
+
+        /* When collapsed, hide content */
+        .container.collapsed-files #file-panel-content,
+        .container.collapsed-files #file-panel-title {
+            display: none;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s;
+        }
+
+        .container.collapsed-files .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* For Editor Panel Header Overlay */
+        .editor-header {
+            position: relative;
+            background: var(--surface-color);
+            padding: 8px 20px;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--error-color);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        /* No Editor State */
+        .container.no-editor {
+            grid-template-columns: 250px 1fr;
+            /* Files, Right Column */
+        }
+
+        .container.no-editor.collapsed-files {
+            grid-template-columns: 40px 1fr;
+        }
+
+        .container.no-editor #editor-panel {
+            display: none;
+        }
+
+        .editor-header h2 {
+            margin: 0;
+            border: none;
+            font-size: 14px;
+            padding: 0;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--primary-color);
+            border: none;
+            color: #000;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #9965f4;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        /* Stats */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            /* Spacing between charts */
+        }
+
+        .weight-item {
+            margin-bottom: 12px;
+        }
+
+        .weight-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .progress-bar-bg {
+            background: #333;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--secondary-color);
+            transition: width 0.3s ease;
+        }
+
+        /* Event Log */
+        #event-log {
+            overflow-y: auto;
+            flex: 1;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            margin-right: 10px;
+        }
+
+        .log-type-info {
+            color: #4caf50;
+        }
+
+        .log-type-warn {
+            color: #ff9800;
+        }
+
+        .log-type-error {
+            color: var(--error-color);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
     </style>
 </head>
+
 <body>
-    <h1>Gallium Interface</h1>
-    <button id="sendBtn">Send Event</button>
-    <div id="status">Connecting...</div>
+    <header>
+        <h1>Gallium AI Simulation</h1>
+        <div id="connection-status">Connecting...</div>
+    </header>
+
+    <div class="controls">
+        <button id="stepBtn">Step Simulation</button>
+        <!-- Future controls: Auto-Run, Reset -->
+    </div>
+
+    <div class="container no-editor" id="main-container">
+        <!-- 1. File Explorer Panel -->
+        <div class="panel" id="file-panel">
+            <button id="file-toggle"><span class="toggle-icon">◀</span></button>
+            <h2 id="file-panel-title">Files</h2>
+            <div id="file-panel-content">
+                <div style="text-align:center; padding: 20px; color: #666;">Loading...</div>
+            </div>
+        </div>
+
+        <!-- 2. Editor Panel (Middle) -->
+        <div class="panel" id="editor-panel">
+            <div class="editor-header">
+                <h2 id="editor-filename">No File Selected</h2>
+                <button id="close-editor-btn" class="close-btn" title="Close Editor">✕</button>
+            </div>
+            <div id="monaco-container"></div>
+        </div>
+
+        <!-- 3. Right Column: Stats & Log -->
+        <div class="right-column">
+            <div class="panel" style="flex: 1;">
+                <h2>Simulation State</h2>
+                <div class="stat-row">
+                    <span>Tick Count:</span>
+                    <span id="tick-count" style="font-weight: bold; color: var(--secondary-color);">0</span>
+                </div>
+
+                <h3 style="font-size: 16px; margin-top: 20px; color: var(--text-secondary);">Layer 0 Priorities</h3>
+                <div id="weights-container">
+                    <!-- Weights injected here -->
+                </div>
+            </div>
+
+            <div class="panel" style="flex: 1;">
+                <h2>Event Log</h2>
+                <div id="event-log">
+                    <!-- Logs injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const statusDiv = document.getElementById('status');
+        const statusDiv = document.getElementById('connection-status');
+        const stepBtn = document.getElementById('stepBtn');
+        const weightsContainer = document.getElementById('weights-container');
+        // const metricsContainer = document.getElementById('metrics-container'); // Removed/Simpler view for now
+        const eventLog = document.getElementById('event-log');
+        const tickCountSpan = document.getElementById('tick-count');
+        const editorFilename = document.getElementById('editor-filename');
+        const closeEditorBtn = document.getElementById('close-editor-btn');
+
+        // File Panel elements
+        const filePanelContent = document.getElementById('file-panel-content');
+        const filePanelToggle = document.getElementById('file-toggle');
+        const mainContainer = document.getElementById('main-container');
+
         const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(wsProto + '//' + window.location.host + '/ws');
-        
+
+        let editor = null;
+
+        // Initialize Monaco
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('monaco-container'), {
+                value: '// Select a file to view content',
+                language: 'javascript',
+                theme: 'vs-dark',
+                automaticLayout: true
+            });
+        });
+
+        let currentState = {
+            tick: 0,
+            weights: {},
+            observer_metrics: {},
+            latest_events: []
+        };
+
         ws.onopen = () => {
             statusDiv.textContent = 'Connected';
+            statusDiv.style.color = '#4caf50';
             console.log('Connected to WebSocket');
+
+            // Request initial state on connection
+            ws.send(JSON.stringify({ type: 'get_state' }));
+            // Request file list
+            ws.send(JSON.stringify({ type: 'get_files', path: '' }));
         };
-        
+
+        // State for expanded directories: Set of paths
+        const expandedDirs = new Set();
+        // Cache of file structure: Map<path, metadata[]>
+        const fileCache = new Map();
+
         ws.onmessage = (event) => {
-            console.log('Message from server:', event.data);
-        };
-        
-        ws.onclose = () => {
-            statusDiv.textContent = 'Disconnected';
-        };
-        
-        document.getElementById('sendBtn').onclick = () => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({type: 'user_action', content: 'Send Event Button Clicked'}));
-                console.log('Sent event');
-            } else {
-                console.warn('WebSocket not connected');
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'state_update') {
+                    updateState(msg.data);
+                } else if (msg.type === 'file_list') {
+                    // Update cache for this path
+                    // Ensure msg.path is normalized (no leading ./, no trailing /)
+                    // Root is ""
+                    fileCache.set(msg.path, msg.data);
+                    renderFileTree();
+                } else if (msg.type === 'file_content') {
+                    if (editor) {
+                        // Ensure editor is visible
+                        mainContainer.classList.remove('no-editor');
+
+                        editorFilename.textContent = msg.path;
+                        editor.setValue(msg.data);
+
+                        // Guess language
+                        const ext = msg.path.split('.').pop().toLowerCase();
+                        let lang = 'plaintext';
+                        if (ext === 'js') lang = 'javascript';
+                        if (ext === 'py') lang = 'python';
+                        if (ext === 'html') lang = 'html';
+                        if (ext === 'css') lang = 'css';
+                        if (ext === 'json') lang = 'json';
+                        if (ext === 'md') lang = 'markdown';
+                        if (ext === 'cpp' || ext === 'c' || ext === 'h') lang = 'cpp';
+                        if (ext === 'nix') lang = 'shell'; // Monaco doesn't have nix default, shell is close enough for colors
+
+                        monaco.editor.setModelLanguage(editor.getModel(), lang);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to parse message", e);
             }
         };
+
+        // ... existing ws.onclose, stepBtn.onclick ...
+        ws.onclose = () => {
+            statusDiv.textContent = 'Disconnected';
+            statusDiv.style.color = 'var(--error-color)';
+        };
+
+        stepBtn.onclick = () => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'step_simulation' }));
+            }
+        };
+
+        // File Panel Toggle
+        filePanelToggle.onclick = () => {
+            mainContainer.classList.toggle('collapsed-files');
+            // Toggle icon direction
+            const icon = filePanelToggle.querySelector('.toggle-icon');
+            if (mainContainer.classList.contains('collapsed-files')) {
+                icon.innerText = '▶';
+            } else {
+                icon.innerText = '◀';
+            }
+        };
+
+        // Editor Close Button
+        closeEditorBtn.onclick = () => {
+            mainContainer.classList.add('no-editor');
+        };
+
+        function renderFileTree() {
+            filePanelContent.innerHTML = '';
+            // Start rendering from root ""
+            const rootFiles = fileCache.get("");
+
+            if (!rootFiles) {
+                filePanelContent.innerHTML = '<div style="text-align:center; color:#555; padding:10px;">Loading...</div>';
+                return;
+            }
+
+            if (rootFiles.length === 0) {
+                filePanelContent.innerHTML = '<div style="text-align:center; color:#555; padding:10px;">Empty Workspace</div>';
+                return;
+            }
+
+            const list = buildTreeLevel("", rootFiles, 0);
+            filePanelContent.appendChild(list);
+        }
+
+        function buildTreeLevel(parentPath, files, depth) {
+            const container = document.createElement('div');
+
+            // Sort: directories first, then alpha
+            files.sort((a, b) => {
+                if (a.type !== b.type) {
+                    return a.type === 'directory' ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            files.forEach(file => {
+                // Construct full path for this item
+                const itemPath = parentPath ? parentPath + "/" + file.name : file.name;
+
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.style.paddingLeft = (depth * 15 + 10) + 'px'; // Indent
+
+                const isDir = file.type === 'directory';
+                const isExpanded = expandedDirs.has(itemPath);
+
+                let iconChar = isDir ? (isExpanded ? '📂' : '�') : '📄';
+                const typeClass = isDir ? 'file-type-dir' : 'file-type-file';
+
+                div.innerHTML = `
+                  <span class="file-icon ${typeClass}">${iconChar}</span>
+                  <span class="file-name">${file.name}</span>
+               `;
+
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    if (isDir) {
+                        if (expandedDirs.has(itemPath)) {
+                            expandedDirs.delete(itemPath);
+                            // Re-render immediately to collapse
+                            renderFileTree();
+                        } else {
+                            expandedDirs.add(itemPath);
+                            // Valid if we already have it in cache?
+                            if (fileCache.has(itemPath)) {
+                                renderFileTree();
+                            } else {
+                                // Fetch
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send(JSON.stringify({ type: 'get_files', path: itemPath }));
+                                }
+                                // Render loading state momentarily?
+                                // For now, simple re-render will show folder open but empty until reply comes
+                                renderFileTree();
+                            }
+                        }
+                    } else {
+                        // Read file
+                        ws.send(JSON.stringify({ type: 'read_file', path: itemPath }));
+                    }
+                };
+
+                container.appendChild(div);
+
+                // If expanded directory, check cache and render children
+                if (isDir && isExpanded) {
+                    const children = fileCache.get(itemPath);
+                    if (children) {
+                        const childContainer = buildTreeLevel(itemPath, children, depth + 1);
+                        container.appendChild(childContainer);
+                    } else {
+                        // Loading indicator for sub-item
+                        const loadingDiv = document.createElement('div');
+                        loadingDiv.className = 'file-item';
+                        loadingDiv.style.paddingLeft = ((depth + 1) * 15 + 10) + 'px';
+                        loadingDiv.style.color = '#555';
+                        loadingDiv.innerText = 'Loading...';
+                        container.appendChild(loadingDiv);
+                    }
+                }
+            });
+
+            return container;
+        }
+
+        function updateState(data) {
+            currentState = data;
+
+            // Update Tick
+            tickCountSpan.textContent = data.tick;
+
+            // Update Weights
+            renderWeights(data.weights);
+
+            // Update Observer Metrics
+            // if (data.observer_metrics) {
+            //    renderMetrics(data.observer_metrics);
+            //}
+
+            // Update Logs
+            renderLogs(data.latest_events);
+        }
+
+        function renderWeights(weights) {
+            weightsContainer.innerHTML = '';
+            // Sort keys if needed, or keep stable order? Stable order is better for UI.
+            const keys = Object.keys(weights).sort();
+
+            keys.forEach(key => {
+                const val = weights[key];
+                const percentage = (val * 100).toFixed(1) + '%';
+
+                const item = document.createElement('div');
+                item.className = 'weight-item';
+
+                item.innerHTML = `
+                    <div class="weight-label">
+                        <span>${key}</span>
+                        <span>${percentage}</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${percentage}"></div>
+                    </div>
+                `;
+                weightsContainer.appendChild(item);
+            });
+        }
+
+        function renderLogs(events) {
+            // We'll just prepend new ones or replace the whole list?
+            // Replacing is easier for syncing but less performant for massive lists.
+            // Given "latest_events" is small (10), replacing is fine.
+            eventLog.innerHTML = '';
+
+            // Events come distinct, assume chronological? 
+            // We want newest at BOTTOM usually for logs, or TOP? 
+            // Standard terminal is newest at bottom.
+            // Let's render in order received.
+
+            events.forEach(evt => {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+
+                // Format timestamp
+                const timeStr = new Date(evt.timestamp).toLocaleTimeString();
+
+                entry.innerHTML = `
+                    <span class="log-time">[${timeStr}]</span>
+                    <span class="log-type-${evt.type || 'info'}">Tick ${evt.tick}:</span>
+                    <span class="log-msg">${evt.message}</span>
+                `;
+                eventLog.appendChild(entry);
+            });
+
+            // Auto scroll to bottom
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // Initialize empty state
+        renderWeights({
+            "Loading...": 0
+        });
     </script>
 </body>
+
 </html>

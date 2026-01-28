@@ -62,7 +62,7 @@ def AI_Eval(
             full_prompt += f"--- {k} ---\n{v}\n"
 
     if use_fallback:
-        return _eval_with_cli(system_prompt, full_prompt)
+        return _eval_with_cli(system_prompt, full_prompt, tools)
     
     return _eval_with_api(system_prompt, full_prompt, tools, model_name)
 
@@ -119,7 +119,7 @@ def _eval_with_api(system_prompt, full_prompt, tools, model_name):
             
             if is_quota_error:
                 logger.warning(f"Quota exhausted (429). Switching to CLI fallback immediately.")
-                return _eval_with_cli(system_prompt, full_prompt)
+                return _eval_with_cli(system_prompt, full_prompt, tools)
 
             is_retryable = "UNAVAILABLE" in error_str or "503" in error_str
 
@@ -139,7 +139,7 @@ def _eval_with_api(system_prompt, full_prompt, tools, model_name):
 
                 raise e
 
-def _eval_with_cli(system_prompt, full_prompt):
+def _eval_with_cli(system_prompt, full_prompt, tools=None):
     """
     Attempts to use the gemini-cli via nix shell.
     Uses source.fallback module configuration.
@@ -149,10 +149,19 @@ def _eval_with_cli(system_prompt, full_prompt):
     except ImportError:
         import fallback
 
+    # Extract tool names
+    allowed_tool_names = None
+    if tools:
+        # Assuming tools is a list of functions
+        try:
+            allowed_tool_names = [t.__name__ for t in tools if hasattr(t, '__name__')]
+        except Exception as e:
+            logger.warning(f"Could not extract tool names: {e}")
+            
     # Ensure MCP is configured so the CLI has tools
-    # We might want to do this only once?
     try:
-        fallback.ensure_mcp_configured()
+        # Pass current CWD (which should be the sandbox root set by main.py)
+        fallback.ensure_mcp_configured(allowed_tools=allowed_tool_names, cwd=os.getcwd())
     except Exception as e:
         logger.warning(f"Failed to ensure MCP configured: {e}")
 

@@ -6,19 +6,48 @@ import time
 from pathlib import Path
 from typing import List, Dict, Union, Optional
 
+def _validate_path(path: str) -> str:
+    """
+    Validate that the path is absolute and within the current working directory (sandbox).
+    Returns the absolute, resolved path.
+    """
+    if not os.path.isabs(path):
+        # If relative, resolve against CWD
+        abs_path = os.path.abspath(path)
+    else:
+        abs_path = os.path.abspath(path)
+        
+    workspace_root = os.getcwd()
+    
+    # Check if path is within workspace_root
+    # We use commonpath to check if workspace_root is a prefix
+    try:
+        common = os.path.commonpath([abs_path, workspace_root])
+        # If common path IS the workspace root, it's valid.
+        # But wait, commonpath returns the longest common sub-path.
+        # If abs_path is /foo/bar and root is /foo, common is /foo. Correct.
+        # If abs_path is /baz/bar and root is /foo, common is /. Incorrect.
+        
+        if os.path.commonpath([abs_path, workspace_root]) != workspace_root:
+             raise PermissionError(f"Access denied: Path {path} is outside the workspace root {workspace_root}")
+    except ValueError:
+        # Can happen on Windows if drives are different
+        raise PermissionError(f"Access denied: Path {path} is on a different drive than {workspace_root}")
+        
+    return abs_path
+
 def list_dir(directory_path: str) -> List[Dict[str, Union[str, int]]]:
     """
     List the contents of a directory.
     """
-    if not os.path.isabs(directory_path):
-        raise ValueError(f"Directory path must be absolute: {directory_path}")
+    safe_path = _validate_path(directory_path)
     
-    if not os.path.isdir(directory_path):
+    if not os.path.isdir(safe_path):
         raise FileNotFoundError(f"Directory not found: {directory_path}")
         
     results = []
     try:
-        with os.scandir(directory_path) as entries:
+        with os.scandir(safe_path) as entries:
             for entry in entries:
                 item = {
                     "name": entry.name,
@@ -47,8 +76,7 @@ def find_by_name(search_directory: str, pattern: Optional[str] = None,
     """
     Search for files and subdirectories using fd.
     """
-    if not os.path.isabs(search_directory):
-        raise ValueError("SearchDirectory must be an absolute path")
+    safe_path = _validate_path(search_directory)
 
     cmd = ["fd"]
     
@@ -77,7 +105,7 @@ def find_by_name(search_directory: str, pattern: Optional[str] = None,
         cmd.append(".")
 
 
-    cmd.append(search_directory)
+    cmd.append(safe_path)
     
     try:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -104,7 +132,7 @@ def find_by_name(search_directory: str, pattern: Optional[str] = None,
                      
                 stat = p.stat()
                 try:
-                    rel_path = str(p.relative_to(search_directory))
+                    rel_path = str(p.relative_to(safe_path))
                 except ValueError:
                     rel_path = str(p) # Fallback if not relative
 
@@ -131,7 +159,9 @@ def grep_search(search_path: str, query: str, case_insensitive: bool = False,
     """
     Use ripgrep to find matches.
     """
-    if not os.path.exists(search_path):
+    safe_path = _validate_path(search_path)
+    
+    if not os.path.exists(safe_path):
         raise FileNotFoundError(f"Path not found: {search_path}")
 
     cmd = ["rg"]
@@ -143,7 +173,7 @@ def grep_search(search_path: str, query: str, case_insensitive: bool = False,
         cmd.append("-F")
         
     if includes:
-        if os.path.isdir(search_path):
+        if os.path.isdir(safe_path):
             for inc in includes:
                 cmd.extend(["-g", inc])
 
@@ -153,7 +183,7 @@ def grep_search(search_path: str, query: str, case_insensitive: bool = False,
         cmd.append("--json")
 
     cmd.append(query)
-    cmd.append(search_path)
+    cmd.append(safe_path)
     
     results = []
     
@@ -191,19 +221,18 @@ def view_file(absolute_path: str, start_line: Optional[int] = None, end_line: Op
     """
     View the contents of a file.
     """
-    if not os.path.isabs(absolute_path):
-        raise ValueError("AbsolutePath must be absolute")
+    safe_path = _validate_path(absolute_path)
     
-    if not os.path.exists(absolute_path):
+    if not os.path.exists(safe_path):
         raise FileNotFoundError(f"File not found: {absolute_path}")
         
-    if os.path.isdir(absolute_path):
+    if os.path.isdir(safe_path):
         raise IsADirectoryError(f"Path is a directory: {absolute_path}")
 
     # Check for binary
     is_binary = False
     try:
-        with open(absolute_path, 'rb') as f:
+        with open(safe_path, 'rb') as f:
             chunk = f.read(8000)
             if b'\0' in chunk:
                 is_binary = True
@@ -214,7 +243,7 @@ def view_file(absolute_path: str, start_line: Optional[int] = None, end_line: Op
         return "[Binary file]"
 
     try:
-        with open(absolute_path, 'r', encoding='utf-8', errors='replace') as f:
+        with open(safe_path, 'r', encoding='utf-8', errors='replace') as f:
             lines = f.readlines()
             
         total_lines = len(lines)
@@ -230,7 +259,7 @@ def view_file(absolute_path: str, start_line: Optional[int] = None, end_line: Op
             end = start + limit - 1
             
         result = [
-            f"File Path: {absolute_path}",
+            f"File Path: {safe_path}",
             f"Total Lines: {total_lines}",
             f"Showing lines {start} to {end}",
             ""
@@ -244,19 +273,45 @@ def view_file(absolute_path: str, start_line: Optional[int] = None, end_line: Op
     except Exception as e:
         raise RuntimeError(f"Error reading file: {e}")
 
+def read_file(absolute_path: str) -> str:
+    """
+    Read the raw contents of a file (sandboxed).
+    """
+    safe_path = _validate_path(absolute_path)
+    
+    if not os.path.exists(safe_path):
+        raise FileNotFoundError(f"File not found: {absolute_path}")
+        
+    if os.path.isdir(safe_path):
+        raise IsADirectoryError(f"Path is a directory: {absolute_path}")
+
+    # Check for binary
+    try:
+        with open(safe_path, 'rb') as f:
+            chunk = f.read(8000)
+            if b'\0' in chunk:
+                return "[Binary file]"
+    except OSError:
+        pass
+        
+    try:
+        with open(safe_path, 'r', encoding='utf-8', errors='replace') as f:
+            return f.read()
+    except Exception as e:
+        raise RuntimeError(f"Error reading file: {e}")
+
 def view_file_outline(absolute_path: str, item_offset: int = 0) -> str:
     """
     View the outline of a file.
     """
-    if not os.path.isabs(absolute_path):
-        raise ValueError("AbsolutePath must be absolute")
+    safe_path = _validate_path(absolute_path)
         
-    if not os.path.exists(absolute_path):
+    if not os.path.exists(safe_path):
         raise FileNotFoundError(f"File not found: {absolute_path}")
         
-    if absolute_path.endswith('.py'):
+    if safe_path.endswith('.py'):
         try:
-            with open(absolute_path, 'r', encoding='utf-8') as f:
+            with open(safe_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             import ast
@@ -313,7 +368,7 @@ def view_file_outline(absolute_path: str, item_offset: int = 0) -> str:
             end_idx = min(start_idx + page_size, total_items)
             
             result = [
-                f"File Path: {absolute_path}",
+                f"File Path: {safe_path}",
                 f"Total Lines: {len(content.splitlines())}",
                 f"Total Outline Items: {total_items}",
                 f"Items {start_idx} to {end_idx}", 
@@ -334,14 +389,16 @@ def view_code_item(file_path: str, node_paths: List[str]) -> str:
     """
     View code items.
     """
-    if not os.path.exists(file_path):
+    safe_path = _validate_path(file_path)
+    
+    if not os.path.exists(safe_path):
         raise FileNotFoundError(f"File not found: {file_path}")
         
-    if not file_path.endswith('.py'):
+    if not safe_path.endswith('.py'):
         return "Only .py supported"
         
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(safe_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         content = "".join(lines)
         
@@ -392,23 +449,22 @@ def write_to_file(target_file: str, code_content: str, overwrite: bool = False, 
     """
     Write to a file.
     """
-    if not os.path.isabs(target_file):
-        raise ValueError("TargetFile must be absolute")
+    safe_path = _validate_path(target_file)
         
-    if os.path.exists(target_file):
+    if os.path.exists(safe_path):
         if not overwrite:
              raise FileExistsError(f"File exists: {target_file}. Set Overwrite to true to replace.")
-        if os.path.isdir(target_file):
+        if os.path.isdir(safe_path):
              raise IsADirectoryError(f"Target is a directory: {target_file}")
              
-    os.makedirs(os.path.dirname(target_file), exist_ok=True)
+    os.makedirs(os.path.dirname(safe_path), exist_ok=True)
     
     content = "" if empty_file else code_content
     
     try:
-        with open(target_file, 'w', encoding='utf-8') as f:
+        with open(safe_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        return f"Successfully wrote to {target_file}"
+        return f"Successfully wrote to {safe_path}"
     except Exception as e:
         raise RuntimeError(f"Error writing to file: {e}")
 
@@ -417,14 +473,13 @@ def replace_file_content(target_file: str, start_line: int, end_line: int,
     """
     Replace a contiguous block of text.
     """
-    if not os.path.isabs(target_file):
-        raise ValueError("TargetFile must be absolute")
+    safe_path = _validate_path(target_file)
         
-    if not os.path.exists(target_file):
+    if not os.path.exists(safe_path):
         raise FileNotFoundError(f"File not found: {target_file}")
 
     try:
-        with open(target_file, 'r', encoding='utf-8') as f:
+        with open(safe_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             
         # 1-indexed to 0-indexed
@@ -441,12 +496,6 @@ def replace_file_content(target_file: str, start_line: int, end_line: int,
         segment = "".join(lines[start_idx:end_idx])
         
         # Verify target content matches
-        # Notes: "TargetContent must be the exact character-sequence...".
-        # But often there are issues with trailing newlines.
-        # I should check if `segment` contains `target_content`.
-        # The prompt says "StartLine and EndLine should specify a range of lines containing precisely the instances".
-        # And "target_content is searched for within the [StartLine, EndLine] range".
-        
         if target_content not in segment:
              raise ValueError(f"TargetContent not found in lines {start_line}-{end_line}")
              
@@ -458,38 +507,16 @@ def replace_file_content(target_file: str, start_line: int, end_line: int,
         # Replace
         new_segment = segment.replace(target_content, replacement_content)
         
-        # Update lines
-        lines[start_idx:end_idx] = [new_segment] 
-        # Wait, setting a slice to a list of lines. `new_segment` is a string, needs splitting?
-        # Actually `lines` is a list of strings (lines).
-        # Should we split `new_segment` into lines?
-        # Yes, usually.
-        
-        # But `lines` read by readlines() keep \n.
-        # If `new_segment` has \n, we should probably keep consistency.
-        # Simplest: reconstruct full content string, replace, split back?
-        # No, that affects whole file.
-        
-        # Correct approach:
-        # Reconstruct the file content with the replacement applied to the specific range.
-        
+        # Reconstruct file content
         prefix = lines[:start_idx]
         suffix = lines[end_idx:]
         
-        # We need to preserve the structure.
-        # segment was: lines[start:end] joined.
-        # new_segment replaced target in segment.
-        # new_lines = prefix + [new_segment] + suffix ?
-        # But [new_segment] is one string. If we write it, it's fine.
-        # If we need `lines` list back, we might need split.
-        # But `write` takes string.
-        
         new_content = "".join(prefix) + new_segment + "".join(suffix)
         
-        with open(target_file, 'w', encoding='utf-8') as f:
+        with open(safe_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
             
-        return f"Successfully replaced content in {target_file}"
+        return f"Successfully replaced content in {safe_path}"
             
     except Exception as e:
          raise RuntimeError(f"Error replacing content: {e}")
@@ -499,31 +526,18 @@ def multi_replace_file_content(target_file: str, replacement_chunks: List[Dict])
     Apply multiple replacements.
     Chunks: {StartLine, EndLine, TargetContent, ReplacementContent, AllowMultiple}
     """
+    safe_path = _validate_path(target_file)
+
     # Verify file
-    if not os.path.exists(target_file):
+    if not os.path.exists(safe_path):
         raise FileNotFoundError(f"File not found: {target_file}")
         
     try:
-        with open(target_file, 'r', encoding='utf-8') as f:
+        with open(safe_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             
-        # We need to apply chunks. To avoid index shifting affecting subsequent chunks,
-        # we can apply them from bottom to top?
-        # Or we can verify all chunks against the ORIGINAL content first.
-        # But if we verify against original, we must apply them assuming indices match original.
-        # Yes, usually multi-edit tools assume indices are based on original document.
-        
         # Sort chunks by StartLine descending
         chunks = sorted(replacement_chunks, key=lambda x: x['StartLine'], reverse=True)
-        
-        # Check for overlaps?
-        # If sorted desc:
-        # Chunk i: start S_i, end E_i.
-        # Chunk i+1: start S_i+1, end E_i+1.
-        # Since i comes after i+1 in list (higher line numbers), we expect S_i >= E_i+1?
-        # Actually: Chunk A (lines 10-20), Chunk B (lines 5-8).
-        # Sorted: A, B.
-        # If Chunk A (lines 10-20), Chunk B (lines 15-25) -> Overlap.
         
         last_start = float('inf')
         for chunk in chunks:
@@ -534,7 +548,6 @@ def multi_replace_file_content(target_file: str, replacement_chunks: List[Dict])
             last_start = start
             
             # Apply replacement on ORIGINAL lines (subset)
-            # Since we iterate reverse, modifying the tail doesn't affect indices of head.
             
             start_idx = start - 1
             end_idx = end
@@ -549,18 +562,14 @@ def multi_replace_file_content(target_file: str, replacement_chunks: List[Dict])
             new_segment = segment.replace(target, replacement)
             
             # Replace in lines
-            # Since we are operating on list of strings, we can replace the slice with [new_segment]
-            # Wait, `lines[s:e] = [new_segment]` puts one string element.
-            # If we finally join `lines`, it works.
-            
             lines[start_idx:end_idx] = [new_segment]
             
         # Write back
         new_content = "".join(lines)
-        with open(target_file, 'w', encoding='utf-8') as f:
+        with open(safe_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
             
-        return f"Successfully applied {len(chunks)} replacements to {target_file}"
+        return f"Successfully applied {len(chunks)} replacements to {safe_path}"
         
     except Exception as e:
         raise RuntimeError(f"Error in multi_replace: {e}")
@@ -634,10 +643,9 @@ def run_command(command_line: str, cwd: str, safe_to_auto_run: bool = False, wai
     """
     Run a command.
     """
-    if not os.path.isabs(cwd):
-        raise ValueError("Cwd must be absolute")
+    safe_cwd = _validate_path(cwd)
         
-    cmd = CommandInternal(command_line, cwd)
+    cmd = CommandInternal(command_line, safe_cwd)
     _COMMANDS[cmd.id] = cmd
     
     # Wait

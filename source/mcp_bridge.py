@@ -76,9 +76,59 @@ def run_command(command_line: str, cwd: str) -> str:
 
 # Add other tools as needed
 
+# Add other tools as needed
+
 if __name__ == "__main__":
-    # fastmcp run method handles stdio by default when no arguments provided? 
-    # Or strict stdio required? 
-    # mcp.server.fastmcp.FastMCP.run() defaults to stdio if no transport specified?
-    # Let's check docs or usage. Usually `server.run(transport='stdio')`.
+    import argparse
+    parser = argparse.ArgumentParser(description="Gallium MCP Bridge")
+    parser.add_argument("--root", help="Set the workspace root directory")
+    parser.add_argument("--tools", help="Comma-separated list of tools to expose (default: all)")
+    
+    args = parser.parse_args()
+    
+    if args.root:
+        try:
+            os.chdir(args.root)
+            # tools.py uses os.getcwd() for sandboxing, so this is sufficient.
+        except Exception as e:
+            print(f"Error changing directory to {args.root}: {e}", file=sys.stderr)
+            sys.exit(1)
+            
+    # Filter tools if requested
+    # Note: FastMCP decorators register at definition time.
+    # To filter, we might need to remove them from `server` object if possible,
+    # or creates a new server instance.
+    # FastMCP stores tools in `server._tool_manager._tools`.
+    # Let's inspect capabilities.
+    # Actually, simpler: if args.tools is present, we only keep those matching.
+    
+    if args.tools:
+        allowed_tools = args.tools.split(",")
+        try:
+            # Access internal registry (implementation detail of FastMCP, but typical)
+            # Or just rely on the fact we registered all, and unregister others?
+            # FastMCP doesn't seem to have valid remove_tool public API easily documented here.
+            # But we can check `server_tools`.
+            # Let's use a workaround: construct a new server if needed, or modify private dicts.
+            # Assuming `server._tool_manager._tools` exists (based on likely library structure).
+            # If not, we might not be able to filter easily without changing how we register.
+            # Re-registering only allowed tools would require not using decorators initially.
+            # Given we used decorators, we can try to filter.
+            
+            # Check if internal list is accessible
+            if hasattr(server, '_tool_manager') and hasattr(server._tool_manager, '_tools'):
+                 all_tools = list(server._tool_manager._tools.keys())
+                 for t in all_tools:
+                     if t not in allowed_tools:
+                         del server._tool_manager._tools[t]
+            # Fallback for different mcp versions: `server.tools` might be a dict
+            elif hasattr(server, 'tools') and isinstance(server.tools, dict): 
+                 all_tools = list(server.tools.keys())
+                 for t in all_tools:
+                     if t not in allowed_tools:
+                         del server.tools[t]
+                         
+        except Exception as e:
+            print(f"Warning: Could not filter tools: {e}", file=sys.stderr)
+            
     server.run()

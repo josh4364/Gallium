@@ -8,41 +8,62 @@ GEMINI_CLI_CMD = "nix shell github:NixOS/nixpkgs/nixos-unstable#gemini-cli --com
 BRIDGE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), "mcp_bridge.py"))
 MCP_SERVER_NAME = "gallium-bridge"
 
-def ensure_mcp_configured():
+def ensure_mcp_configured(allowed_tools=None, cwd=None):
     """
     Ensure the MCP bridge is registered with gemini-cli.
+    Args:
+        allowed_tools: List of tool names to whitelist.
+        cwd: The working directory for the bridge to use as sandbox root.
     """
-    # Check if we can list servers
-    check_cmd = f"{GEMINI_CLI_CMD} mcp list"
+    
+    # Construct arguments for the bridge script
+    python_exe = sys.executable
+    script_args = f"{BRIDGE_SCRIPT}"
+    
+    if cwd:
+        script_args += f" --root {cwd}"
+        
+    if allowed_tools:
+        tools_str = ",".join(allowed_tools)
+        script_args += f" --tools {tools_str}"
+        
+    full_server_cmd = f"{python_exe} {script_args}"
+    
+    # Check if we need to update the registration.
+    # Current limitation: we can't easily query the specific command args of a registered server via `mcp list`.
+    # `mcp list` usually just shows names or statii.
+    # To ensure correctness, we might have to remove and re-add if we want to guarantee state,
+    # especially since we are changing dynamic args (cwd, tools).
+    # THIS IS OKAY for a fallback script used in a one-off manner.
+    
+    # Always remove to ensure fresh config
+    remove_cmd = f"{GEMINI_CLI_CMD} mcp remove {MCP_SERVER_NAME}"
     try:
-        output = subprocess.check_output(check_cmd, shell=True, text=True, stderr=subprocess.STDOUT)
-        if MCP_SERVER_NAME in output:
-            print(f"MCP server '{MCP_SERVER_NAME}' already registered.")
-            return
-    except subprocess.CalledProcessError:
-        # Ignore error if it fails (maybe no servers yet)
+        subprocess.run(remove_cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    except:
         pass
 
     # Add the server
-    # We execute the python script using the current interpreter (which has mcp installed)
-    python_exe = sys.executable
-    add_cmd = f"{GEMINI_CLI_CMD} mcp add {MCP_SERVER_NAME} {python_exe} {BRIDGE_SCRIPT}"
+    add_cmd = f"{GEMINI_CLI_CMD} mcp add {MCP_SERVER_NAME} {full_server_cmd}"
     
     print(f"Registering MCP server: {add_cmd}")
     try:
         subprocess.check_call(add_cmd, shell=True)
-        print("Successfully registered MCP server.")
+        # print("Successfully registered MCP server.")
     except subprocess.CalledProcessError as e:
         print(f"Failed to register MCP server: {e}")
-        sys.exit(1)
+        # Dont exit, let it fail at runtime if needed, or raise?
+        # raise e
 
 def run_interactive():
     """
     Run gemini-cli in interactive mode.
     """
-    cmd = f"{GEMINI_CLI_CMD} --prompt-interactive 'Hello, I am running from the fallback script. Please verify you can access my filesystem by listing the current directory.'"
+    # Interactive mode might not have specific CWD or tools unless passed.
+    # We default to current CWD and all tools if running directly.
+    ensure_mcp_configured(cwd=os.getcwd())
     
-    # We might want to pass existing context or history here in the future.
+    cmd = f"{GEMINI_CLI_CMD} --prompt-interactive 'Hello, I am running from the fallback script. Please verify you can access my filesystem by listing the current directory.'"
     
     print(f"Launching gemini-cli: {cmd}")
     try:
@@ -53,5 +74,4 @@ def run_interactive():
 
 if __name__ == "__main__":
     print("Setting up gemini-cli fallback...")
-    ensure_mcp_configured()
     run_interactive()

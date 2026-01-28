@@ -22,6 +22,33 @@ class GalliumWebServer:
         self.site = None
         self.server_thread = None
         self.running = False
+        self.websockets = set()
+
+    async def _broadcast_async(self, message):
+        if not self.websockets:
+            return
+        
+        # Prepare the message once
+        if isinstance(message, dict):
+            msg_str = json.dumps(message)
+        else:
+            msg_str = str(message)
+            
+        # Send to all connected clients
+        # Use simple iteration, avoiding modification during iteration issues if needed
+        # but for set it's generally fine provided we don't await inside the loop in a way that modifies the set?
+        # Actually ws.send_str is async, so we must be careful if removal happens concurrently.
+        # Copying the set is safer.
+        for ws in list(self.websockets):
+            try:
+                await ws.send_str(msg_str)
+            except Exception as e:
+                logger.error(f"Error broadcasting to client: {e}")
+
+    def broadcast(self, message):
+        """Thread-safe broadcast to all clients."""
+        if self.loop and self.running:
+            asyncio.run_coroutine_threadsafe(self._broadcast_async(message), self.loop)
 
     async def handle_index(self, request):
         path = Path(__file__).parent / "web_client.html"
@@ -33,6 +60,7 @@ class GalliumWebServer:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         
+        self.websockets.add(ws)
         # logger.info("Web socket connection established")
 
         try:
@@ -49,7 +77,7 @@ class GalliumWebServer:
         except Exception as e:
             logger.error(f"WebSocket Error: {e}")
         finally:
-            pass # Connection closed
+            self.websockets.remove(ws) # Connection closed
 
         return ws
 
