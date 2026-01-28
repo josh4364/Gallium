@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "gallium-bridge": {
+      "command": "/nix/store/q5yrac1d95jfz4hq4hk4458fn52wcnr1-python3-3.12.12-env/bin/python3",
+      "args": [
+        "/home/josh/Documents/git/Gallium/source/mcp_bridge.py"
+      ]
+    }
+  }
+}

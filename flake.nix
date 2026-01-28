@@ -32,8 +32,9 @@
             gdk-pixbuf
             glib
             libqalculate
-            (python3.withPackages (ps: with ps; [
+            (pkgs.python312.withPackages (ps: with ps; [
                 google-genai
+                mcp
             ]))
           ];
 
