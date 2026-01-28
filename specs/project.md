@@ -16,7 +16,7 @@ The central orchestrator responsible for:
 ### 2.2 Gallium Clients
 - **TUI Client (Primary)**: A high-performance terminal user interface built with `notcurses`.
     - **Waterfall View**: Support for toggling into a live "waterfall" view of all concurrent agent event logs and thoughts.
-- **Web UI (Planned)**: A browser-based interface served by the Gallium server.
+- **Web UI**: A rich, browser-based interface served by the Gallium server, built with **Vanilla JS and Web Components** (Zero-dependency). Offers advanced visualization and diff viewing (See `specs/feature-client-web.md`).
 - **Communication**: All clients communicate with the server via WebSockets using a custom binary protocol.
 
 ## 3. Agent Hierarchy & Logic

@@ -74,3 +74,18 @@ This document outlines the phased development of the Gallium AI workflow system,
     - [x] Audit-log viewer and historical state playback.
     - [x] Context window usage monitoring and reporting.
     - [x] Pause/Panic "Big Button" backup and checkpointing.
+
+## Phase 7: Web Client Expansion
+1. **Web App Foundation**
+    - [x] Initialize Vanilla JS project structure (`index.html`, `css/`, `js/`) in `source/client-web`.
+    - [x] Implement HTTP static file serving in `gallium-server`.
+    - [x] Establish WebSocket connection and Protocol handshake (JS Client).
+2. **Core UI Implementation**
+    - [x] Implement "Gallium Dark" design system (CSS/Components).
+    - [x] Develop Dashboard/Task Tree visualization.
+    - [x] Develop High-Performance Waterfall view (Virtual scrolling).
+3. **Interactive Features**
+    - [x] Implement Agent Chat/Input interface.
+    - [x] Implement File Browser with Syntax Highlighting.
+    - [ ] Implement Visual Diff Viewer for code changes.
+

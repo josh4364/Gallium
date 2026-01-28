@@ -169,6 +169,45 @@ char* db_get_events(int limit) {
     return result;
 }
 
+char* db_get_tasks(void) {
+    if (!g_db) return NULL;
+    
+    // We want all tasks
+    const char *sql = "SELECT id, name, status, git_branch FROM tasks ORDER BY id ASC";
+    
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(g_db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        return NULL;
+    }
+
+    struct json_object *jobject = json_object_new_object();
+    struct json_object *jarray = json_object_new_array();
+    
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        const char *name = (const char*)sqlite3_column_text(stmt, 1);
+        const char *status = (const char*)sqlite3_column_text(stmt, 2);
+        const char *branch = (const char*)sqlite3_column_text(stmt, 3);
+        
+        struct json_object *task_obj = json_object_new_object();
+        json_object_object_add(task_obj, "id", json_object_new_int(id));
+        json_object_object_add(task_obj, "name", json_object_new_string(name ? name : ""));
+        json_object_object_add(task_obj, "status", json_object_new_string(status ? status : ""));
+        json_object_object_add(task_obj, "git_branch", json_object_new_string(branch ? branch : ""));
+        
+        json_object_array_add(jarray, task_obj);
+    }
+    
+    sqlite3_finalize(stmt);
+    
+    json_object_object_add(jobject, "tasks", jarray);
+    const char* json_str = json_object_to_json_string(jobject);
+    char* result = strdup(json_str);
+    json_object_put(jobject); // Frees children too
+    return result;
+}
+
 const char* db_task_status_to_string(TaskStatus status) {
     switch (status) {
         case TASK_STATUS_PENDING: return "PENDING";

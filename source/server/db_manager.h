@@ -45,6 +45,8 @@ void gallium_log_llm(const char *agent_id, const char *prompt, const char *respo
  */
 char* db_get_events(int limit);
 
+char* db_get_tasks(void);
+
 // --- Task State Management ---
 
 typedef enum {

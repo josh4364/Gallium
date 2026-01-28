@@ -175,3 +175,84 @@ int sandbox_execute_task(const char* task_name) {
     json_object_put(root);
     return result;
 }
+
+#include <dirent.h>
+#include <sys/stat.h>
+
+char* sandbox_list_files(const char* dir_path) {
+    char resolved_path[PATH_MAX];
+    // Default to root if directory is empty or "/"
+    const char* target = (dir_path && dir_path[0]) ? dir_path : "/";
+    
+    if (sandbox_validate_path(target, resolved_path) != 0) {
+        return NULL;
+    }
+
+    DIR* d = opendir(resolved_path);
+    if (!d) return NULL;
+
+    struct json_object* jarray = json_object_new_array();
+    struct dirent* dir;
+
+    while ((dir = readdir(d)) != NULL) {
+        if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) continue;
+        
+        struct json_object* file_obj = json_object_new_object();
+        json_object_object_add(file_obj, "name", json_object_new_string(dir->d_name));
+        
+        char full_entry_path[PATH_MAX];
+        snprintf(full_entry_path, sizeof(full_entry_path), "%s/%s", resolved_path, dir->d_name);
+        
+        struct stat st;
+        if (stat(full_entry_path, &st) == 0) {
+            json_object_object_add(file_obj, "is_dir", json_object_new_boolean(S_ISDIR(st.st_mode)));
+            json_object_object_add(file_obj, "size", json_object_new_int64(st.st_size));
+        } else {
+            json_object_object_add(file_obj, "is_dir", json_object_new_boolean(false));
+            json_object_object_add(file_obj, "size", json_object_new_int(0));
+        }
+
+        json_object_array_add(jarray, file_obj);
+    }
+    closedir(d);
+
+    const char* json_str = json_object_to_json_string(jarray);
+    char* result = strdup(json_str);
+    json_object_put(jarray);
+    return result;
+}
+
+char* sandbox_read_file(const char* file_path) {
+    char resolved_path[PATH_MAX];
+    if (sandbox_validate_path(file_path, resolved_path) != 0) {
+        return NULL;
+    }
+    
+    FILE* fp = fopen(resolved_path, "rb");
+    if (!fp) return NULL;
+    
+    fseek(fp, 0, SEEK_END);
+    long len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    
+    if (len > 1024 * 1024 * 5) { // 5MB limit
+         fclose(fp);
+         return NULL; 
+    }
+    
+    char* data = malloc(len + 1);
+    if (!data) {
+        fclose(fp);
+        return NULL;
+    }
+    
+    if (fread(data, 1, len, fp) != (size_t)len) {
+        free(data);
+        fclose(fp);
+        return NULL;
+    }
+    
+    data[len] = '\0';
+    fclose(fp);
+    return data;
+}

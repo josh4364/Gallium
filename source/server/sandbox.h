@@ -41,4 +41,14 @@ int sandbox_execute_command(const char* command, bool requires_approval);
  */
 void sandbox_kill_all();
 
+/**
+ * @brief List files in a directory (recursive or flat). Returns JSON string.
+ */
+char* sandbox_list_files(const char* dir_path);
+
+/**
+ * @brief Read file content. Returns string (caller must free).
+ */
+char* sandbox_read_file(const char* file_path);
+
 #endif // GALLIUM_SANDBOX_H

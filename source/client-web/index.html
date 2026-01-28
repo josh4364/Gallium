@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallium Web Client</title>
+    <link rel="stylesheet" href="css/index.css">
+</head>
+
+<body>
+    <div id="app" class="main-layout">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar glass-panel">
+            <div class="brand">
+                <h2>Gallium</h2>
+                <div id="connection-status" class="badge">Connecting...</div>
+            </div>
+
+            <ul class="nav-links">
+                <li class="active"><a href="#dashboard">Dashboard</a></li>
+                <li><a href="#waterfall">Waterfall</a></li>
+                <li><a href="#files">Files</a></li>
+                <li><a href="#settings">Settings</a></li>
+            </ul>
+
+            <div class="system-stats">
+                <div>Agents: <span id="agent-count">0</span></div>
+                <div>Tokens: <span id="token-usage">0</span></div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Dashboard View -->
+            <section id="view-dashboard" class="view active">
+                <header class="view-header">
+                    <h3>Active Project: <span id="project-name">Gallium</span></h3>
+                    <div class="actions">
+                        <button id="btn-stop" class="btn btn-danger">STOP AGENTS</button>
+                    </div>
+                </header>
+
+                <div class="dashboard-grid">
+                    <div class="panel task-tree-panel card">
+                        <h4>Task Hierarchy</h4>
+                        <div id="task-tree-container">
+                            <!-- Task Tree Rendered Here -->
+                            <div class="empty-state">No tasks loaded</div>
+                        </div>
+                    </div>
+
+                    <div class="panel interaction-panel card">
+                        <h4>Interaction</h4>
+                        <div id="chat-container">
+                            <!-- Chat rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Waterfall View (Hidden by default or split) -->
+            <section id="view-waterfall" class="view">
+                <header class="view-header">
+                    <h3>Event Stream</h3>
+                </header>
+                <div id="waterfall-container" class="waterfall-scroll">
+                    <!-- Virtual Scroll Container -->
+                </div>
+            </section>
+
+            <!-- File Browser View -->
+            <section id="view-files" class="view">
+                <header class="view-header">
+                    <h3>Workspace Files</h3>
+                </header>
+                <div id="file-browser-container" class="file-browser-panel card">
+                    <!-- File Browser rendered here -->
+                </div>
+            </section>
+        </main>
+    </div>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
