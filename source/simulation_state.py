@@ -1,6 +1,7 @@
 import random
 import logging
 from datetime import datetime
+from source.agents.observer import ObserverAgent
 
 logger = logging.getLogger("SimulationState")
 
@@ -21,7 +22,7 @@ class SimulationState:
             "Layer1_Sequencer": None,
             "Layer2_Decoder": None,
             "Layer3_Action": None,
-            "Observer": None
+            "Observer": ObserverAgent()
         }
         self.observer_metrics = {
             "context_saturation": 0.2, # 0.0 to 1.0
@@ -49,6 +50,13 @@ class SimulationState:
         """
         self.tick_count += 1
         
+        # 0. Observer Logic (First tick only for now)
+        if self.tick_count == 1 and self.agents["Observer"]:
+            try:
+                self.agents["Observer"].tick(self)
+            except Exception as e:
+                logger.error(f"Observer tick failed: {e}")
+
         # 1. Update Layer 0 Weights (Simulated for now)
         self._simulate_weight_fluctuation()
 
