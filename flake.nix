@@ -29,6 +29,9 @@
             libnotify
             gdk-pixbuf
             glib
+            (python3.withPackages (ps: with ps; [
+                google-genai
+            ]))
           ];
 
           shellHook = ''
