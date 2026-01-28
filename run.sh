@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-nix develop --command python3 source/main.py
+nix develop --command python3 -m source.main

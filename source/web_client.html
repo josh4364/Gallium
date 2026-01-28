@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gallium Web Interface</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #1e1e1e; color: #fff; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007acc; border: none; color: white; border-radius: 4px; }
+        button:hover { background: #005f9e; }
+        #status { margin-top: 10px; color: #888; }
+    </style>
+</head>
+<body>
+    <h1>Gallium Interface</h1>
+    <button id="sendBtn">Send Event</button>
+    <div id="status">Connecting...</div>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(wsProto + '//' + window.location.host + '/ws');
+        
+        ws.onopen = () => {
+            statusDiv.textContent = 'Connected';
+            console.log('Connected to WebSocket');
+        };
+        
+        ws.onmessage = (event) => {
+            console.log('Message from server:', event.data);
+        };
+        
+        ws.onclose = () => {
+            statusDiv.textContent = 'Disconnected';
+        };
+        
+        document.getElementById('sendBtn').onclick = () => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'user_action', content: 'Send Event Button Clicked'}));
+                console.log('Sent event');
+            } else {
+                console.warn('WebSocket not connected');
+            }
+        };
+    </script>
+</body>
+</html>
