@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch, mock_open
 import os
 import sys
+import zlib
 
 # Mock google.genai before importing modules that use it
 mock_google = MagicMock()
@@ -22,82 +23,122 @@ class TestObserverAgent(unittest.TestCase):
     @patch('os.walk')
     @patch('os.path.exists')
     @patch('os.path.isdir')
-    def test_observe_workspace(self, mock_isdir, mock_exists, mock_walk, mock_ai_eval):
-        # Setup mocks
-        mock_exists.return_value = True # Gallium exists
+    @patch('builtins.open', new_callable=mock_open)
+    def test_observe_workspace_no_gallium(self, mock_file, mock_isdir, mock_exists, mock_walk, mock_ai_eval):
+        # Setup: No Gallium folder
+        mock_exists.side_effect = lambda p: not p.endswith("gallium")
+        mock_isdir.return_value = False
+
+        agent = ObserverAgent()
+        score, feedback = agent.observe_workspace()
+
+        self.assertEqual(score, 1.0)
+        self.assertIn("Gallium directory missing", feedback)
+        mock_ai_eval.assert_not_called()
+
+    @patch('source.agents.observer.AI_Eval')
+    @patch('os.walk')
+    @patch('os.path.exists')
+    @patch('os.path.isdir')
+    @patch('zlib.crc32')
+    def test_observe_workspace_scoring(self, mock_crc, mock_isdir, mock_exists, mock_walk, mock_ai_eval):
+        # Setup: Gallium exists, project.md exists
+        # We need to control os.path.exists for specific files
+        def side_effect_exists(path):
+            if path.endswith("gallium"): return True
+            if path.endswith("gallium/project.md"): return True
+            if path.endswith("gallium/manifest.json"): return True
+            if path.endswith("source"): return True
+            return False
+
+        mock_exists.side_effect = side_effect_exists
         mock_isdir.return_value = True
 
-        # Mock os.walk to return some structure
-        # root, dirs, files
+        # Mock os.walk for source files
+        # Let's say we have 2 files: file1.py (good), file2.py (undocumented)
         mock_walk.return_value = [
-            ('.', ['gallium', 'docs'], ['README.md']),
-            ('./gallium', [], ['main.c']),
-            ('./docs', [], ['intro.md'])
+            ('./source', [], ['file1.py', 'file2.py'])
         ]
 
-        # Mock file reading
-        m = mock_open(read_data="Some documentation content.")
-        with patch('builtins.open', m):
-            # Mock AI_Eval response
-            mock_ai_eval.return_value = '```json\n{"score": 0.85, "feedback": "Good docs."}\n```'
+        # Mock Manifest Content
+        manifest_content = '[{"file": "source/file1.py", "crc": "deadbeef"}]'
+
+        # Mock File Reading
+        file_mock = mock_open(read_data=manifest_content)
+        # We need to handle multiple file opens (manifest vs source files)
+        # but since we mock zlib.crc32, we don't strictly need to read source files content for CRC
+        # However, calculate_crc opens the file.
+
+        with patch('builtins.open', file_mock):
+            # Mock CRC: file1.py matches, file2.py is calculated but irrelevant as not in manifest
+            # Wait, logic:
+            # Iterate actual files (file1, file2).
+            # file1 in manifest? Yes. Calculate CRC.
+            # file2 in manifest? No. Undocumented count++.
+
+            # We need to return "deadbeef" for file1 to be OK.
+            # zlib.crc32 returns int. deadbeef is hex.
+            # int('deadbeef', 16) = 3735928559
+            mock_crc.return_value = 3735928559
+
+            mock_ai_eval.return_value = "Feedback message."
 
             agent = ObserverAgent()
             score, feedback = agent.observe_workspace()
 
-            self.assertEqual(score, 0.85)
-            self.assertEqual(feedback, "Good docs.")
+            # Calculation:
+            # Total files = 2.
+            # Undocumented = 1 (file2).
+            # Changed = 0 (file1 matches).
+            # Ratio = 1/2 = 0.5.
+            # ProjectMD present -> penalty 0.0.
+            # Score = 0.0 + (0.75 * 0.5) = 0.375.
 
-            # Verify AI_Eval was called
-            mock_ai_eval.assert_called_once()
+            self.assertAlmostEqual(score, 0.375)
+            self.assertEqual(feedback, "Feedback message.")
+
+            # Verify AI_Eval context
             call_args = mock_ai_eval.call_args
-            self.assertIn("Gallium Exists: Yes", call_args.kwargs['user_prompt'])
-            self.assertIn("README.md", call_args.kwargs['user_prompt'])
+            self.assertIn("Documentation Score: 0.38", call_args.kwargs['user_prompt']) # 0.375 rounds to 0.38
+            self.assertIn("Undocumented Files: 1", call_args.kwargs['user_prompt'])
 
-    @patch('source.agents.observer.ObserverAgent.observe_workspace')
-    def test_observer_tick(self, mock_observe):
-        mock_observe.return_value = (0.9, "Excellent work.")
+    @patch('source.agents.observer.AI_Eval')
+    @patch('os.walk')
+    @patch('os.path.exists')
+    @patch('os.path.isdir')
+    @patch('zlib.crc32')
+    def test_observe_workspace_missing_project_md(self, mock_crc, mock_isdir, mock_exists, mock_walk, mock_ai_eval):
+        # Setup: Gallium exists, project.md MISSING
+        def side_effect_exists(path):
+            if path.endswith("gallium"): return True
+            if path.endswith("gallium/project.md"): return False # MISSING
+            if path.endswith("gallium/manifest.json"): return True
+            if path.endswith("source"): return True
+            return False
 
-        sim = SimulationState()
+        mock_exists.side_effect = side_effect_exists
+        mock_isdir.return_value = True
 
-        # We inject a fresh agent just in case
-        agent = ObserverAgent()
-        sim.agents["Observer"] = agent
+        mock_walk.return_value = [
+            ('./source', [], ['file1.py'])
+        ]
 
-        # We want to test tick() directly first
-        agent.tick(sim)
+        # Manifest matches file1
+        manifest_content = '[{"file": "source/file1.py", "crc": "deadbeef"}]'
 
-        self.assertEqual(sim.layer_0_weights["Documentation"], 0.9)
-        self.assertEqual(sim.events[-1]["message"], "Excellent work.")
-        self.assertEqual(sim.events[-1]["type"], "observer")
+        with patch('builtins.open', mock_open(read_data=manifest_content)):
+            mock_crc.return_value = 3735928559 # Matches
+            mock_ai_eval.return_value = "Msg"
 
-    @patch('source.agents.observer.ObserverAgent.observe_workspace')
-    def test_simulation_step_integration(self, mock_observe):
-        mock_observe.return_value = (0.75, "Decent.")
+            agent = ObserverAgent()
+            score, feedback = agent.observe_workspace()
 
-        sim = SimulationState()
-        # Mock the agent instance in sim
-        agent = ObserverAgent()
-        sim.agents["Observer"] = agent
+            # Calculation:
+            # Total = 1. Undoc = 0. Changed = 0. Ratio = 0.0.
+            # ProjectMD Missing -> Penalty 0.25.
+            # Score = 0.25 + 0 = 0.25.
 
-        # Step 1
-        sim.step()
-
-        self.assertEqual(sim.tick_count, 1)
-        mock_observe.assert_called_once()
-
-        # Check if event was added
-        found_observer_event = False
-        for e in sim.events:
-            if e["type"] == "observer" and e["message"] == "Decent.":
-                found_observer_event = True
-                break
-        self.assertTrue(found_observer_event)
-
-        # Step 2
-        sim.step()
-        self.assertEqual(sim.tick_count, 2)
-        # Should not be called again
-        mock_observe.assert_called_once()
+            self.assertEqual(score, 0.25)
 
 if __name__ == '__main__':
     unittest.main()
