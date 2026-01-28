@@ -343,7 +343,7 @@
 
     <div class="controls">
         <button id="stepBtn">Step Simulation</button>
-        <!-- Future controls: Auto-Run, Reset -->
+        <button id="autoBtn">Auto Run</button>
     </div>
 
     <div class="container no-editor" id="main-container">
@@ -392,6 +392,7 @@
     <script>
         const statusDiv = document.getElementById('connection-status');
         const stepBtn = document.getElementById('stepBtn');
+        const autoBtn = document.getElementById('autoBtn');
         const weightsContainer = document.getElementById('weights-container');
         // const metricsContainer = document.getElementById('metrics-container'); // Removed/Simpler view for now
         const eventLog = document.getElementById('event-log');
@@ -492,6 +493,23 @@
                 ws.send(JSON.stringify({ type: 'step_simulation' }));
             }
         };
+
+        let isAuto = false;
+        autoBtn.onclick = () => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+
+            isAuto = !isAuto;
+            if (isAuto) {
+                ws.send(JSON.stringify({ type: 'start_auto' }));
+                autoBtn.textContent = 'Stop Auto';
+                autoBtn.style.background = '#cf6679'; // Error/Stop color
+            } else {
+                ws.send(JSON.stringify({ type: 'stop_auto' }));
+                autoBtn.textContent = 'Auto Run';
+                autoBtn.style.background = ''; // Revert to default
+            }
+        };
+
 
         // File Panel Toggle
         filePanelToggle.onclick = () => {

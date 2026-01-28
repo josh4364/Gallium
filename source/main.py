@@ -81,9 +81,12 @@ def main():
             logging.warning("Could not open default browser.")
 
         logging.info("Entering main loop. Press Ctrl+C to exit.")
+        auto_mode = False
+
         while True:
             msgs = server.get_messages()
             for msg in msgs:
+                # Log messages (skip auto-spam if needed, but for now log all except high freq if we want)
                 logging.info(f"Received from Web Client: {msg}")
                 
                 # Handle Step Action
@@ -97,6 +100,16 @@ def main():
                         "data": new_state
                     }
                     server.broadcast(update_msg)
+
+                # Handle Auto Start
+                elif isinstance(msg, dict) and msg.get("type") == "start_auto":
+                    logging.info("Auto-run started")
+                    auto_mode = True
+
+                # Handle Auto Stop
+                elif isinstance(msg, dict) and msg.get("type") == "stop_auto":
+                    logging.info("Auto-run stopped")
+                    auto_mode = False
                 
                 # Handle Initial State Request
                 elif isinstance(msg, dict) and msg.get("type") == "get_state":
@@ -149,8 +162,15 @@ def main():
                             "message": f"Failed to read file: {str(e)}"
                         })
 
-            
-            time.sleep(0.1)
+            if auto_mode:
+                new_state = sim_state.step()
+                server.broadcast({
+                    "type": "state_update",
+                    "data": new_state
+                })
+                time.sleep(0.01)
+            else:
+                time.sleep(0.1)
             
     except KeyboardInterrupt:
         print("\nStopping server...")

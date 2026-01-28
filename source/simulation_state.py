@@ -9,12 +9,11 @@ class SimulationState:
     def __init__(self):
         self.tick_count = 0
         self.events = []
+        # Modified initialization based on user request:
+        # Only 'Documentation' (fed by observer) and 'work-towards-goal'
         self.layer_0_weights = {
-            "Develop-Feature": 0.5,
-            "Refactor-Cleanup": 0.2,
-            "Fix-Bugs": 0.1,
-            "Improve-Tooling": 0.1,
-            "Documentation": 0.1
+            "Documentation": 0.0,
+            "work-towards-goal": 0.0
         }
         # In the future, these will be actual Agent objects
         self.agents = {
@@ -57,8 +56,9 @@ class SimulationState:
             except Exception as e:
                 logger.error(f"Observer tick failed: {e}")
 
-        # 1. Update Layer 0 Weights (Simulated for now)
-        self._simulate_weight_fluctuation()
+        # 1. Update Layer 0 Weights
+        # _simulate_weight_fluctuation removed/disabled as per request to rely on Observer or specific logic
+        # self._simulate_weight_fluctuation()
 
         # 2. Update Observer Metrics (Simulated)
         self._simulate_observer_metrics()
@@ -74,17 +74,9 @@ class SimulationState:
 
     def _simulate_weight_fluctuation(self):
         """Randomly adjusts weights to visualize change."""
-        changes = {k: random.uniform(-0.05, 0.05) for k in self.layer_0_weights}
-        
-        for k, change in changes.items():
-            self.layer_0_weights[k] = max(0.0, min(1.0, self.layer_0_weights[k] + change))
+        # Disabled for now
+        pass
             
-        # Normalize to sum to 1.0 (approximately)
-        total = sum(self.layer_0_weights.values())
-        if total > 0:
-            for k in self.layer_0_weights:
-                self.layer_0_weights[k] /= total
-
     def _simulate_observer_metrics(self):
         """Randomly adjusts observer metrics."""
         # Context saturation tends to go up slowly
