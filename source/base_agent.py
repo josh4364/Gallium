@@ -6,18 +6,19 @@ from google.genai import types, errors
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("GeminiClient")
+logger = logging.getLogger("Agent")
 
-class GeminiAgent:
-    def __init__(self, api_key, model_name="gemini-3-flash-preview"):
-        self.client = genai.Client(api_key=api_key)
+class Agent:
+    def __init__(self, client, model_name="gemini-3-flash-preview", tools=None, system_instruction=None):
+        self.client = client
         self.model_name = model_name
-        
         self.config = types.GenerateContentConfig(
             temperature=0.9,
             top_p=1,
             top_k=1,
             max_output_tokens=2048,
+            tools=tools,
+            system_instruction=system_instruction,
             safety_settings=[
                 types.SafetySetting(
                     category="HARM_CATEGORY_HARASSMENT",
@@ -40,10 +41,6 @@ class GeminiAgent:
 
     def start_chat(self, history=None):
         """Starts a new chat session with optional history."""
-        # Note: The history format for google-genai is different (list of Content objects or dicts).
-        # We'll pass history if provided, but the user of this abstraction should be aware of the format.
-        # If history is None, it starts empty.
-        
         chat = self.client.chats.create(model=self.model_name, config=self.config, history=history)
         return ChatSession(chat)
 

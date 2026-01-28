@@ -16,6 +16,8 @@
           nativeBuildInputs = with pkgs; [
             cmake
             pkg-config
+            fd
+            ripgrep
           ];
           buildInputs = with pkgs; [
             notcurses
@@ -29,6 +31,7 @@
             libnotify
             gdk-pixbuf
             glib
+            libqalculate
             (python3.withPackages (ps: with ps; [
                 google-genai
             ]))
