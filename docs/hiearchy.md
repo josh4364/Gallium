@@ -177,3 +177,21 @@ Had gemini eat the above and turn it into this with some added chatting, missing
 
 
 
+Layer 0 prompt
+
+```
+goal: "create a simple tetris in c using raylib"
+convert that into high level conceptual chunks for the development, not the step by step but the bigger picture.
+outputs:
+[{ "name" : "setup build environemnt for C development" },
+ { "name" : "gather dependices such as raylib to make building the game easy and validate that they can build" },
+ { "name" : "build the game skeleton" },
+ { "name" : "build the peice shuffling logic" },
+ { "name" : "build the core gameplay loop dropping peices and ticking them slowly downwards" },
+ { "name" : "build the scoring logic and row filling completion" },
+ { "name" : "polish the visuals" }]
+```
+
+
+
+

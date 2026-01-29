@@ -319,6 +319,31 @@
             color: var(--error-color);
         }
 
+        /* Source Metrics */
+        #metrics-list {
+            overflow-y: auto;
+            flex: 1;
+            font-size: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .metric-entry {
+            display: grid;
+            grid-template-columns: 1fr 80px 60px;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 1px solid #333;
+            color: var(--text-secondary);
+        }
+
+        .metric-header {
+            font-weight: 600;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+
         /* Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -332,6 +357,49 @@
             background: #444;
             border-radius: 4px;
         }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            width: 500px;
+            max-width: 90%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        #goal-input {
+            width: 100%;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px;
+            border-radius: 4px;
+            margin: 15px 0;
+            resize: vertical;
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+            /* Fix padding issue */
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 
@@ -340,6 +408,18 @@
         <h1>Gallium AI Simulation</h1>
         <div id="connection-status">Connecting...</div>
     </header>
+
+    <!-- Goal Modal -->
+    <div id="goal-modal" class="modal">
+        <div class="modal-content">
+            <h2>Set Simulation Goal</h2>
+            <p>The simulation requires a top-level goal to proceed.</p>
+            <textarea id="goal-input" placeholder="Enter your project goal here..." rows="4"></textarea>
+            <div class="modal-buttons">
+                <button id="submit-goal-btn">Set Goal</button>
+            </div>
+        </div>
+    </div>
 
     <div class="controls">
         <button id="stepBtn">Step Simulation</button>
@@ -374,9 +454,62 @@
                     <span id="tick-count" style="font-weight: bold; color: var(--secondary-color);">0</span>
                 </div>
 
+                <h3 style="font-size: 16px; margin-top: 20px; color: var(--text-secondary);">Active Goals</h3>
+                <div class="stat-row" style="margin-bottom: 8px;">
+                    <span style="font-size: 12px; color: #888; width: 60px;">Layer 0:</span>
+                    <span id="layer0-goal"
+                        style="font-weight: 600; color: var(--primary-color); text-align: right; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
+                </div>
+                <div class="stat-row" style="margin-bottom: 8px;">
+                    <span style="font-size: 12px; color: #888; width: 60px;">Layer 1:</span>
+                    <span id="layer1-goal"
+                        style="font-weight: 600; color: var(--secondary-color); text-align: right; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
+                </div>
+                <div class="stat-row" style="margin-bottom: 8px;">
+                    <span style="font-size: 12px; color: #888; width: 60px;">Layer 2:</span>
+                    <span id="layer2-goal"
+                        style="font-weight: 600; color: #ff79c6; text-align: right; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
+                </div>
+                <div class="stat-row" style="margin-bottom: 20px;">
+                    <span style="font-size: 12px; color: #888; width: 60px;">Layer 3:</span>
+                    <span id="layer3-goal"
+                        style="font-weight: 600; color: #f1fa8c; text-align: right; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
+                </div>
+
                 <h3 style="font-size: 16px; margin-top: 20px; color: var(--text-secondary);">Layer 0 Priorities</h3>
                 <div id="weights-container">
                     <!-- Weights injected here -->
+                </div>
+
+                <h3 style="font-size: 16px; margin-top: 20px; color: var(--text-secondary);">Conceptual Breakdown</h3>
+                <div id="chunks-container"
+                    style="font-size: 13px; color: var(--text-secondary); max-height: 200px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px;">
+                    <!-- Chunks injected here -->
+                </div>
+
+                <h3 style="font-size: 16px; margin-top: 20px; color: var(--text-secondary);">Functional Tasks</h3>
+                <div id="tasks-container"
+                    style="font-size: 13px; color: var(--text-secondary); max-height: 200px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px;">
+                    <!-- Tasks injected here -->
+                </div>
+
+                <h3 style="font-size: 16px; margin-top: 20px; color: var(--text-secondary);">Atomic Subtasks (Actions)
+                </h3>
+                <div id="subtasks-container"
+                    style="font-size: 13px; color: var(--text-secondary); max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                    <!-- Subtasks injected here -->
+                </div>
+            </div>
+
+            <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+                <h2>Source File Metrics</h2>
+                <div class="metric-entry metric-header">
+                    <span>File</span>
+                    <span>CRC</span>
+                    <span>Tokens</span>
+                </div>
+                <div id="metrics-list">
+                    <!-- Metrics injected here -->
                 </div>
             </div>
 
@@ -397,8 +530,18 @@
         // const metricsContainer = document.getElementById('metrics-container'); // Removed/Simpler view for now
         const eventLog = document.getElementById('event-log');
         const tickCountSpan = document.getElementById('tick-count');
+        const layer0GoalSpan = document.getElementById('layer0-goal');
+        const layer1GoalSpan = document.getElementById('layer1-goal');
+        const layer2GoalSpan = document.getElementById('layer2-goal');
+        const layer3GoalSpan = document.getElementById('layer3-goal');
         const editorFilename = document.getElementById('editor-filename');
         const closeEditorBtn = document.getElementById('close-editor-btn');
+        const metricsList = document.getElementById('metrics-list');
+
+        // Modal Elements
+        const goalModal = document.getElementById('goal-modal');
+        const goalInput = document.getElementById('goal-input');
+        const submitGoalBtn = document.getElementById('submit-goal-btn');
 
         // File Panel elements
         const filePanelContent = document.getElementById('file-panel-content');
@@ -423,7 +566,6 @@
         let currentState = {
             tick: 0,
             weights: {},
-            observer_metrics: {},
             latest_events: []
         };
 
@@ -448,6 +590,7 @@
                 const msg = JSON.parse(event.data);
                 if (msg.type === 'state_update') {
                     updateState(msg.data);
+                    refreshFileSystem();
                 } else if (msg.type === 'file_list') {
                     // Update cache for this path
                     // Ensure msg.path is normalized (no leading ./, no trailing /)
@@ -526,6 +669,20 @@
         // Editor Close Button
         closeEditorBtn.onclick = () => {
             mainContainer.classList.add('no-editor');
+        };
+
+        // Goal Submit Logic
+        submitGoalBtn.onclick = () => {
+            const goal = goalInput.value.trim();
+            if (goal) {
+                ws.send(JSON.stringify({
+                    type: 'submit_goal',
+                    goal: goal
+                }));
+                // Optimistically hide, though state update will confirm
+                goalModal.style.display = 'none';
+                goalInput.value = '';
+            }
         };
 
         function renderFileTree() {
@@ -628,22 +785,61 @@
             return container;
         }
 
+        function refreshFileSystem() {
+            if (ws.readyState === WebSocket.OPEN) {
+                // Refresh Root
+                ws.send(JSON.stringify({ type: 'get_files', path: '' }));
+
+                // Refresh Expanded Directories
+                expandedDirs.forEach(path => {
+                    ws.send(JSON.stringify({ type: 'get_files', path: path }));
+                });
+            }
+        }
+
         function updateState(data) {
             currentState = data;
 
             // Update Tick
             tickCountSpan.textContent = data.tick;
 
+            // Update Goals
+            layer0GoalSpan.textContent = data.layer0_goal || "-";
+            layer0GoalSpan.title = data.layer0_goal || "";
+            layer1GoalSpan.textContent = data.layer1_goal || "-";
+            layer1GoalSpan.title = data.layer1_goal || "";
+            layer2GoalSpan.textContent = data.layer2_goal || "-";
+            layer2GoalSpan.title = data.layer2_goal || "";
+            layer3GoalSpan.textContent = data.layer3_goal || "-";
+            layer3GoalSpan.title = data.layer3_goal || "";
+
             // Update Weights
             renderWeights(data.weights);
 
-            // Update Observer Metrics
-            // if (data.observer_metrics) {
-            //    renderMetrics(data.observer_metrics);
-            //}
+            // Update Chunks
+            renderChunks(data.conceptual_chunks);
+
+            // Update Tasks
+            renderTasks(data.tasks);
+
+            // Update Subtasks
+            renderSubtasks(data.subtasks);
+
 
             // Update Logs
             renderLogs(data.latest_events);
+
+            // Update Source Metrics
+            if (data.source_file_metrics) {
+                renderFileMetrics(data.source_file_metrics);
+            }
+
+            // Update Modal State
+            if (data.goal_request_active) {
+                goalModal.style.display = 'flex';
+            } else {
+                goalModal.style.display = 'none';
+            }
         }
 
         function renderWeights(weights) {
@@ -669,6 +865,57 @@
                 `;
                 weightsContainer.appendChild(item);
             });
+        }
+
+        function renderChunks(chunks) {
+            const chunksContainer = document.getElementById('chunks-container');
+            if (!chunksContainer) return;
+
+            if (!chunks || chunks.length === 0) {
+                chunksContainer.innerHTML = '<div style="padding: 10px; font-style: italic; color: #555;">No chunks defined yet. Waiting for breakdown...</div>';
+                return;
+            }
+
+            chunksContainer.innerHTML = chunks.map((chunk, index) => `
+                <div style="padding: 10px; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; background: rgba(187, 134, 252, 0.05); border-radius: 4px; margin-bottom: 4px;">
+                    <span style="color: var(--primary-color); font-weight: bold; margin-right: 12px; min-width: 18px;">${index + 1}</span>
+                    <span style="color: #eee; line-height: 1.4;">${chunk.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderTasks(tasks) {
+            const tasksContainer = document.getElementById('tasks-container');
+            if (!tasksContainer) return;
+
+            if (!tasks || tasks.length === 0) {
+                tasksContainer.innerHTML = '<div style="padding: 10px; font-style: italic; color: #555;">No tasks sequenced yet for the current chunk.</div>';
+                return;
+            }
+
+            tasksContainer.innerHTML = tasks.map((task, index) => `
+                <div style="padding: 10px; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; background: rgba(3, 218, 198, 0.05); border-radius: 4px; margin-bottom: 4px;">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} disabled style="margin-right: 12px; accent-color: var(--secondary-color);">
+                    <span style="color: #eee; line-height: 1.4;">${task.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderSubtasks(subtasks) {
+            const subtasksContainer = document.getElementById('subtasks-container');
+            if (!subtasksContainer) return;
+
+            if (!subtasks || subtasks.length === 0) {
+                subtasksContainer.innerHTML = '<div style="padding: 10px; font-style: italic; color: #555;">No subtasks decoded yet for the current task.</div>';
+                return;
+            }
+
+            subtasksContainer.innerHTML = subtasks.map((st, index) => `
+                <div style="padding: 10px; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; background: rgba(255, 121, 198, 0.05); border-radius: 4px; margin-bottom: 4px;">
+                    <input type="checkbox" ${st.completed ? 'checked' : ''} disabled style="margin-right: 12px; accent-color: #ff79c6;">
+                    <span style="color: #eee; line-height: 1.4;">${st.name}</span>
+                </div>
+            `).join('');
         }
 
         function renderLogs(events) {
@@ -699,6 +946,26 @@
 
             // Auto scroll to bottom
             eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        function renderFileMetrics(metrics) {
+            metricsList.innerHTML = '';
+
+            // Sort files alphabetically
+            const filenames = Object.keys(metrics).sort();
+
+            filenames.forEach(file => {
+                const data = metrics[file];
+                const entry = document.createElement('div');
+                entry.className = 'metric-entry';
+
+                entry.innerHTML = `
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${file}">${file}</span>
+                    <span style="color: #888;">${data.crc || '00000000'}</span>
+                    <span style="text-align: right; color: var(--secondary-color);">${data.tokens || 0}</span>
+                `;
+                metricsList.appendChild(entry);
+            });
         }
 
         // Initialize empty state

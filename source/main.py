@@ -157,10 +157,26 @@ def main():
                             "data": content
                         })
                     except Exception as e:
-                         server.broadcast({
+                        logging.error(f"Error reading file: {e}")
+                        server.broadcast({
                             "type": "error",
                             "message": f"Failed to read file: {str(e)}"
                         })
+
+                # Handle Goal Submission
+                elif isinstance(msg, dict) and msg.get("type") == "submit_goal":
+                    try:
+                        goal = msg.get("goal")
+                        if goal:
+                            sim_state.set_layer0_goal(goal)
+                            logging.info(f"Received goal: {goal}")
+                            # Broadcast immediate update to reflect goal state change (optional, but good for UI)
+                            server.broadcast({
+                                "type": "state_update",
+                                "data": sim_state.get_state()
+                            })
+                    except Exception as e:
+                         logging.error(f"Error setting goal: {e}")
 
             if auto_mode:
                 new_state = sim_state.step()
@@ -168,6 +184,16 @@ def main():
                     "type": "state_update",
                     "data": new_state
                 })
+                
+                if new_state.get("all_work_finished"):
+                    logging.info("Auto-run stopped: All work completed.")
+                    auto_mode = False
+                    # Optionally notify client via dedicated event
+                    server.broadcast({
+                        "type": "info",
+                        "message": "Simulation paused: All conceptual chunks completed."
+                    })
+
                 time.sleep(0.01)
             else:
                 time.sleep(0.1)

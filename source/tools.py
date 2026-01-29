@@ -717,5 +717,155 @@ def read_terminal(process_id: str, name: str) -> str:
     return command_status(process_id)["output"]
 
 
+# Goal Management Tools
+
+def _get_manifest_path():
+    return os.path.join(os.getcwd(), "gallium", "manifest.json")
+
+def _load_manifest():
+    path = _get_manifest_path()
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def _save_manifest(data):
+    path = _get_manifest_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def add_high_level_goal(name: str) -> str:
+    """Adds a new high-level conceptual chunk to the project plan."""
+    manifest = _load_manifest()
+    chunks = manifest.get("conceptual_chunks", [])
+    chunks.append({"name": name, "completed": False})
+    manifest["conceptual_chunks"] = chunks
+    _save_manifest(manifest)
+    return f"Added goal: {name}"
+
+def list_high_level_goals() -> str:
+    """Returns the current list of high-level conceptual chunks with their IDs."""
+    manifest = _load_manifest()
+    chunks = manifest.get("conceptual_chunks", [])
+    if not chunks:
+        return "The goal list is currently empty."
+    output = "Current Conceptual Chunks:\n"
+    for i, chunk in enumerate(chunks):
+        output += f"{i}: {chunk['name']}\n"
+    return output
+
+def remove_high_level_goal(goal_id: int) -> str:
+    """Removes a high-level goal by its ID number."""
+    manifest = _load_manifest()
+    chunks = manifest.get("conceptual_chunks", [])
+    try:
+        if 0 <= goal_id < len(chunks):
+            removed = chunks.pop(goal_id)
+            manifest["conceptual_chunks"] = chunks
+            _save_manifest(manifest)
+            return f"Removed goal: {removed['name']}"
+        else:
+            return f"Error: Invalid goal ID {goal_id}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def finished_editing_goals() -> str:
+    """Indicates that you have completed organizing the high-level chunks."""
+    manifest = _load_manifest()
+    manifest["editing_finished"] = True
+    _save_manifest(manifest)
+    return "Goal breakdown complete."
+
+def add_task(name: str) -> str:
+    """Adds a new functional task to the current conceptual chunk."""
+    manifest = _load_manifest()
+    tasks = manifest.get("tasks", [])
+    tasks.append({"name": name, "completed": False})
+    manifest["tasks"] = tasks
+    _save_manifest(manifest)
+    return f"Added task: {name}"
+
+def list_tasks() -> str:
+    """Returns the current list of functional tasks for the active chunk."""
+    manifest = _load_manifest()
+    tasks = manifest.get("tasks", [])
+    if not tasks:
+        return "The task list is currently empty."
+    output = "Current Tasks:\n"
+    for i, task in enumerate(tasks):
+        status = "[X]" if task.get("completed") else "[ ]"
+        output += f"{i}: {status} {task['name']}\n"
+    return output
+
+def remove_task(task_id: int) -> str:
+    """Removes a functional task by its ID number."""
+    manifest = _load_manifest()
+    tasks = manifest.get("tasks", [])
+    try:
+        if 0 <= task_id < len(tasks):
+            removed = tasks.pop(task_id)
+            manifest["tasks"] = tasks
+            _save_manifest(manifest)
+            return f"Removed task: {removed['name']}"
+        else:
+            return f"Error: Invalid task ID {task_id}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def finished_sequencing() -> str:
+    """Indicates that you have finished breaking the conceptual chunk into tasks."""
+    manifest = _load_manifest()
+    manifest["sequencing_finished"] = True
+    _save_manifest(manifest)
+    return "Sequencing complete. Tasks are ready for decomposition."
+
+def add_subtask(name: str) -> str:
+    """Adds a new atomic '5-minute' subtask to the current functional task."""
+    manifest = _load_manifest()
+    subtasks = manifest.get("subtasks", [])
+    subtasks.append({"name": name, "completed": False})
+    manifest["subtasks"] = subtasks
+    _save_manifest(manifest)
+    return f"Added subtask: {name}"
+
+def list_subtasks() -> str:
+    """Returns the current list of atomic subtasks for the active task."""
+    manifest = _load_manifest()
+    subtasks = manifest.get("subtasks", [])
+    if not subtasks:
+        return "The subtask list is currently empty."
+    output = "Current Atomic Subtasks:\n"
+    for i, subtask in enumerate(subtasks):
+        status = "[X]" if subtask.get("completed") else "[ ]"
+        output += f"{i}: {status} {subtask['name']}\n"
+    return output
+
+def remove_subtask(subtask_id: int) -> str:
+    """Removes an atomic subtask by its ID number."""
+    manifest = _load_manifest()
+    subtasks = manifest.get("subtasks", [])
+    try:
+        if 0 <= subtask_id < len(subtasks):
+            removed = subtasks.pop(subtask_id)
+            manifest["subtasks"] = subtasks
+            _save_manifest(manifest)
+            return f"Removed subtask: {removed['name']}"
+        else:
+            return f"Error: Invalid subtask ID {subtask_id}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def finished_decoding() -> str:
+    """Indicates that you have finished breaking the task into atomic actions."""
+    manifest = _load_manifest()
+    manifest["decoding_finished"] = True
+    _save_manifest(manifest)
+    return "Decoding complete. Actions are ready for execution."
+
+
 
 

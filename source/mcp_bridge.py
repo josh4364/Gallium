@@ -74,6 +74,66 @@ def run_command(command_line: str, cwd: str) -> str:
     except Exception as e:
         return f"Error: {e}"
 
+@server.tool()
+def add_high_level_goal(name: str) -> str:
+    """Adds a new high-level conceptual chunk to the project plan."""
+    return tools.add_high_level_goal(name)
+
+@server.tool()
+def list_high_level_goals() -> str:
+    """Returns the current list of high-level conceptual chunks with their IDs."""
+    return tools.list_high_level_goals()
+
+@server.tool()
+def remove_high_level_goal(goal_id: int) -> str:
+    """Removes a high-level goal by its ID number."""
+    return tools.remove_high_level_goal(goal_id)
+
+@server.tool()
+def finished_editing_goals() -> str:
+    """Indicates that you have completed organizing the high-level chunks."""
+    return tools.finished_editing_goals()
+
+@server.tool()
+def add_task(name: str) -> str:
+    """Adds a new functional task to the current conceptual chunk."""
+    return tools.add_task(name)
+
+@server.tool()
+def list_tasks() -> str:
+    """Returns the current list of functional tasks for the active chunk."""
+    return tools.list_tasks()
+
+@server.tool()
+def remove_task(task_id: int) -> str:
+    """Removes a functional task by its ID number."""
+    return tools.remove_task(task_id)
+
+@server.tool()
+def finished_sequencing() -> str:
+    """Indicates that you have finished breaking the conceptual chunk into tasks."""
+    return tools.finished_sequencing()
+
+@server.tool()
+def add_subtask(name: str) -> str:
+    """Adds a new atomic '5-minute' subtask to the current functional task."""
+    return tools.add_subtask(name)
+
+@server.tool()
+def list_subtasks() -> str:
+    """Returns the current list of atomic subtasks for the active task."""
+    return tools.list_subtasks()
+
+@server.tool()
+def remove_subtask(subtask_id: int) -> str:
+    """Removes an atomic subtask by its ID number."""
+    return tools.remove_subtask(subtask_id)
+
+@server.tool()
+def finished_decoding() -> str:
+    """Indicates that you have finished breaking the task into atomic actions."""
+    return tools.finished_decoding()
+
 # Add other tools as needed
 
 # Add other tools as needed

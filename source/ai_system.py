@@ -38,7 +38,8 @@ def AI_Eval(
     context_data: dict = None,
     tools: list = None,
     model_name: str = "gemini-3-flash-preview",
-    use_fallback: bool = False
+    use_fallback: bool = False,
+    response_mime_type: str = None
 ):
     """
     Evaluates the prompt using the configured backend (API or CLI Fallback).
@@ -50,6 +51,7 @@ def AI_Eval(
         tools: List of tools to make available.
         model_name: The model to use.
         use_fallback: Whether to force use of the CLI fallback.
+        response_mime_type: Optional MIME type for the response (e.g., 'application/json').
         
     Returns:
         The text response from the AI.
@@ -62,20 +64,43 @@ def AI_Eval(
             full_prompt += f"--- {k} ---\n{v}\n"
 
     if use_fallback:
-        return _eval_with_cli(system_prompt, full_prompt, tools)
+        return _eval_with_cli(system_prompt, full_prompt, tools, response_mime_type)
     
-    return _eval_with_api(system_prompt, full_prompt, tools, model_name)
+    return _eval_with_api(system_prompt, full_prompt, tools, model_name, response_mime_type)
 
-def _eval_with_api(system_prompt, full_prompt, tools, model_name):
+def AI_Eval_to_json(
+    system_prompt: str,
+    user_prompt: str,
+    context_data: dict = None,
+    tools: list = None,
+    model_name: str = "gemini-3-flash-preview",
+    use_fallback: bool = False
+):
+    """
+    Variant of AI_Eval that requests a JSON response.
+    """
+    return AI_Eval(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        context_data=context_data,
+        tools=tools,
+        model_name=model_name,
+        use_fallback=use_fallback,
+        response_mime_type="application/json"
+    )
+
+def _eval_with_api(system_prompt, full_prompt, tools, model_name, response_mime_type=None):
     client = get_client()
     
     config = types.GenerateContentConfig(
-        temperature=0.7, # Lower temperature for decision making?
+        temperature=0.7, 
         top_p=0.95,
         top_k=64,
         max_output_tokens=8192,
         tools=tools,
         system_instruction=system_prompt,
+        response_mime_type=response_mime_type,
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False),
         safety_settings=[
             types.SafetySetting(
                 category="HARM_CATEGORY_HATE_SPEECH",
@@ -102,10 +127,6 @@ def _eval_with_api(system_prompt, full_prompt, tools, model_name):
 
     while attempt <= max_retries:
         try:
-            # We use chats.create but for a single turn it's effectively generate_content
-            # behavior, but maintaining the chat interface used in base_agent might be desired.
-            # However, AI_Eval sounds like a single function call.
-            # Lets use models.generate_content for pure functional use
             response = client.models.generate_content(
                 model=model_name,
                 contents=full_prompt,
@@ -119,7 +140,7 @@ def _eval_with_api(system_prompt, full_prompt, tools, model_name):
             
             if is_quota_error:
                 logger.warning(f"Quota exhausted (429). Switching to CLI fallback immediately.")
-                return _eval_with_cli(system_prompt, full_prompt, tools)
+                return _eval_with_cli(system_prompt, full_prompt, tools, response_mime_type)
 
             is_retryable = "UNAVAILABLE" in error_str or "503" in error_str
 
@@ -137,9 +158,7 @@ def _eval_with_api(system_prompt, full_prompt, tools, model_name):
                 # Try fallback for other errors too? Maybe not.
                 raise e
 
-                raise e
-
-def _eval_with_cli(system_prompt, full_prompt, tools=None):
+def _eval_with_cli(system_prompt, full_prompt, tools=None, response_mime_type=None):
     """
     Attempts to use the gemini-cli via nix shell.
     Uses source.fallback module configuration.
@@ -152,7 +171,6 @@ def _eval_with_cli(system_prompt, full_prompt, tools=None):
     # Extract tool names
     allowed_tool_names = None
     if tools:
-        # Assuming tools is a list of functions
         try:
             allowed_tool_names = [t.__name__ for t in tools if hasattr(t, '__name__')]
         except Exception as e:
@@ -160,26 +178,30 @@ def _eval_with_cli(system_prompt, full_prompt, tools=None):
             
     # Ensure MCP is configured so the CLI has tools
     try:
-        # Pass current CWD (which should be the sandbox root set by main.py)
         fallback.ensure_mcp_configured(allowed_tools=allowed_tool_names, cwd=os.getcwd())
     except Exception as e:
         logger.warning(f"Failed to ensure MCP configured: {e}")
 
     # Combining system prompt and user prompt
-    # Note: CLI might treat them as single prompt anyway via --yolo or --prompt
     combined_prompt = f"SYSTEM INSTRUCTION:\n{system_prompt}\n\nUSER PROMPT:\n{full_prompt}"
     
-    # Escape quotes for shell safety
+    # Use shlex to split the base command safely
     import shlex
-    quoted_prompt = shlex.quote(combined_prompt)
+    cmd_base = shlex.split(fallback.GEMINI_CLI_CMD)
     
-    # Construct command using fallback constant + yolo
-    cmd = f"{fallback.GEMINI_CLI_CMD} --yolo --prompt {quoted_prompt}"
+    # Construct full argument list
+    cmd_args = cmd_base + ["--yolo", "--model", "gemini-3-flash-preview"]
     
-    logger.info(f"Attempting fallback to gemini-cli: {cmd}")
+    if response_mime_type == "application/json":
+        cmd_args += ["--output-format", "json"]
+    
+    cmd_args += ["--prompt", combined_prompt]
+    
+    logger.info(f"Attempting fallback to gemini-cli: {' '.join(shlex.quote(a) for a in cmd_args)}")
     
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        # Using shell=False with a list of arguments is much safer and avoids shell evaluation issues.
+        result = subprocess.run(cmd_args, capture_output=True, text=True)
         
         # Log stdout/stderr for debugging
         if result.stdout:

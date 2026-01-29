@@ -1,44 +1,69 @@
+import logging
 import inspect
-from pathlib import Path
 from source.ai_system import AI_Eval
 import source.tools as tools_module
 
-SYSTEM_PROMPT_PATH = Path(__file__).parent / "worker_prompt.md"
+logger = logging.getLogger("ActionAgent")
 
-def get_worker_tools():
-    """Retrieve all available tools from the tools module."""
-    tool_list = []
-    for name, obj in inspect.getmembers(tools_module):
-        if inspect.isfunction(obj) and not name.startswith('_'):
-            tool_list.append(obj)
-    return tool_list
+class ActionAgent:
+    def __init__(self):
+        self.model_name = "gemini-3-flash-preview"
 
-def run_worker_task(task: str, context: dict = None, use_fallback: bool = False):
-    """
-    Executes a worker task using the AI_Eval system.
-    
-    Args:
-        task: The specific task description for the worker.
-        context: Optional dictionary of context (file contents, previous steps, etc).
-        use_fallback: Whether to force CLI fallback.
-        
-    Returns:
-        The text response from the worker.
-    """
-    if not SYSTEM_PROMPT_PATH.exists():
-         raise FileNotFoundError(f"Worker system prompt not found at {SYSTEM_PROMPT_PATH}")
-    
-    system_prompt = SYSTEM_PROMPT_PATH.read_text(encoding='utf-8')
-    worker_tools = get_worker_tools()
-    
-    # We can inject the task as the "User Prompt" for the AI_Eval
-    response = AI_Eval(
-        system_prompt=system_prompt,
-        user_prompt=task,
-        context_data=context,
-        tools=worker_tools,
-        model_name="gemini-3-flash-preview", 
-        use_fallback=use_fallback
-    )
-    
-    return response
+    def get_action_tools(self):
+        """Retrieve all available tools from the tools module."""
+        tool_list = []
+        for name, obj in inspect.getmembers(tools_module):
+            if inspect.isfunction(obj) and not name.startswith('_'):
+                tool_list.append(obj)
+        return tool_list
+
+    def tick(self, simulation_state, subtask_name: str, feedback: str = None):
+        """
+        Layer 3 Action logic.
+        Performs a single AI_Eval call to complete an atomic subtask.
+        """
+        logger.info(f"Action tick started for subtask: {subtask_name}")
+        simulation_state._add_event(f"Layer 3: Executing action '{subtask_name}'...", "info")
+
+        # Get context: chunks and tasks for broader awareness but strict directive
+        system_prompt = f"""You are a Layer 3 Action Agent.
+Your role is to perform a SINGLE ATOMIC WORK TASK.
+
+TASK TO EXECUTE: "{subtask_name}"
+
+Your goal is to complete this task and ONLY this task using the tools provided.
+Do not start other tasks. 
+
+If this is a retry, here is the FEEDBACK from the previous attempt:
+{feedback if feedback else "No feedback provided (first attempt)."}
+
+Use your tools (edit_file, run_command, etc.) to perform the work.
+"""
+
+        user_prompt = f"Executing subtask: '{subtask_name}'. Please perform the work now."
+        action_tools = self.get_action_tools()
+
+        try:
+            # Single AI_Eval call
+            response = AI_Eval(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                tools=action_tools,
+                model_name=self.model_name
+            )
+            
+            # Post result to Layer 2 Mailbox
+            result = {
+                "subtask": subtask_name,
+                "response": response,
+                "status": "completed"
+            }
+            simulation_state._post_to_mailbox("Layer2", result)
+            
+            simulation_state._add_event(f"Layer 3: Completed '{subtask_name}'. Posted to Layer 2 Mailbox.", "info")
+            return response
+
+        except Exception as e:
+            logger.error(f"Action execution failed: {e}")
+            simulation_state._add_event(f"Action Error: {e}", "error")
+            return None
