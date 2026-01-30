@@ -102,30 +102,85 @@ Object.assign(NodeGraph.prototype, {
     },
 
     async saveToFile() {
-        let json;
         if (window.funcManager && window.funcManager.functionDB) {
             await window.funcManager.saveCurrentFunction();
-            json = window.funcManager.functionDB.dump();
+
+            const currentFuncId = window.funcManager.currentFunctionId;
+            const currentFunc = window.funcManager.functionDB.getFunction(currentFuncId);
+
+            if (currentFunc) {
+                // Prepare Payload for Server
+                // We want to unpack 'data' string into the object so the server has a clean JSON
+                let graphData = {};
+                try {
+                    graphData = JSON.parse(currentFunc.data);
+                } catch (e) {
+                    console.error("Error parsing graph data", e);
+                }
+
+                const payload = {
+                    id: currentFunc.id,
+                    name: currentFunc.name,
+                    description: currentFunc.description,
+                    tags: currentFunc.tags,
+                    inputs: currentFunc.inputs,
+                    outputs: currentFunc.outputs,
+                    nodes: graphData.nodes || [],
+                    connections: graphData.connections || [],
+                    view: graphData.view
+                };
+
+                // Send to Server via Parent
+                if (window.parent && window.parent.saveFunctionToServer) {
+                    window.parent.saveFunctionToServer(currentFunc.id, payload);
+                    this.showNotification("Saving to Server...");
+                    return;
+                }
+            }
+
+            // Fallback: Download full DB if no server connection or legacy
+            const json = window.funcManager.functionDB.dump();
+            this.downloadFile(json, 'project_state.json');
         } else {
-            json = await this.serialize();
+            // Single graph mode
+            const json = await this.serialize();
+            // Try server save for single graph? 
+            if (window.parent && window.parent.saveFunctionToServer) {
+                const data = JSON.parse(json);
+                // Assign a temp ID
+                window.parent.saveFunctionToServer("graph_" + Date.now(), data);
+                this.showNotification("Saving to Server...");
+                return;
+            }
+            this.downloadFile(json, 'graph_state.graph');
         }
+    },
 
-        const compressed = await this.compress(json);
-        const b64 = compressed.split(',')[1];
+    downloadFile(content, filename) {
+        const stream = new Blob([content]).stream();
+        const compressedReadableStream = stream.pipeThrough(new CompressionStream("gzip"));
+        // For simple download we might not need compression if saving to disk? 
+        // But original code did compress. Let's keep it simple for now and just text download if it's fallback.
+        // Actually original used gzip.
+        // Let's just do plain text for fallback to be safe/inspectable, or stick to compress.
+        // Re-implementing original compression logic for download:
 
-        const blob = new Blob([b64], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'project_state.graph';
-        document.body.appendChild(a);
-        a.click();
-
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 100);
+        // ... (truncated reuse of compress helper)
+        this.compress(content).then(compressed => {
+            const b64 = compressed.split(',')[1];
+            const blob = new Blob([b64], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        });
     },
 
     triggerLoad() {
@@ -208,10 +263,29 @@ Object.assign(NodeGraph.prototype, {
         if (countEl) countEl.innerText = 0;
     },
 
-    async loadData(jsonString) {
+    async loadData(input) {
         this.isRestoring = true;
         try {
-            const data = JSON.parse(jsonString);
+            let data;
+            if (typeof input === 'string') {
+                try {
+                    data = JSON.parse(input);
+                } catch (e) {
+                    console.error("GraphPersistence: Failed to parse JSON string", e);
+                    return;
+                }
+            } else if (typeof input === 'object') {
+                data = input;
+            } else {
+                console.error("GraphPersistence: Invalid data type", typeof input);
+                return;
+            }
+
+            if (!data) {
+                console.error("GraphPersistence: Data is null/undefined");
+                return;
+            }
+
             this.clear();
 
             // View

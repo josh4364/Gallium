@@ -4,47 +4,47 @@ const nodeRegistry = [
         name: 'Function Inputs',
         tags: ['Function', 'input', 'start'],
         inputs: [], // Dynamic
-        outputs: [{ label: 'Flow', type: 'exec' }] // Defaults
+        outputs: [{ label: 'exec_out', type: 'exec' }] // Defaults
     },
     {
         type: 'function_return',
         name: 'Return',
         tags: ['Function', 'output', 'end'],
-        inputs: [{ label: 'Flow', type: 'exec' }], // Defaults
+        inputs: [{ label: 'exec_in', type: 'exec' }], // Defaults
         outputs: [] // Dynamic
     },
     {
         type: 'function_call',
         name: 'Function Call',
         tags: ['Function', 'call'],
-        inputs: [{ label: 'In', type: 'exec' }], // Dynamic
-        outputs: [{ label: 'Out', type: 'exec' }] // Dynamic
+        inputs: [{ label: 'exec_in', type: 'exec' }], // Dynamic
+        outputs: [{ label: 'exec_out', type: 'exec' }] // Dynamic
     },
     {
         type: 'selector',
         name: 'Selector',
         tags: ['Flow', 'control', 'composite'],
-        inputs: [{ label: 'In', type: 'exec' }],
-        outputs: [{ label: 'Out', type: 'exec' }]
+        inputs: [{ label: 'exec_in', type: 'exec' }],
+        outputs: [{ label: 'exec_out', type: 'exec' }]
     },
     {
         type: 'sequence',
         name: 'Sequence',
         tags: ['Flow', 'control', 'composite'],
-        inputs: [{ label: 'In', type: 'exec' }],
-        outputs: [{ label: 'Out', type: 'exec' }]
+        inputs: [{ label: 'exec_in', type: 'exec' }],
+        outputs: [{ label: 'exec_out', type: 'exec' }]
     },
     {
         type: 'condition',
         name: 'Branch',
         tags: ['Flow', 'logic', 'if', 'condition'],
         inputs: [
-            { label: 'In', type: 'exec' },
+            { label: 'exec_in', type: 'exec' },
             { label: 'Condition', type: 'boolean', key: 'condition' }
         ],
         outputs: [
-            { label: 'True', type: 'exec' },
-            { label: 'False', type: 'exec' }
+            { label: 'exec_true', type: 'exec' },
+            { label: 'exec_false', type: 'exec' }
         ],
         params: { condition: false }
     },
@@ -57,8 +57,32 @@ const nodeRegistry = [
             { label: 'In', type: 'exec' },
             { label: 'Message', type: 'string', key: 'message' }
         ],
-        outputs: [{ label: 'Out', type: 'exec' }],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
         params: { name: 'Behavior Task', message: 'Hello' }
+    },
+    {
+        type: 'log_message',
+        name: 'Log Message',
+        tags: ['Actions', 'print', 'debug', 'log'],
+        color: '#2196F3',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Message', type: 'string', key: 'message' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
+        params: { message: 'Hello World' }
+    },
+    {
+        type: 'set_variable',
+        name: 'Set Variable',
+        tags: ['Data', 'set', 'store', 'memory'],
+        color: '#9C27B0',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Value', type: 'any', key: 'value' }
+        ],
+        outputs: [{ label: 'Out', type: 'exec' }],
+        params: { name: 'myVar', value: null }
     },
     {
         type: 'string',
@@ -66,6 +90,17 @@ const nodeRegistry = [
         tags: ['Data', 'variable', 'text'],
         outputs: [{ label: '', type: 'string' }],
         params: { value: 'Hello World' }
+    },
+    {
+        type: 'string_format',
+        name: 'String Format',
+        tags: ['Data', 'string', 'format', 'template'],
+        inputs: [
+            { label: 'Format "{}"', type: 'string', key: 'format' },
+            { label: 'Arg', type: 'any', key: 'arg1' }
+        ],
+        outputs: [{ label: 'Result', type: 'string' }],
+        params: { format: 'Value: {}', arg1: null }
     },
     {
         type: 'number',
@@ -124,5 +159,70 @@ const nodeRegistry = [
         ],
         outputs: [{ label: 'Result', type: 'number' }],
         params: { a: 1, b: 1 }
+    },
+    {
+        type: 'logic_and',
+        name: 'And',
+        tags: ['Logic', 'and', 'boolean'],
+        inputs: [
+            { label: 'A', type: 'boolean', key: 'a' },
+            { label: 'B', type: 'boolean', key: 'b' }
+        ],
+        outputs: [{ label: 'Result', type: 'boolean' }],
+        params: { a: false, b: false }
+    },
+    {
+        type: 'logic_or',
+        name: 'Or',
+        tags: ['Logic', 'or', 'boolean'],
+        inputs: [
+            { label: 'A', type: 'boolean', key: 'a' },
+            { label: 'B', type: 'boolean', key: 'b' }
+        ],
+        outputs: [{ label: 'Result', type: 'boolean' }],
+        params: { a: false, b: false }
+    },
+    {
+        type: 'logic_not',
+        name: 'Not',
+        tags: ['Logic', 'not', 'inverse'],
+        inputs: [
+            { label: 'A', type: 'boolean', key: 'a' }
+        ],
+        outputs: [{ label: 'Result', type: 'boolean' }],
+        params: { a: false }
+    },
+    {
+        type: 'compare_equal',
+        name: 'Equal',
+        tags: ['Logic', 'compare', '=='],
+        inputs: [
+            { label: 'A', type: 'any', key: 'a' },
+            { label: 'B', type: 'any', key: 'b' }
+        ],
+        outputs: [{ label: 'Result', type: 'boolean' }],
+        params: { a: null, b: null }
+    },
+    {
+        type: 'compare_greater',
+        name: 'Greater Than',
+        tags: ['Logic', 'compare', '>'],
+        inputs: [
+            { label: 'A', type: 'number', key: 'a' },
+            { label: 'B', type: 'number', key: 'b' }
+        ],
+        outputs: [{ label: 'Result', type: 'boolean' }],
+        params: { a: 0, b: 0 }
+    },
+    {
+        type: 'compare_less',
+        name: 'Less Than',
+        tags: ['Logic', 'compare', '<'],
+        inputs: [
+            { label: 'A', type: 'number', key: 'a' },
+            { label: 'B', type: 'number', key: 'b' }
+        ],
+        outputs: [{ label: 'Result', type: 'boolean' }],
+        params: { a: 0, b: 0 }
     }
 ];

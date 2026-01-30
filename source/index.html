@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallium | Agentic Workflow Engine</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Premium Dark Theme Palette */
+            --bg-app: #0f1115;
+            --bg-panel: #181b21;
+            --bg-panel-header: #202329;
+            --border-color: #2d3139;
+            --accent-primary: #7c4dff;
+            /* Deep Purple */
+            --accent-hover: #9e75ff;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --header-height: 60px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header & Navigation --- */
+        header {
+            height: var(--header-height);
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-primary);
+        }
+
+        .logo span {
+            color: var(--accent-primary);
+        }
+
+        .tab-nav {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 8px;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background-color: var(--bg-panel-header);
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-status {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .status-indicator.connected {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-indicator.disconnected {
+            background-color: var(--danger);
+        }
+
+        /* --- Main Content Area --- */
+        #content-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .view-content {
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        .view-content.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- Main View Layout --- */
+        #main-view {
+            display: none;
+            /* toggled by class */
+            padding: 24px;
+            gap: 24px;
+            box-sizing: border-box;
+            flex-direction: row;
+        }
+
+        #main-view.active {
+            display: flex;
+        }
+
+        /* Left Column: Controls */
+        .control-panel {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            flex-shrink: 0;
+        }
+
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            padding: 16px;
+            background: var(--bg-panel-header);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .select-input {
+            background: #111;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .select-input:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .select-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Simulation Status Badge */
+        .sim-status {
+            padding: 6px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            align-self: flex-start;
+        }
+
+        .sim-status::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Right Column: Event Stream */
+        .stream-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            /* Important for scroll */
+        }
+
+        .terminal-window {
+            flex: 1;
+            background: #0d0f12;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 12px;
+            line-height: 1.5;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 4px;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .log-content {
+            color: var(--text-secondary);
+            word-break: break-word;
+        }
+
+        .log-type-info {
+            color: #60a5fa;
+        }
+
+        .log-type-warn {
+            color: var(--warning);
+        }
+
+        .log-type-error {
+            color: var(--danger);
+        }
+
+        .log-type-success {
+            color: var(--success);
+        }
+
+        /* --- Function Editor View --- */
+        #editor-view {
+            width: 100%;
+            height: 100%;
+        }
+
+        #node-editor-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">Gallium <span>AI</span></div>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('main')">Main View</button>
+            <button class="tab-btn" onclick="switchTab('editor')">Function Editor</button>
+        </nav>
+
+        <div class="connection-status">
+            <span id="conn-text">Connecting...</span>
+            <div id="conn-indicator" class="status-indicator"></div>
+        </div>
+    </header>
+
+    <div id="content-area">
+
+        <!-- Tab 1: Main View -->
+        <div id="main-view" class="view-content active">
+
+            <!-- Workflow Controls -->
+            <div class="control-panel">
+
+                <!-- Main Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                        </svg>
+                        Workflow Control
+                    </div>
+                    <div class="card-body">
+                        <div class="sim-status" id="sim-status-badge">Ready</div>
+
+                        <div class="form-group">
+                            <label class="form-label">Project Goal</label>
+                            <input type="text" id="goal-input" class="select-input"
+                                placeholder="Define the agent's objective...">
+                            <button id="btn-set-goal" class="btn btn-secondary" onclick="setGoal()"
+                                style="margin-top: 4px; padding: 6px; font-size: 12px;">Update Goal</button>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Active Workflow</label>
+                            <select class="select-input" id="workflow-select">
+                                <option value="default">User Simulation Loop</option>
+                                <option value="test">Test Workflow</option>
+                            </select>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="btn-start" onclick="sendAction('start_auto')">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                                Start
+                            </button>
+                            <button class="btn btn-secondary" id="btn-restart"
+                                onclick="sendAction('restart_simulation')">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
+                                </svg>
+                            </button>
+                            <button class="btn btn-secondary" id="btn-step"
+                                onclick="sendAction('step_simulation')">Step</button>
+                        </div>
+                        <button class="btn btn-danger" id="btn-stop" onclick="sendAction('stop_auto')"
+                            style="display:none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            Stop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Event Configuration -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Logic Hooks
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">On Start</label>
+                            <select class="select-input" id="func-start-select">
+                                <option value="" selected>None</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">On Tick</label>
+                            <select class="select-input" id="func-tick-select">
+                                <option value="" selected>None</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Event Stream -->
+            <div class="stream-panel">
+                <div class="card" style="height: 100%;">
+                    <div class="card-header">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
+                        Event Stream
+                    </div>
+                    <div class="terminal-window" id="event-log">
+                        <div class="log-entry"><span class="log-time">System</span><span
+                                class="log-content log-type-info">Gallium Interface Initialized.</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tab 2: Editor View -->
+        <div id="editor-view" class="view-content">
+            <iframe id="node-editor-frame" src="node_editor/node_editor.html"></iframe>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Tab Switching ---
+        function switchTab(tabName) {
+            // Update Buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update Views
+            document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
+            if (tabName === 'main') {
+                document.getElementById('main-view').classList.add('active');
+            } else {
+                document.getElementById('editor-view').classList.add('active');
+            }
+        }
+
+        // --- WebSocket Logic ---
+        const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = window.location.host; // e.g. localhost:8080
+        const wsUrl = `${wsProto}//${wsHost}/ws`;
+
+        let ws;
+        const statusText = document.getElementById('conn-text');
+        const statusInd = document.getElementById('conn-indicator');
+        const logContainer = document.getElementById('event-log');
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
+        const badge = document.getElementById('sim-status-badge');
+
+        function connect() {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                statusText.textContent = "Connected";
+                statusInd.className = "status-indicator connected";
+                statusInd.className = "status-indicator connected";
+                addLog("System", "WebSocket connection established.", "success");
+                requestFunctions(); // Fetch functions
+                sendAction('get_state'); // Fetch initial state
+            };
+
+            ws.onclose = () => {
+                statusText.textContent = "Disconnected";
+                statusInd.className = "status-indicator disconnected";
+                addLog("System", "WebSocket disconnected. Reconnecting in 3s...", "error");
+                setTimeout(connect, 3000);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    handleMessage(msg);
+                } catch (e) {
+                    console.error("Parse Error", e);
+                }
+            };
+        }
+
+        function sendAction(type, data = {}) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type, ...data }));
+
+                // Optimistic UI updates
+                if (type === 'start_auto') {
+                    btnStart.style.display = 'none';
+                    btnStop.style.display = 'flex';
+                    badge.textContent = "Running";
+                    badge.style.color = "var(--success)";
+                    badge.style.background = "rgba(16, 185, 129, 0.1)";
+                    addLog("Command", "Starting auto-simulation...", "info");
+                } else if (type === 'stop_auto') {
+                    btnStart.style.display = 'flex';
+                    btnStop.style.display = 'none';
+                    badge.textContent = "Paused";
+                    badge.style.color = "var(--warning)";
+                    badge.style.background = "rgba(245, 158, 11, 0.1)";
+                    addLog("Command", "Stopping auto-simulation...", "warn");
+                } else if (type === 'step_simulation') {
+                    addLog("Command", "Stepping simulation...", "info");
+                } else if (type === 'submit_goal') {
+                    addLog("Command", "Updated goal: " + data.goal, "info");
+                }
+            } else {
+                addLog("Error", "Not connected to server.", "error");
+            }
+        }
+
+        function setGoal() {
+            const goalInput = document.getElementById('goal-input');
+            const goal = goalInput.value.trim();
+            if (goal) {
+                sendAction('submit_goal', { goal: goal });
+            }
+        }
+
+        // Exposed for iframe
+        window.saveFunctionToServer = (id, graphData) => {
+            sendAction('save_function', { id, graph: graphData });
+        };
+
+        window.deleteFunctionFromServer = (id) => {
+            sendAction('delete_function', { id });
+        };
+
+        function addLog(source, text, type = "info") {
+            const row = document.createElement('div');
+            row.className = 'log-entry';
+
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+
+            let colorClass = "";
+            if (type === "error") colorClass = "log-type-error";
+            else if (type === "warn") colorClass = "log-type-warn";
+            else if (type === "success") colorClass = "log-type-success";
+            else colorClass = "log-type-info";
+
+            row.innerHTML = `
+                <span class="log-time">[${time}] ${source}:</span>
+                <span class="log-content ${colorClass}">${text}</span>
+            `;
+
+            logContainer.insertBefore(row, logContainer.firstChild); // Prepend
+            // Limit history
+            if (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function requestFunctions() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'get_functions' }));
+            }
+        }
+
+        function populateFunctionDropdowns(funcs) {
+            const startSelect = document.getElementById('func-start-select');
+            const tickSelect = document.getElementById('func-tick-select');
+
+            const populate = (select, currentVal) => {
+                // Keep "None" logic
+                select.innerHTML = '<option value="">None</option>';
+                funcs.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f.id;
+                    opt.textContent = f.name || f.id;
+                    select.appendChild(opt);
+                });
+                if (currentVal) select.value = currentVal;
+            };
+
+            populate(startSelect, startSelect.value);
+            populate(tickSelect, tickSelect.value);
+        }
+
+        // Dropdown Event Listeners
+        document.getElementById('func-start-select').addEventListener('change', (e) => {
+            sendAction('update_workflow_hooks', { on_start: e.target.value });
+        });
+        document.getElementById('func-tick-select').addEventListener('change', (e) => {
+            sendAction('update_workflow_hooks', { on_tick: e.target.value });
+        });
+
+        // Initialize
+        connect();
+
+        // --- Bridge for Iframe ---
+        window.requestServerFunction = (id) => {
+            sendAction('load_function', { id: id });
+        };
+
+        function handleMessage(msg) {
+            // Handle server messages
+            if (msg.type === 'state_update') {
+                // Update hooks state
+                if (msg.data.workflow_hooks) {
+                    const hooks = msg.data.workflow_hooks;
+                    const startSel = document.getElementById('func-start-select');
+                    const tickSel = document.getElementById('func-tick-select');
+
+                    // Only update if not already set (avoid overwriting user interaction? or sync?)
+                    // Best to proper sync. Check if value exists in options first?
+                    if (hooks.on_start && startSel.value !== hooks.on_start) startSel.value = hooks.on_start;
+                    if (hooks.on_tick && tickSel.value !== hooks.on_tick) tickSel.value = hooks.on_tick;
+                }
+            } else if (msg.type === 'function_list') {
+                populateFunctionDropdowns(msg.functions);
+
+                // Pass to Iframe if ready
+                const iframe = document.getElementById('node-editor-frame');
+                if (iframe && iframe.contentWindow && iframe.contentWindow.importFunctionList) {
+                    iframe.contentWindow.importFunctionList(msg.functions);
+                } else {
+                    // Retry or wait? 
+                    // Set an onload handler if not ready
+                    iframe.onload = () => {
+                        if (iframe.contentWindow.importFunctionList) {
+                            iframe.contentWindow.importFunctionList(msg.functions);
+                        }
+                    };
+                }
+
+            } else if (msg.type === 'function_data') {
+                console.log("Index: Received function data for", msg.id);
+                // Forward to Iframe
+                const iframe = document.getElementById('node-editor-frame');
+                if (iframe && iframe.contentWindow && iframe.contentWindow.receiveServerFunction) {
+                    console.log("Index: Forwarding to Iframe");
+                    // Accept both 'data' and 'graph' keys for compatibility
+                    const functionData = msg.data !== undefined ? msg.data : msg.graph;
+                    iframe.contentWindow.receiveServerFunction(msg.id, functionData);
+                } else {
+                    console.error("Index: Iframe or receiveServerFunction missing!");
+                }
+
+            } else if (msg.type === 'log' || msg.type === 'info') {
+                addLog("Server", msg.message, "info");
+            } else if (msg.type === 'save_response') {
+                if (msg.success) {
+                    addLog("Server", `Function ${msg.id} saved successfully.`, "success");
+                    requestFunctions(); // Refresh list to ensure it appears
+                } else {
+                    addLog("Server", `Failed to save function ${msg.id}.`, "error");
+                }
+            } else if (msg.type === 'delete_response') {
+                if (msg.success) {
+                    addLog("Server", `Function ${msg.id} deleted successfully.`, "success");
+                    requestFunctions(); // Refresh list
+                } else {
+                    addLog("Server", `Failed to delete function ${msg.id}.`, "error");
+                }
+            } else if (msg.type === 'error') {
+                addLog("Server", msg.message, "error");
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -228,7 +228,7 @@ Object.assign(NodeGraph.prototype, {
                 if (savedExec) execId = savedExec.id;
             }
             inputs.push({
-                label: 'In',
+                label: 'exec_in',
                 type: 'exec',
                 id: execId || (nodeId + '_in_exec')
             });
@@ -290,7 +290,7 @@ Object.assign(NodeGraph.prototype, {
                     // We construct explicit IDs here so the map below doesn't mess it up
                     inputs = [];
                     inputs.push({
-                        label: 'End', type: 'exec', id: nodeId + '_flow'
+                        label: 'exec_in', type: 'exec', id: nodeId + '_flow'
                     });
 
                     curFunc.outputs.forEach(o => {
@@ -329,7 +329,7 @@ Object.assign(NodeGraph.prototype, {
                 if (savedExec) execId = savedExec.id;
             }
             outputs.push({
-                label: 'Out',
+                label: 'exec_out',
                 type: 'exec',
                 id: execId || (nodeId + '_out_exec')
             });
@@ -384,7 +384,7 @@ Object.assign(NodeGraph.prototype, {
                     // ID: node.id + '_out_' + input.id for others
                     outputs = [];
                     outputs.push({
-                        label: 'Start', type: 'exec', id: nodeId + '_flow'
+                        label: 'exec_out', type: 'exec', id: nodeId + '_flow'
                     });
                     curFunc.inputs.forEach(i => {
                         outputs.push({

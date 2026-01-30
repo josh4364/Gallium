@@ -6,6 +6,7 @@ import webbrowser
 from pathlib import Path
 from queue import Queue
 from aiohttp import web
+from source.function_manager import FunctionManager
 
 logger = logging.getLogger("web_server")
 
@@ -16,6 +17,11 @@ class GalliumWebServer:
         self.app = web.Application()
         self.app.router.add_get('/', self.handle_index)
         self.app.router.add_get('/ws', self.handle_websocket)
+        
+        # Serve node_editor static files
+        node_editor_path = Path(__file__).parent / "node_editor"
+        self.app.router.add_static('/node_editor', path=str(node_editor_path), show_index=True)
+
         self.msg_queue = Queue()
         self.loop = None
         self.runner = None
@@ -23,6 +29,7 @@ class GalliumWebServer:
         self.server_thread = None
         self.running = False
         self.websockets = set()
+        self.func_manager = FunctionManager()
 
     async def _broadcast_async(self, message):
         if not self.websockets:
@@ -51,9 +58,9 @@ class GalliumWebServer:
             asyncio.run_coroutine_threadsafe(self._broadcast_async(message), self.loop)
 
     async def handle_index(self, request):
-        path = Path(__file__).parent / "web_client.html"
+        path = Path(__file__).parent / "index.html"
         if not path.exists():
-            return web.Response(text="<h1>Error: web_client.html not found</h1>", content_type='text/html')
+            return web.Response(text="<h1>Error: index.html not found</h1>", content_type='text/html')
         return web.FileResponse(path)
 
     async def handle_websocket(self, request):
@@ -69,6 +76,8 @@ class GalliumWebServer:
                     # Put message into the thread-safe queue
                     try:
                         data = json.loads(msg.data)
+                        
+                        # Forward all messages to main loop
                         self.msg_queue.put(data)
                     except json.JSONDecodeError:
                         self.msg_queue.put(msg.data)

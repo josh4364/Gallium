@@ -1,0 +1,91 @@
+{
+    "id": "func_vnspzpweu",
+    "name": "Nested call",
+    "description": "nested call",
+    "tags": [],
+    "inputs": [],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_ujruo9ubb",
+            "type": "log_message",
+            "x": 185,
+            "y": 151,
+            "title": "Log Message",
+            "params": {
+                "message": "Nested Call"
+            },
+            "inputs": [
+                {
+                    "id": "node_ujruo9ubb_exec_in_ekw5",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_ujruo9ubb_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_ujruo9ubb_exec_out_2igj",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_s2o27niqc",
+            "type": "function_input",
+            "x": 136,
+            "y": 28,
+            "title": "Function Inputs",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_s2o27niqc_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_rn9ica7fx",
+            "type": "function_return",
+            "x": 327,
+            "y": 278,
+            "title": "Return",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_rn9ica7fx_flow",
+                    "label": "exec_in",
+                    "type": "exec"
+                }
+            ],
+            "outputs": []
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_s2o27niqc",
+            "fromPort": "node_s2o27niqc_flow",
+            "toNode": "node_ujruo9ubb",
+            "toPort": "node_ujruo9ubb_exec_in_ekw5"
+        },
+        {
+            "fromNode": "node_ujruo9ubb",
+            "fromPort": "node_ujruo9ubb_exec_out_2igj",
+            "toNode": "node_rn9ica7fx",
+            "toPort": "node_rn9ica7fx_flow"
+        }
+    ],
+    "view": {
+        "panX": 192,
+        "panY": 144,
+        "zoom": 1
+    }
+}

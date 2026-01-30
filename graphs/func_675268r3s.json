@@ -1,0 +1,201 @@
+{
+    "id": "func_675268r3s",
+    "name": "On Tick",
+    "description": "",
+    "tags": [],
+    "inputs": [
+        {
+            "id": "tick_in",
+            "name": "tick",
+            "type": "number"
+        }
+    ],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_22vdk6oo8",
+            "type": "function_input",
+            "x": 6,
+            "y": -23,
+            "title": "Function Inputs",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_22vdk6oo8_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_22vdk6oo8_out_tick_in",
+                    "label": "tick",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_wrrxbwuj3",
+            "type": "compare_greater",
+            "x": 318,
+            "y": 156,
+            "title": "Greater Than",
+            "params": {
+                "a": 0,
+                "b": 10
+            },
+            "inputs": [
+                {
+                    "id": "node_wrrxbwuj3_a",
+                    "label": "A",
+                    "type": "number",
+                    "key": "a"
+                },
+                {
+                    "id": "node_wrrxbwuj3_b",
+                    "label": "B",
+                    "type": "number",
+                    "key": "b"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_wrrxbwuj3_result_tjek",
+                    "label": "Result",
+                    "type": "boolean"
+                }
+            ]
+        },
+        {
+            "id": "node_i5c4d4xew",
+            "type": "condition",
+            "x": 372,
+            "y": 20,
+            "title": "Branch",
+            "params": {
+                "condition": false
+            },
+            "inputs": [
+                {
+                    "id": "node_i5c4d4xew_exec_in_c9vw",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_i5c4d4xew_condition",
+                    "label": "Condition",
+                    "type": "boolean",
+                    "key": "condition"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_i5c4d4xew_exec_true_9vkw",
+                    "label": "exec_true",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_i5c4d4xew_exec_false_u2ie",
+                    "label": "exec_false",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_y8g4nuo2r",
+            "type": "log_message",
+            "x": 715,
+            "y": -1,
+            "title": "Log Message",
+            "params": {
+                "message": "Tick > 10"
+            },
+            "inputs": [
+                {
+                    "id": "node_y8g4nuo2r_exec_in_gc0y",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_y8g4nuo2r_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_y8g4nuo2r_exec_out_nvbc",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_c370uwbd0",
+            "type": "log_message",
+            "x": 705,
+            "y": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Tick < 10"
+            },
+            "inputs": [
+                {
+                    "id": "node_c370uwbd0_exec_in_uy9o",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_c370uwbd0_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_c370uwbd0_exec_out_4mz6",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_22vdk6oo8",
+            "fromPort": "node_22vdk6oo8_out_tick_in",
+            "toNode": "node_wrrxbwuj3",
+            "toPort": "node_wrrxbwuj3_a"
+        },
+        {
+            "fromNode": "node_wrrxbwuj3",
+            "fromPort": "node_wrrxbwuj3_result_tjek",
+            "toNode": "node_i5c4d4xew",
+            "toPort": "node_i5c4d4xew_condition"
+        },
+        {
+            "fromNode": "node_i5c4d4xew",
+            "fromPort": "node_i5c4d4xew_exec_true_9vkw",
+            "toNode": "node_y8g4nuo2r",
+            "toPort": "node_y8g4nuo2r_exec_in_gc0y"
+        },
+        {
+            "fromNode": "node_i5c4d4xew",
+            "fromPort": "node_i5c4d4xew_exec_false_u2ie",
+            "toNode": "node_c370uwbd0",
+            "toPort": "node_c370uwbd0_exec_in_uy9o"
+        },
+        {
+            "fromNode": "node_22vdk6oo8",
+            "fromPort": "node_22vdk6oo8_flow",
+            "toNode": "node_i5c4d4xew",
+            "toPort": "node_i5c4d4xew_exec_in_c9vw"
+        }
+    ],
+    "view": {
+        "panX": 245,
+        "panY": 344,
+        "zoom": 1
+    }
+}

@@ -1,0 +1,347 @@
+import logging
+
+logger = logging.getLogger("GraphInterpreter")
+
+class GraphInterpreter:
+    def __init__(self, simulation_state=None, function_manager=None):
+        self.nodes = {}
+        self.connections = []
+        self.context = {} 
+        self.sim_state = simulation_state
+        self.function_manager = function_manager
+        self.output_cache = {} # nodeId -> outputId -> value
+        self.call_stack = [] # Stack of parent states for recursion
+        self.return_stack = [] # Stack of return values from function calls
+
+    def safe_graph_eval(self, graph_data, expected_input_types, input_values):
+        """
+        Validates graph inputs against expected types and executes.
+        expected_input_types: list of strings (e.g. ['number', 'string'])
+        input_values: list of values
+        Returns the return value(s) of the graph if provided via function_return.
+        """
+        if not graph_data:
+            raise Exception("No graph data provided")
+            
+        graph_inputs = graph_data.get('inputs', [])
+        
+        # 1. Check count
+        if len(graph_inputs) < len(expected_input_types):
+             raise Exception(f"Graph lacks required inputs. Expected at least {len(expected_input_types)}, found {len(graph_inputs)}")
+             
+        # 2. Check types and build context
+        context = {}
+        for i, expected_type in enumerate(expected_input_types):
+            graph_input = graph_inputs[i]
+            if graph_input.get('type') != expected_type:
+                raise Exception(f"Input {i} ('{graph_input['name']}') type mismatch. Expected '{expected_type}', found '{graph_input.get('type')}'")
+            
+            # Use the name defined in the graph for the context
+            val = input_values[i] if i < len(input_values) else None
+            context[graph_input['name']] = val
+            
+        # 3. Execute
+        self.execute(graph_data, context=context)
+        
+        # 4. Return results if any
+        if self.return_stack:
+            return self.return_stack.pop()
+        return None
+
+    def execute(self, graph_data, context=None):
+        """
+        Executes the graph starting from the entry node.
+        """
+        if not graph_data:
+            return
+
+        self.nodes = {n['id']: n for n in graph_data.get('nodes', [])}
+        self.connections = graph_data.get('connections', [])
+        # Merge provided context with simulation state variables if any
+        self.context = context or {}
+        
+        # Reset per-execution state
+        self.output_cache = {}
+        self.call_stack = []
+        self.return_stack = []
+
+        entry_node = self.find_entry_node()
+        
+        if not entry_node:
+            logger.warning("No entry node (function_input or similar) found in graph.")
+            return
+
+        try:
+            self.execute_node(entry_node)
+        except Exception as e:
+            logger.error(f"Graph execution failed: {e}", exc_info=True)
+            if self.sim_state:
+                self.sim_state._add_event(f"Graph Error: {e}", "error")
+
+    def find_entry_node(self):
+        # Prefer function_input, but fallback to any node if it's a simple graph?
+        # Actually for flow execution we need a starting point.
+        for node in self.nodes.values():
+            if node['type'] in ('function_input', 'entry'):
+                return node
+        return None
+
+    def execute_node(self, node):
+        if not node: return None
+
+        node_type = node['type']
+        
+        # --- Execution Flow Nodes ---
+        if node_type == 'function_input':
+            # Just pass through
+            return self.follow_flow(node, 'exec_out')
+            
+        elif node_type == 'log_message':
+            msg = self.get_input_value(node, 'message')
+            if self.sim_state:
+                self.sim_state._add_event(f"{msg}", "info")
+            else:
+                print(f"GRAPH LOG: {msg}")
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'set_variable':
+            name = node.get('params', {}).get('name') or self.get_input_value(node, 'name')
+            val = self.get_input_value(node, 'value')
+            if name:
+                # Store in simulation state workflow memory
+                if self.sim_state:
+                    if not hasattr(self.sim_state, 'workflow_memory'):
+                        self.sim_state.workflow_memory = {}
+                    self.sim_state.workflow_memory[name] = val
+                    logger.info(f"Set Variable {name} = {val}")
+                self.context[name] = val
+            return self.follow_flow(node, 'exec_out')
+            
+        elif node_type == 'function_return':
+            # Gather all data inputs as return values
+            returns = {}
+            for input_port in node.get('inputs', []):
+                if input_port['type'] != 'exec':
+                    val = self.get_input_value(node, input_port.get('key') or input_port['label'])
+                    returns[input_port['label']] = val
+            
+            self.return_stack.append(returns)
+            return "STOP" # Signal to cease execution of this graph context
+            
+        elif node_type == 'function_call':
+            func_id = node.get('params', {}).get('functionId')
+            if not func_id:
+                raise Exception(f"Function Call node {node['id']} missing functionId")
+
+            # Gather arguments
+            args = {}
+            for input_port in node.get('inputs', []):
+                if input_port['type'] != 'exec':
+                    # Check if port is connected or has default value
+                    val = self.get_input_value(node, input_port.get('key') or input_port['label'])
+                    args[input_port['label']] = val
+
+            # Execute sub-graph
+            prev_stack_depth = len(self.return_stack)
+            self.execute_function(func_id, args)
+            
+            # Extract results from return stack
+            if len(self.return_stack) > prev_stack_depth:
+                results = self.return_stack.pop()
+                # Cache results for this node's output ports
+                if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+                for output_port in node.get('outputs', []):
+                    if output_port['type'] != 'exec':
+                        label = output_port['label']
+                        if label in results:
+                            self.output_cache[node['id']][output_port['id']] = results[label]
+
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'condition': # Branch
+            condition = self.get_input_value(node, 'condition')
+            if bool(condition):
+                return self.follow_flow(node, 'exec_true')
+            else:
+                return self.follow_flow(node, 'exec_false')
+                
+        elif node_type == 'action': # Generic action
+            msg = self.get_input_value(node, 'message')
+            if self.sim_state:
+                self.sim_state._add_event(f"Action: {msg}", "info")
+            return self.follow_flow(node, 'exec_out')
+
+        else:
+            # Fallback for unknown nodes with standard exec_out
+            return self.follow_flow(node, 'exec_out')
+
+    def execute_function(self, function_id, args):
+        if not self.function_manager:
+            raise Exception("No FunctionManager provided to interpreter")
+            
+        graph_data = self.function_manager.load_function(function_id)
+        if not graph_data:
+            raise Exception(f"Failed to load function graph: {function_id}")
+
+        # Push current state to call stack
+        self.call_stack.append({
+            'nodes': self.nodes,
+            'connections': self.connections,
+            'output_cache': self.output_cache,
+            'args': args
+        })
+
+        # Set up new context
+        self.nodes = {n['id']: n for n in graph_data.get('nodes', [])}
+        self.connections = graph_data.get('connections', [])
+        self.output_cache = {}
+
+        try:
+            entry_node = self.find_entry_node()
+            if entry_node:
+                self.execute_node(entry_node)
+        finally:
+            self._restore_parent()
+
+    def _restore_parent(self):
+        if not self.call_stack: return
+        parent = self.call_stack.pop()
+        self.nodes = parent['nodes']
+        self.connections = parent['connections']
+        self.output_cache = parent['output_cache']
+
+    def follow_flow(self, node, port_label):
+        # Find output port definition to get its ID
+        out_port = next((p for p in node.get('outputs', []) if p.get('label') == port_label), None)
+             
+        if not out_port: return None
+
+        # Find all connections from this port
+        active_connections = [c for c in self.connections if c['fromNode'] == node['id'] and c['fromPort'] == out_port['id']]
+        
+        for conn in active_connections:
+            target_node = self.nodes.get(conn['toNode'])
+            if target_node:
+                res = self.execute_node(target_node)
+                if res == "STOP":
+                    return "STOP"
+        return None
+
+    def get_input_value(self, node, param_key):
+        # 1. Check for incoming connection
+        # Need to find the input port ID for this param_key
+        in_port = next((p for p in node.get('inputs', []) if p.get('key') == param_key), None)
+        
+        # Fallback by label if key missing (some old nodes might just have label)
+        if not in_port:
+             in_port = next((p for p in node.get('inputs', []) if p.get('label', '').replace(" ", "_").lower() == param_key.lower()), None)
+        
+        if in_port:
+             conn = next((c for c in self.connections if c['toNode'] == node['id'] and c['toPort'] == in_port['id']), None)
+             if conn:
+                 source_node = self.nodes.get(conn['fromNode'])
+                 source_port_id = conn['fromPort']
+                 return self.evaluate_output(source_node, source_port_id)
+
+        # 2. Return param value if not connected
+        return node.get('params', {}).get(param_key)
+
+    def evaluate_output(self, node, port_id):
+        # Check cache
+        if node['id'] in self.output_cache and port_id in self.output_cache[node['id']]:
+            return self.output_cache[node['id']][port_id]
+
+        val = None
+        nt = node['type']
+        
+        if nt == 'function_input':
+            # Retrieve from call stack args
+            if self.call_stack:
+                # Find port label
+                port = next((p for p in node.get('outputs', []) if p['id'] == port_id), None)
+                if port:
+                    val = self.call_stack[-1]['args'].get(port['label'])
+            else:
+                # Root graph? args might be in context
+                # Find port label
+                port = next((p for p in node.get('outputs', []) if p['id'] == port_id), None)
+                if port:
+                    val = self.context.get(port['label'])
+        
+        elif nt == 'math_add':
+            a = float(self.get_input_value(node, 'a') or 0)
+            b = float(self.get_input_value(node, 'b') or 0)
+            val = a + b
+            
+        elif nt == 'math_sub':
+            a = float(self.get_input_value(node, 'a') or 0)
+            b = float(self.get_input_value(node, 'b') or 0)
+            val = a - b
+
+        elif nt == 'math_mul':
+            a = float(self.get_input_value(node, 'a') or 0)
+            b = float(self.get_input_value(node, 'b') or 0)
+            val = a * b
+            
+        elif nt == 'math_div':
+            a = float(self.get_input_value(node, 'a') or 0)
+            b = float(self.get_input_value(node, 'b') or 1)
+            val = a / b if b != 0 else 0
+
+        elif nt == 'string_format':
+            fmt = str(self.get_input_value(node, 'format') or "")
+            arg1 = self.get_input_value(node, 'arg1')
+            # support up to 4 args if we add them later, for now just 1
+            try:
+                val = fmt.format(arg1)
+            except Exception:
+                val = fmt # Fail gracefullly
+
+        elif nt == 'string':
+            val = node.get('params', {}).get('value')
+        
+        elif nt == 'number':
+            val = float(node.get('params', {}).get('value') or 0)
+            
+        elif nt == 'boolean':
+            val = node.get('params', {}).get('value')
+
+        elif nt == 'logic_and':
+            a = self.get_input_value(node, 'a')
+            b = self.get_input_value(node, 'b')
+            val = bool(a) and bool(b)
+
+        elif nt == 'logic_or':
+            a = self.get_input_value(node, 'a')
+            b = self.get_input_value(node, 'b')
+            val = bool(a) or bool(b)
+
+        elif nt == 'logic_not':
+            a = self.get_input_value(node, 'a')
+            val = not bool(a)
+
+        elif nt == 'compare_equal':
+            a = self.get_input_value(node, 'a')
+            b = self.get_input_value(node, 'b')
+            val = (a == b)
+
+        elif nt == 'compare_greater':
+            a = self.get_input_value(node, 'a')
+            b = self.get_input_value(node, 'b')
+            try:
+                val = float(a) > float(b)
+            except:
+                val = False
+
+        elif nt == 'compare_less':
+            a = self.get_input_value(node, 'a')
+            b = self.get_input_value(node, 'b')
+            try:
+                val = float(a) < float(b)
+            except:
+                val = False
+
+        # Cache it
+        if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+        self.output_cache[node['id']][port_id] = val
+        return val

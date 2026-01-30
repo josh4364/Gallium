@@ -35,8 +35,9 @@ from source.simulation_state import SimulationState
 from source import tools
 
 def main():
-    load_environment()
-    
+    # Capture Initial CWD as System Root (for graphs/manifests)
+    system_root = os.getcwd()
+
     # Check for Workspace Root Argument
     if len(sys.argv) > 1:
         workspace_path = sys.argv[1]
@@ -63,13 +64,30 @@ def main():
     else:
         logging.info(f"No workspace argument provided. Using current directory: {os.getcwd()}")
     
-    # Initialize Simulation State
-    sim_state = SimulationState()
+    # Initialize Simulation State with the captured system root
+    sim_state = SimulationState(system_root=system_root)
 
     # Web Server Loop
 
     print("\n--- Gallium Web Server ---")
     server = GalliumWebServer()
+    
+    # Wire up event streaming
+    def stream_event(event):
+        msg_type = "info"
+        if event["type"] == "error":
+            msg_type = "error"
+        elif event["type"] == "warn":
+             # Frontend doesn't explicit handle 'warn' type message, but we can prefix
+             event["message"] = f"[WARN] {event['message']}"
+        
+        server.broadcast({
+            "type": msg_type,
+            "message": event["message"]
+        })
+        
+    sim_state.set_event_handler(stream_event)
+
     try:
         url = server.start()
         print(f"Server started at: {url}")
@@ -86,24 +104,45 @@ def main():
         while True:
             msgs = server.get_messages()
             for msg in msgs:
-                # Log messages (skip auto-spam if needed, but for now log all except high freq if we want)
+                # Log messages
                 logging.info(f"Received from Web Client: {msg}")
                 
-                # Handle Step Action
-                if isinstance(msg, dict) and msg.get("type") == "step_simulation":
-                    logging.info("Stepping simulation...")
-                    new_state = sim_state.step()
-                    
-                    # Broadcast update
-                    update_msg = {
+                # Handle Start Simulation
+                if isinstance(msg, dict) and msg.get("type") == "start_simulation":
+                    logging.info("Starting simulation...")
+                    new_state = sim_state.start_simulation()
+                    server.broadcast({
                         "type": "state_update",
                         "data": new_state
-                    }
-                    server.broadcast(update_msg)
+                    })
+
+                # Handle Restart Simulation
+                elif isinstance(msg, dict) and msg.get("type") == "restart_simulation":
+                    logging.info("Restarting simulation...")
+                    new_state = sim_state.start_simulation()
+                    server.broadcast({
+                        "type": "state_update",
+                        "data": new_state
+                    })
+
+                # Handle Step Action
+                elif isinstance(msg, dict) and msg.get("type") == "step_simulation":
+                    logging.info("Stepping simulation...")
+                    new_state = sim_state.step()
+                    server.broadcast({
+                        "type": "state_update",
+                        "data": new_state
+                    })
 
                 # Handle Auto Start
                 elif isinstance(msg, dict) and msg.get("type") == "start_auto":
                     logging.info("Auto-run started")
+                    if sim_state.tick_count == 0:
+                        sim_state.start_simulation()
+                        server.broadcast({
+                            "type": "state_update",
+                            "data": sim_state.get_state()
+                        })
                     auto_mode = True
 
                 # Handle Auto Stop
@@ -117,20 +156,57 @@ def main():
                         "type": "state_update",
                         "data": sim_state.get_state()
                      })
+
+                # Handle Get Functions List
+                elif isinstance(msg, dict) and msg.get("type") == "get_functions":
+                    funcs = sim_state.func_manager.get_function_list()
+                    server.broadcast({
+                        "type": "function_list",
+                        "functions": funcs
+                    })
+
+                # Handle Load Function Data
+                elif isinstance(msg, dict) and msg.get("type") == "load_function":
+                    func_id = msg.get("id")
+                    data = sim_state.func_manager.load_function(func_id)
+                    server.broadcast({
+                        "type": "function_data",
+                        "id": func_id,
+                        "data": data
+                    })
+
+                # Handle Save Function
+                elif isinstance(msg, dict) and msg.get("type") == "save_function":
+                    func_id = msg.get("id")
+                    graph_data = msg.get("graph")
+                    success = sim_state.func_manager.save_function(func_id, graph_data)
+                    server.broadcast({
+                        "type": "save_response",
+                        "id": func_id,
+                        "success": success
+                    })
+                
+                # Handle Delete Function
+                elif isinstance(msg, dict) and msg.get("type") == "delete_function":
+                    func_id = msg.get("id")
+                    success = sim_state.delete_function(func_id)
+                    server.broadcast({
+                        "type": "delete_response",
+                        "id": func_id,
+                        "success": success
+                    })
+                    # Send updated state in case hooks were cleared
+                    server.broadcast({
+                        "type": "state_update",
+                        "data": sim_state.get_state()
+                    })
                      
                 # Handle File List Request
                 elif isinstance(msg, dict) and msg.get("type") == "get_files":
                     try:
-                        # For now, list root. Supports sub-path traversal if needed later.
-                        # Client sends relative path?
                         req_path = msg.get("path", "")
-                        # Validate? tools.list_dir takes absolute.
-                        # We construct absolute from CWD.
                         target_dir = os.path.join(os.getcwd(), req_path)
-                        
-                        # tools.list_dir does sandbox validation.
                         files = tools.list_dir(target_dir)
-                        
                         server.broadcast({
                             "type": "file_list",
                             "path": req_path, 
@@ -148,12 +224,10 @@ def main():
                     try:
                         req_path = msg.get("path", "")
                         target_path = os.path.join(os.getcwd(), req_path)
-                        
                         content = tools.read_file(target_path)
-                        
                         server.broadcast({
                             "type": "file_content",
-                            "path": req_path,
+                            "path": req_path, 
                             "data": content
                         })
                     except Exception as e:
@@ -163,20 +237,20 @@ def main():
                             "message": f"Failed to read file: {str(e)}"
                         })
 
-                # Handle Goal Submission
-                elif isinstance(msg, dict) and msg.get("type") == "submit_goal":
+                # Handle Workflow Hooks Update
+                elif isinstance(msg, dict) and msg.get("type") == "update_workflow_hooks":
                     try:
-                        goal = msg.get("goal")
-                        if goal:
-                            sim_state.set_layer0_goal(goal)
-                            logging.info(f"Received goal: {goal}")
-                            # Broadcast immediate update to reflect goal state change (optional, but good for UI)
-                            server.broadcast({
-                                "type": "state_update",
-                                "data": sim_state.get_state()
-                            })
+                        new_state = sim_state.update_workflow_hooks(
+                            msg.get("on_start"), 
+                            msg.get("on_tick")
+                        )
+                        logging.info(f"Updated workflow hooks: {sim_state.workflow_hooks}")
+                        server.broadcast({
+                            "type": "state_update",
+                            "data": new_state
+                        })
                     except Exception as e:
-                         logging.error(f"Error setting goal: {e}")
+                        logging.error(f"Error updating workflow hooks: {e}")
 
             if auto_mode:
                 new_state = sim_state.step()
@@ -184,16 +258,6 @@ def main():
                     "type": "state_update",
                     "data": new_state
                 })
-                
-                if new_state.get("all_work_finished"):
-                    logging.info("Auto-run stopped: All work completed.")
-                    auto_mode = False
-                    # Optionally notify client via dedicated event
-                    server.broadcast({
-                        "type": "info",
-                        "message": "Simulation paused: All conceptual chunks completed."
-                    })
-
                 time.sleep(0.01)
             else:
                 time.sleep(0.1)

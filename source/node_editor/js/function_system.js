@@ -35,7 +35,7 @@ class FunctionDatabase {
             tags: [],
             inputs: [], // Array of {name, type, id}
             outputs: [], // Array of {name, type, id}
-            data: null, // Serialized graph data
+            data: { nodes: [], connections: [] }, // Serialized graph data
             history: [], // Undo stack
             historyIndex: -1
         };
@@ -138,11 +138,43 @@ class FunctionManager {
         });
     }
 
-    createNewFunction() {
-        this.saveCurrentFunction();
+    async createNewFunction() {
+        await this.saveCurrentFunction();
         const newFunc = this.functionDB.createFunction('New Function', '');
         this.updateSelector();
         this.loadFunction(newFunc.id);
+    }
+
+    async deleteCurrentFunction() {
+        if (!this.currentFunctionId) return;
+
+        const func = this.functionDB.getFunction(this.currentFunctionId);
+        if (!func) return;
+
+        if (!confirm(`Are you sure you want to delete the function "${func.name}"? This will also delete the file on disk.`)) {
+            return;
+        }
+
+        const idToDelete = this.currentFunctionId;
+
+        // Notify Server
+        if (window.parent && window.parent.deleteFunctionFromServer) {
+            window.parent.deleteFunctionFromServer(idToDelete);
+        }
+
+        // Delete Locally
+        this.functionDB.deleteFunction(idToDelete);
+        this.currentFunctionId = null;
+
+        // Load another function or a new one
+        const remaining = this.functionDB.getAllFunctions();
+        if (remaining.length > 0) {
+            await this.loadFunction(remaining[0].id);
+        } else {
+            await this.createNewFunction();
+        }
+
+        this.updateSelector();
     }
 
     async loadFunction(functionId) {
@@ -155,23 +187,43 @@ class FunctionManager {
 
         this.currentFunctionId = functionId;
         this.updateSelector();
+        this.updateUI();
+
+        // Lazy Load from Server
+        if ((!func.data || Object.keys(func.data).length === 0) && window.parent && window.parent.requestServerFunction) {
+            console.log("Requesting function data from server:", functionId);
+            window.parent.requestServerFunction(functionId);
+            return; // Wait for callback
+        }
 
         // Clear and Load
         if (func.data) {
+            console.log("FunctionManager: Loading data into graph", typeof func.data);
             if (this.graph.loadData) {
-                await this.graph.loadData(func.data);
+                // Handle both string and object data
+                let dataToLoad = typeof func.data === 'string' ? func.data : JSON.stringify(func.data);
+                const isEmpty = !dataToLoad || dataToLoad === "{}" || dataToLoad === "null" || dataToLoad === '{"nodes":[],"connections":[]}';
+
+                if (isEmpty) {
+                    console.log("FunctionManager: Graph data is empty, clearing view.");
+                    this.graph.clear();
+                    this.graph.recenter();
+                } else {
+                    await this.graph.loadData(dataToLoad);
+                }
             } else {
                 console.warn("NodeGraph.loadData not implemented");
             }
         } else {
+            console.log("FunctionManager: No data found for function, clearing.");
             this.graph.clear();
             this.graph.recenter();
-            // Do not save initial state here if it's a new function, as history is managed manually below
+            // Do not save initial state here if it's a new function
         }
 
         // Restore History
         if (func.history && func.history.length > 0) {
-            this.graph.history = [...func.history]; // copy?
+            this.graph.history = [...func.history];
             this.graph.historyIndex = func.historyIndex;
         } else {
             this.graph.history = [];
@@ -180,6 +232,43 @@ class FunctionManager {
         }
 
         this.updateUI();
+    }
+
+    onServerFunctionLoaded(id, data) {
+        console.log("FunctionManager: onServerFunctionLoaded", id, data);
+        const func = this.functionDB.getFunction(id);
+        if (func) {
+            if (!data) {
+                console.warn("FunctionManager: Received null data for function", id, "- assuming empty.");
+                func.data = { nodes: [], connections: [] };
+                // If it's the current function, force a re-load to clear the view
+                if (this.currentFunctionId === id) {
+                    this.loadFunction(id);
+                }
+                return;
+            }
+            // Update metadata if present in data
+            if (data.name) func.name = data.name;
+            if (data.description) func.description = data.description;
+            if (data.tags) func.tags = data.tags;
+            if (data.inputs) func.inputs = data.inputs;
+            if (data.outputs) func.outputs = data.outputs;
+
+            // Store graph data
+            func.data = data;
+
+            console.log("FunctionManager: stored data");
+
+            // Only update the graph if this function is the one currently being viewed
+            if (this.currentFunctionId === id) {
+                console.log("FunctionManager: Loading function into graph view");
+                this.loadFunction(id);
+            } else {
+                console.log("FunctionManager: Function updated in background (not active)");
+            }
+        } else {
+            console.error("FunctionManager: Function not found in DB", id);
+        }
     }
 
     async saveCurrentFunction() {
@@ -269,7 +358,7 @@ class FunctionManager {
         // It likely implies data inputs. The control flow usually starts from a separate "Entry" node or this node is the Entry.
         // Let's add a fixed Exec output called "Flow".
         if (!node.outputs.find(o => o.type === 'exec')) {
-            node.outputs.unshift({ id: node.id + '_flow', label: 'Start', type: 'exec' });
+            node.outputs.unshift({ id: node.id + '_flow', label: 'exec_out', type: 'exec' });
         }
     }
 
@@ -287,7 +376,7 @@ class FunctionManager {
 
         // Ensure Exec Input
         if (!node.inputs.find(i => i.type === 'exec')) {
-            node.inputs.unshift({ id: node.id + '_flow', label: 'End', type: 'exec' });
+            node.inputs.unshift({ id: node.id + '_flow', label: 'exec_in', type: 'exec' });
         }
     }
 
