@@ -2,16 +2,20 @@
     "id": "func_es2ggxm3o",
     "name": "On Start",
     "description": "my on start",
-    "tags": [],
+    "tags": [
+        "event"
+    ],
     "inputs": [],
     "outputs": [],
     "nodes": [
         {
             "id": "node_bvke7wsgm",
-            "type": "function_input",
-            "x": 127,
-            "y": 83,
-            "title": "Function Inputs",
+            "type": "start",
+            "x": -41.79104047080099,
+            "y": 62.84584591393421,
+            "width": 240,
+            "height": 120,
+            "title": "Start",
             "params": {},
             "inputs": [],
             "outputs": [
@@ -27,9 +31,11 @@
             "type": "log_message",
             "x": 466,
             "y": 93,
+            "width": 338,
+            "height": 130,
             "title": "Log Message",
             "params": {
-                "message": "On start node graph"
+                "message": "On start"
             },
             "inputs": [
                 {
@@ -57,6 +63,8 @@
             "type": "log_message",
             "x": 464.95939189878584,
             "y": 352.1675339251097,
+            "width": 240,
+            "height": 128,
             "title": "Log Message",
             "params": {
                 "message": "After nested call"
@@ -87,6 +95,8 @@
             "type": "function_call",
             "x": 466.92470156106515,
             "y": 228.0874400571371,
+            "width": 346,
+            "height": 120,
             "title": "Nested call",
             "params": {
                 "functionId": "func_vnspzpweu"
@@ -105,15 +115,155 @@
                     "type": "exec"
                 }
             ]
+        },
+        {
+            "id": "node_ac01cbh1o",
+            "type": "set_variable",
+            "x": 404.13191523666643,
+            "y": -129.83774016508758,
+            "width": 346,
+            "height": 128,
+            "title": "Set Local Variable",
+            "params": {
+                "name": "message for later",
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_ac01cbh1o_exec_in_bnyb",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_ac01cbh1o_value",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_ac01cbh1o_out_f41g",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_x16x6fypd",
+            "type": "string",
+            "x": -194.02161050198833,
+            "y": -306.57364999675104,
+            "width": 442,
+            "height": 274,
+            "title": "String Constant",
+            "params": {
+                "value": "sloppa                                                                                      wide"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_x16x6fypd__szid",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_noo5umff5",
+            "type": "get_variable",
+            "x": 96.65510196112518,
+            "y": 435.6500344510072,
+            "width": 268,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "message for later"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_noo5umff5_value_1bow",
+                    "label": "Value",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_9e55wwkj1",
+            "type": "function_return",
+            "x": 799.4746024235087,
+            "y": 361.2049687298482,
+            "width": 240,
+            "height": 120,
+            "title": "Return",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_9e55wwkj1_flow",
+                    "label": "exec_in",
+                    "type": "exec"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "id": "node_kwl6k0s07",
+            "type": "number",
+            "x": 90.77519217045835,
+            "y": 640.9130628443344,
+            "width": 240,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 42
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_kwl6k0s07__rfx6",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_3tqgzx9dt",
+            "type": "string_format",
+            "x": 515.3210042800804,
+            "y": 577.1014659595974,
+            "width": 483,
+            "height": 247,
+            "title": "String Format",
+            "params": {
+                "format": "Value 1 {} \nValue 2 {}\n\nYep.\n\n\n\n\n\n\n\n\n\n\n\n\nReally long content\n\n\n\nvery",
+                "arg1": null,
+                "arg2": null
+            },
+            "inputs": [
+                {
+                    "id": "node_3tqgzx9dt_in_arg1_m5hh",
+                    "label": "Arg 1",
+                    "type": "number",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_3tqgzx9dt_in_arg2_ukc0",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_3tqgzx9dt_result_t6j8",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
         }
     ],
     "connections": [
-        {
-            "fromNode": "node_bvke7wsgm",
-            "fromPort": "node_bvke7wsgm_flow",
-            "toNode": "node_5rnnbu3o3",
-            "toPort": "node_5rnnbu3o3_in_ktmo"
-        },
         {
             "fromNode": "node_5rnnbu3o3",
             "fromPort": "node_5rnnbu3o3_out_dbvh",
@@ -125,11 +275,53 @@
             "fromPort": "node_6bjj8zshu_out_exec",
             "toNode": "node_yo9j8xyi9",
             "toPort": "node_yo9j8xyi9_in_ass9"
+        },
+        {
+            "fromNode": "node_bvke7wsgm",
+            "fromPort": "node_bvke7wsgm_flow",
+            "toNode": "node_ac01cbh1o",
+            "toPort": "node_ac01cbh1o_exec_in_bnyb"
+        },
+        {
+            "fromNode": "node_ac01cbh1o",
+            "fromPort": "node_ac01cbh1o_out_f41g",
+            "toNode": "node_5rnnbu3o3",
+            "toPort": "node_5rnnbu3o3_in_ktmo"
+        },
+        {
+            "fromNode": "node_x16x6fypd",
+            "fromPort": "node_x16x6fypd__szid",
+            "toNode": "node_ac01cbh1o",
+            "toPort": "node_ac01cbh1o_value"
+        },
+        {
+            "fromNode": "node_yo9j8xyi9",
+            "fromPort": "node_yo9j8xyi9_out_9j5j",
+            "toNode": "node_9e55wwkj1",
+            "toPort": "node_9e55wwkj1_flow"
+        },
+        {
+            "fromNode": "node_3tqgzx9dt",
+            "fromPort": "node_3tqgzx9dt_result_t6j8",
+            "toNode": "node_yo9j8xyi9",
+            "toPort": "node_yo9j8xyi9_message"
+        },
+        {
+            "fromNode": "node_noo5umff5",
+            "fromPort": "node_noo5umff5_value_1bow",
+            "toNode": "node_3tqgzx9dt",
+            "toPort": "node_3tqgzx9dt_in_arg2_ukc0"
+        },
+        {
+            "fromNode": "node_kwl6k0s07",
+            "fromPort": "node_kwl6k0s07__rfx6",
+            "toNode": "node_3tqgzx9dt",
+            "toPort": "node_3tqgzx9dt_in_arg1_m5hh"
         }
     ],
     "view": {
-        "panX": -45.63290000000006,
-        "panY": 94.4514999999999,
-        "zoom": 0.9801000000000002
+        "panX": 350.65505340344976,
+        "panY": 145.0058895167299,
+        "zoom": 0.7287176473438534
     }
 }

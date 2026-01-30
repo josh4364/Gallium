@@ -82,7 +82,7 @@ class GraphInterpreter:
         # Prefer function_input, but fallback to any node if it's a simple graph?
         # Actually for flow execution we need a starting point.
         for node in self.nodes.values():
-            if node['type'] in ('function_input', 'entry'):
+            if node['type'] in ('start', 'function_input', 'entry'):
                 return node
         return None
 
@@ -92,7 +92,7 @@ class GraphInterpreter:
         node_type = node['type']
         
         # --- Execution Flow Nodes ---
-        if node_type == 'function_input':
+        if node_type == 'start' or node_type == 'function_input':
             # Just pass through
             return self.follow_flow(node, 'exec_out')
             
@@ -108,13 +108,8 @@ class GraphInterpreter:
             name = node.get('params', {}).get('name') or self.get_input_value(node, 'name')
             val = self.get_input_value(node, 'value')
             if name:
-                # Store in simulation state workflow memory
-                if self.sim_state:
-                    if not hasattr(self.sim_state, 'workflow_memory'):
-                        self.sim_state.workflow_memory = {}
-                    self.sim_state.workflow_memory[name] = val
-                    logger.info(f"Set Variable {name} = {val}")
                 self.context[name] = val
+                logger.debug(f"Set Local Variable {name} = {val}")
             return self.follow_flow(node, 'exec_out')
             
         elif node_type == 'function_return':
@@ -254,7 +249,7 @@ class GraphInterpreter:
         val = None
         nt = node['type']
         
-        if nt == 'function_input':
+        if nt == 'start' or nt == 'function_input':
             # Retrieve from call stack args
             if self.call_stack:
                 # Find port label
@@ -289,16 +284,32 @@ class GraphInterpreter:
             val = a / b if b != 0 else 0
 
         elif nt == 'string_format':
-            fmt = str(self.get_input_value(node, 'format') or "")
-            arg1 = self.get_input_value(node, 'arg1')
-            # support up to 4 args if we add them later, for now just 1
+            fmt = str(node.get('params', {}).get('format') or "")
+            args = []
+            i = 1
+            while True:
+                key = f"arg{i}"
+                # Check if this input exists in the node's inputs list
+                has_port = any(p.get('key') == key for p in node.get('inputs', []))
+                if not has_port:
+                    break
+                val = self.get_input_value(node, key)
+                args.append(val if val is not None else "")
+                i += 1
             try:
-                val = fmt.format(arg1)
-            except Exception:
-                val = fmt # Fail gracefullly
+                val = fmt.format(*args)
+            except Exception as e:
+                logger.warning(f"String format failed: {e}")
+                val = fmt
 
         elif nt == 'string':
             val = node.get('params', {}).get('value')
+        
+        elif nt == 'get_variable':
+            name = node.get('params', {}).get('name')
+            if name:
+                # Check local context
+                val = self.context.get(name)
         
         elif nt == 'number':
             val = float(node.get('params', {}).get('value') or 0)

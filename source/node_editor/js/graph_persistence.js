@@ -25,6 +25,8 @@ Object.assign(NodeGraph.prototype, {
                 id: n.id,
                 type: n.type,
                 x: n.x, y: n.y,
+                width: n.width,
+                height: n.height,
                 title: n.title,
                 params: n.params,
                 inputs: n.inputs.map(i => ({ id: i.id, label: i.label, type: i.type, key: i.key })),
@@ -71,7 +73,7 @@ Object.assign(NodeGraph.prototype, {
 
             // Restore Nodes
             data.nodes.forEach(n => {
-                this.addNode(n.type, n.x, n.y, n.id, n.params, n.inputs, n.outputs);
+                this.addNode(n.type, n.x, n.y, n.id, n.params, n.inputs, n.outputs, n.width, n.height);
             });
 
             // Restore Connections
@@ -308,7 +310,7 @@ Object.assign(NodeGraph.prototype, {
                         n.params.error = "Function Missing";
                     }
                 }
-                this.addNode(n.type, n.x, n.y, n.id, n.params, n.inputs, n.outputs);
+                this.addNode(n.type, n.x, n.y, n.id, n.params, n.inputs, n.outputs, n.width, n.height);
             });
 
             // Restore Connections

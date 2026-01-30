@@ -111,6 +111,23 @@ Object.assign(NodeGraph.prototype, {
             });
         }
 
+        // Add variables from Set Variable nodes
+        const variables = new Set();
+        this.nodes.forEach(n => {
+            if (n.type === 'set_variable' && n.params.name) {
+                variables.add(n.params.name);
+            }
+        });
+
+        variables.forEach(varName => {
+            searchList.push({
+                type: 'get_variable',
+                name: `Get: ${varName}`,
+                tags: ['Data', 'variable', 'get', varName],
+                params: { name: varName }
+            });
+        });
+
         const filtered = searchList.filter(node => {
             if (query === '') return true;
             return node.name.toLowerCase().includes(query) ||
@@ -168,10 +185,7 @@ Object.assign(NodeGraph.prototype, {
     createPaletteItem(node) {
         const div = document.createElement('div');
         div.className = 'menu-item';
-        div.innerHTML = `
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--secondary-accent)"></div>
-            ${node.name}
-        `;
+        div.textContent = node.name;
         div.onclick = () => {
             this.addNode(node.type, this.menuX, this.menuY, null, node.params);
             this.closePalette();
@@ -186,7 +200,7 @@ Object.assign(NodeGraph.prototype, {
         this.paletteVisible = false;
     },
 
-    addNode(type, x, y, id = null, params = null, savedInputs = null, savedOutputs = null) {
+    addNode(type, x, y, id = null, params = null, savedInputs = null, savedOutputs = null, width = null, height = null) {
         let nodeDef = this.nodeRegistry.find(n => n.type === type);
 
         // If not in registry (e.g. dynamic function call without registry entry), use generic
@@ -199,20 +213,21 @@ Object.assign(NodeGraph.prototype, {
             return null;
         }
 
+        const nodeParams = params ? JSON.parse(JSON.stringify(params)) : JSON.parse(JSON.stringify(nodeDef.params || {}));
         const nodeId = id || 'node_' + Math.random().toString(36).substr(2, 9);
         let nodeTitle = nodeDef.name;
         let isFunctionCall = false;
         let funcRef = null;
 
         // Force title update and resolve function ref
-        if (type === 'function_call' && params && params.functionId && window.funcManager) {
-            funcRef = window.funcManager.functionDB.getFunction(params.functionId);
+        if (type === 'function_call' && nodeParams && nodeParams.functionId && window.funcManager) {
+            funcRef = window.funcManager.functionDB.getFunction(nodeParams.functionId);
             if (funcRef) {
                 nodeTitle = funcRef.name;
                 isFunctionCall = true;
             } else {
-                nodeTitle = "Missing: " + (params.functionName || "Function");
-                params.error = "Function Missing";
+                nodeTitle = "Missing: " + (nodeParams.functionName || "Function");
+                nodeParams.error = "Function Missing";
             }
         }
 
@@ -317,6 +332,24 @@ Object.assign(NodeGraph.prototype, {
                     id: nodeId + '_' + (input.key || input.label.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 4))
                 }));
             }
+
+            // Dynamic input logic for string_format
+            if (type === 'string_format' && inputs.length === 0) {
+                const format = nodeParams.format || '';
+                const count = (format.match(/{}/g) || []).length;
+                for (let i = 1; i <= count; i++) {
+                    const key = `arg${i}`;
+                    inputs.push({
+                        label: `Arg ${i}`,
+                        type: 'any_not_exec',
+                        key: key,
+                        id: `${nodeId}_in_${key}_${Math.random().toString(36).substr(2, 4)}`
+                    });
+                    if (nodeParams[key] === undefined) {
+                        nodeParams[key] = null;
+                    }
+                }
+            }
         }
 
 
@@ -376,7 +409,7 @@ Object.assign(NodeGraph.prototype, {
             outputs = savedOutputs.map(o => ({ ...o }));
         } else {
             let rawOutputs = nodeDef.outputs || [];
-            if (type === 'function_input' && window.funcManager) {
+            if (type === 'start' && window.funcManager) {
                 const curFunc = window.funcManager.functionDB.getFunction(window.funcManager.currentFunctionId);
                 if (curFunc) {
                     // Match FunctionManager.updateFunctionInputNode logic:
@@ -405,13 +438,14 @@ Object.assign(NodeGraph.prototype, {
             }
         }
 
-        const nodeParams = params ? JSON.parse(JSON.stringify(params)) : JSON.parse(JSON.stringify(nodeDef.params || {}));
 
         const node = {
             id: nodeId,
             type,
             x: x !== undefined ? x : (this.menuX || 100),
             y: y !== undefined ? y : (this.menuY || 100),
+            width: width,
+            height: height,
             title: nodeTitle,
             inputs,
             outputs,
@@ -433,7 +467,46 @@ Object.assign(NodeGraph.prototype, {
         if (!this.isRestoring) {
             this.saveHistory('Added Node');
         }
+
+        // Special initialization for Get Variable nodes to match their Set Variable counterparts
+        if (type === 'get_variable' && nodeParams && nodeParams.name) {
+            const setNode = this.nodes.find(n => n.type === 'set_variable' && n.params.name === nodeParams.name);
+            if (setNode) {
+                const valuePort = setNode.inputs.find(i => i.key === 'value');
+                if (valuePort && valuePort.type !== 'any_not_exec') {
+                    const outPort = node.outputs[0];
+                    outPort.type = valuePort.type;
+                    // We need to update element if it's already created, but addNode calls createNodeElement AFTER this.
+                    // Wait, createNodeElement is called below.
+                }
+            }
+        }
+
         return node;
+    },
+
+    onVariableTypeChanged(varName, newType) {
+        this.nodes.forEach(node => {
+            if (node.type === 'get_variable' && node.params.name === varName) {
+                const outPort = node.outputs[0];
+                if (outPort.type !== newType) {
+                    outPort.type = newType;
+                    const portEl = document.getElementById(outPort.id);
+                    if (portEl) {
+                        portEl.className = `port port-output port-type-${newType}`;
+                    }
+                    // Connections from this port should also update color
+                    this.connections.forEach(conn => {
+                        if (conn.fromPort === outPort) {
+                            const style = getComputedStyle(document.documentElement);
+                            const color = style.getPropertyValue(`--type-${newType}`).trim() || '#fff';
+                            conn.element.style.stroke = color;
+                            conn.element.style.filter = `drop-shadow(0 0 8px ${color}66)`;
+                        }
+                    });
+                }
+            }
+        });
     },
 
     deleteNode(node, suppressHistory = false) {
@@ -461,6 +534,67 @@ Object.assign(NodeGraph.prototype, {
         if (!suppressHistory && !this.isRestoring) this.saveHistory('Deleted Node');
     },
 
+    refreshNodePorts(node) {
+        if (!node.element) return;
+        const inputsCol = node.element.querySelector('.node-inputs');
+        const outputsCol = node.element.querySelector('.node-outputs');
+
+        if (inputsCol) {
+            inputsCol.innerHTML = '';
+            node.inputs.forEach(input => {
+                inputsCol.appendChild(this.createPort(node, input, true));
+            });
+        }
+        if (outputsCol) {
+            outputsCol.innerHTML = '';
+            node.outputs.forEach(output => {
+                outputsCol.appendChild(this.createPort(node, output, false));
+            });
+        }
+        this.renderConnections();
+    },
+
+    updateStringFormatPorts(node) {
+        const format = node.params.format || '';
+        const count = (format.match(/{}/g) || []).length;
+
+        const oldInputs = [...node.inputs];
+        const newInputs = [];
+
+        for (let i = 1; i <= count; i++) {
+            const key = `arg${i}`;
+            const label = `Arg ${i}`;
+            const existing = oldInputs.find(input => input.key === key);
+            if (existing) {
+                newInputs.push(existing);
+            } else {
+                newInputs.push({
+                    label,
+                    type: 'any_not_exec',
+                    key,
+                    id: `${node.id}_in_${key}_${Math.random().toString(36).substr(2, 4)}`
+                });
+                if (node.params[key] === undefined) {
+                    node.params[key] = null;
+                }
+            }
+        }
+
+        // Find connections that are now orphaned
+        const newInputIds = new Set(newInputs.map(i => i.id));
+        this.connections = this.connections.filter(c => {
+            if (c.toNode === node && !newInputIds.has(c.toPort.id)) {
+                if (c.element && c.element.parentNode) this.svgLayer.removeChild(c.element);
+                if (c.hitArea && c.hitArea.parentNode) this.svgLayer.removeChild(c.hitArea);
+                return false;
+            }
+            return true;
+        });
+
+        node.inputs = newInputs;
+        this.refreshNodePorts(node);
+    },
+
     createNodeElement(node) {
         const div = document.createElement('div');
         div.className = `node node-type-${node.type}`;
@@ -473,6 +607,8 @@ Object.assign(NodeGraph.prototype, {
         }
         div.style.left = node.x + 'px';
         div.style.top = node.y + 'px';
+        if (node.width) div.style.width = node.width + 'px';
+        if (node.height) div.style.height = node.height + 'px';
         div.id = node.id;
 
         // Header
@@ -511,6 +647,7 @@ Object.assign(NodeGraph.prototype, {
         // Flex container for the node body
         const contentRow = document.createElement('div');
         contentRow.className = 'node-main-row';
+        contentRow.style.padding = '10px 0'; // Vertical spacing for ports
         div.appendChild(contentRow);
 
         const inputsCol = document.createElement('div');
@@ -536,6 +673,7 @@ Object.assign(NodeGraph.prototype, {
 
             const val = node.params[key];
             const widget = document.createElement('div');
+            widget.className = 'node-widget';
             widget.style.padding = '0 10px 10px 10px';
 
             if (typeof val === 'boolean') {
@@ -547,19 +685,28 @@ Object.assign(NodeGraph.prototype, {
                     toggle.className = `bool-toggle ${node.params[key] ? 'is-true' : 'is-false'}`;
                     toggle.innerText = node.params[key] ? 'TRUE' : 'FALSE';
                     this.saveHistory('Toggle Param');
-                    // Trigger updates if needed
                 };
                 widget.appendChild(toggle);
             } else if (typeof val === 'string' || typeof val === 'number') {
-                if (node.type === 'string' && key === 'value') {
+                if ((node.type === 'string' || node.type === 'string_format') && (key === 'value' || key === 'format')) {
                     const area = document.createElement('textarea');
                     area.className = 'node-textarea';
+                    if (node.type === 'string_format') {
+                        area.classList.add('node-input');
+                        area.style.width = '100%';
+                        area.rows = 1;
+
+                        area.oninput = (e) => {
+                            node.params[key] = e.target.value;
+                            if (node.type === 'string_format') this.updateStringFormatPorts(node);
+                        };
+                    } else {
+                        area.oninput = (e) => {
+                            node.params[key] = e.target.value;
+                        };
+                    }
                     area.value = val;
-                    area.oninput = (e) => {
-                        node.params[key] = e.target.value;
-                    };
-                    area.onchange = () => this.saveHistory('Edit String');
-                    // Prevent drag
+                    area.onchange = () => this.saveHistory(`Edit ${node.type}`);
                     area.onmousedown = e => e.stopPropagation();
                     widget.appendChild(area);
                 } else {
@@ -570,6 +717,36 @@ Object.assign(NodeGraph.prototype, {
                     input.value = val;
                     input.oninput = (e) => {
                         node.params[key] = typeof val === 'number' ? parseFloat(e.target.value) : e.target.value;
+
+                        // Handle variable name changes
+                        if (node.type === 'set_variable' && key === 'name') {
+                            const newVarName = node.params[key];
+                            const valuePort = node.inputs.find(i => i.key === 'value');
+                            if (valuePort) {
+                                this.onVariableTypeChanged(newVarName, valuePort.type);
+                            }
+                        } else if (node.type === 'get_variable' && key === 'name') {
+                            const setNode = this.nodes.find(n => n.type === 'set_variable' && n.params.name === node.params[key]);
+                            if (setNode) {
+                                const valuePort = setNode.inputs.find(i => i.key === 'value');
+                                if (valuePort) {
+                                    const outPort = node.outputs[0];
+                                    outPort.type = valuePort.type;
+                                    const portEl = document.getElementById(outPort.id);
+                                    if (portEl) {
+                                        portEl.className = `port port-output port-type-${outPort.type}`;
+                                    }
+                                }
+                            } else {
+                                // Default back to any_not_exec
+                                const outPort = node.outputs[0];
+                                outPort.type = 'any_not_exec';
+                                const portEl = document.getElementById(outPort.id);
+                                if (portEl) {
+                                    portEl.className = `port port-output port-type-any_not_exec`;
+                                }
+                            }
+                        }
                     };
                     input.onchange = () => this.saveHistory('Edit Param');
                     input.onmousedown = e => e.stopPropagation();
@@ -577,7 +754,7 @@ Object.assign(NodeGraph.prototype, {
                 }
             }
             // Label for param
-            if (node.type !== 'string' && node.type !== 'number' && node.type !== 'boolean') {
+            if (!['string', 'number', 'boolean', 'string_format'].includes(node.type)) {
                 const lbl = document.createElement('div');
                 lbl.innerText = key;
                 lbl.style.fontSize = '10px';
@@ -638,10 +815,48 @@ Object.assign(NodeGraph.prototype, {
             // Maybe open detailed editor?
         };
 
+        // Add resizer handle for specific nodes
+        if (nodeDef.resizable) {
+            const resizer = document.createElement('div');
+            resizer.className = 'node-resizer';
+            div.appendChild(resizer);
+
+            resizer.onmousedown = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const startWidth = div.offsetWidth;
+                const startHeight = div.offsetHeight;
+                const startX = e.clientX;
+                const startY = e.clientY;
+
+                const onMouseMove = (moveE) => {
+                    const newWidth = Math.max(200, startWidth + (moveE.clientX - startX) / this.zoomLevel);
+                    const newHeight = Math.max(120, startHeight + (moveE.clientY - startY) / this.zoomLevel);
+                    div.style.width = newWidth + 'px';
+                    div.style.height = newHeight + 'px';
+                    node.width = newWidth;
+                    node.height = newHeight;
+                    this.renderConnections();
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    this.saveHistory('Resize Node');
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            };
+        }
+
         this.nodesLayer.appendChild(div);
         node.element = div;
         // Watch for resizes (manual or auto) to update connections
         const ro = new ResizeObserver(() => {
+            // Update node dimensions
+            node.width = div.offsetWidth;
+            node.height = div.offsetHeight;
             this.renderConnections();
         });
         ro.observe(div);
@@ -664,20 +879,26 @@ Object.assign(NodeGraph.prototype, {
             this.finishConnection(node, portData, isInput ? 'input' : 'output');
         };
 
+        const formatLabel = (lbl) => {
+            if (!lbl || !lbl.startsWith('exec_')) return lbl;
+            const part = lbl.replace('exec_', '');
+            return part.charAt(0).toUpperCase() + part.slice(1);
+        };
+
         if (isInput) {
             portWrapper.appendChild(port);
             if (portData.label) {
                 const label = document.createElement('span');
                 label.className = 'port-label';
                 if (portData.label.length <= 1) label.classList.add('port-label-small');
-                label.innerText = portData.label;
+                label.innerText = formatLabel(portData.label);
                 portWrapper.appendChild(label);
             }
         } else {
             if (portData.label) {
                 const label = document.createElement('span');
                 label.className = 'port-label';
-                label.innerText = portData.label;
+                label.innerText = formatLabel(portData.label);
                 portWrapper.appendChild(label);
             }
             portWrapper.appendChild(port);

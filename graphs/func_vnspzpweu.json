@@ -38,10 +38,10 @@
         },
         {
             "id": "node_s2o27niqc",
-            "type": "function_input",
+            "type": "start",
             "x": 136,
             "y": 28,
-            "title": "Function Inputs",
+            "title": "Start",
             "params": {},
             "inputs": [],
             "outputs": [

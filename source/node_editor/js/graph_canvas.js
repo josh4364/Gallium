@@ -140,9 +140,9 @@ Object.assign(NodeGraph.prototype, {
         };
 
         window.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
 
-            if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (e.key === 'Delete') {
                 if (this.selectedNodes && this.selectedNodes.size > 0) {
                     const nodesToDelete = Array.from(this.selectedNodes);
                     nodesToDelete.forEach(n => this.deleteNode(n, true));
@@ -307,6 +307,13 @@ Object.assign(NodeGraph.prototype, {
 
     updateTransform() {
         this.graphLayer.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+
+        // Update grid positions and scale to match nodes
+        this.container.style.setProperty('--grid-size', `${40 * this.zoomLevel}px`);
+        this.container.style.setProperty('--grid-dot-size', `${1.5 * this.zoomLevel}px`);
+        this.container.style.setProperty('--grid-pos-x', `${this.panX}px`);
+        this.container.style.setProperty('--grid-pos-y', `${this.panY}px`);
+
         const zoomEl = document.getElementById('zoom-level');
         if (zoomEl) zoomEl.innerText = Math.round(this.zoomLevel * 100) + '%';
 

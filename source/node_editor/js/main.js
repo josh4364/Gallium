@@ -15,13 +15,13 @@ window.graph = graph; // Make graph globally available too (for HTML onclick han
 window.importFunctionList = (list) => {
     const serverIds = new Set(list.map(f => f.id));
 
-    // Remove local functions not on server (unless they are newly created and not yet saved?)
-    // Actually, if they are newly created, they don't have an ID that would match a server list anyway.
-    // Let's just sync to what the server says is the reality.
+    // Check if current is a default stub BEFORE sync
+    const currentBefore = functionDB.getFunction(funcManager.currentFunctionId);
+    const isDefaultStub = currentBefore && currentBefore.name === 'Main' && currentBefore.id.startsWith('func_');
+
+    // Remove local functions not on server
     Object.keys(functionDB.functions).forEach(id => {
         if (!serverIds.has(id)) {
-            // Special case: if it's the default 'Main' and we have other server functions, we can remove it.
-            // But if it's the ONLY function, maybe keep it?
             // Actually, if the server sent a list, that IS the source of truth.
             delete functionDB.functions[id];
         }
@@ -50,11 +50,9 @@ window.importFunctionList = (list) => {
     });
     funcManager.updateSelector();
 
-    // Load first server function if none loaded or if we are on the default dummy function
-    const current = functionDB.getFunction(funcManager.currentFunctionId);
-    const isDefaultStub = current && current.name === 'Main' && current.id.startsWith('func_');
-
-    if ((!funcManager.currentFunctionId || isDefaultStub) && list.length > 0) {
+    // Load first server function if current is missing, was a stub, or none loaded
+    const currentAfter = functionDB.getFunction(funcManager.currentFunctionId);
+    if ((!currentAfter || isDefaultStub || !funcManager.currentFunctionId) && list.length > 0) {
         funcManager.loadFunction(list[0].id);
     }
 };

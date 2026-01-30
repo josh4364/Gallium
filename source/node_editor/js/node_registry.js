@@ -1,7 +1,7 @@
 const nodeRegistry = [
     {
-        type: 'function_input',
-        name: 'Function Inputs',
+        type: 'start',
+        name: 'Start',
         tags: ['Function', 'input', 'start'],
         inputs: [], // Dynamic
         outputs: [{ label: 'exec_out', type: 'exec' }] // Defaults
@@ -21,20 +21,6 @@ const nodeRegistry = [
         outputs: [{ label: 'exec_out', type: 'exec' }] // Dynamic
     },
     {
-        type: 'selector',
-        name: 'Selector',
-        tags: ['Flow', 'control', 'composite'],
-        inputs: [{ label: 'exec_in', type: 'exec' }],
-        outputs: [{ label: 'exec_out', type: 'exec' }]
-    },
-    {
-        type: 'sequence',
-        name: 'Sequence',
-        tags: ['Flow', 'control', 'composite'],
-        inputs: [{ label: 'exec_in', type: 'exec' }],
-        outputs: [{ label: 'exec_out', type: 'exec' }]
-    },
-    {
         type: 'condition',
         name: 'Branch',
         tags: ['Flow', 'logic', 'if', 'condition'],
@@ -47,18 +33,6 @@ const nodeRegistry = [
             { label: 'exec_false', type: 'exec' }
         ],
         params: { condition: false }
-    },
-    {
-        type: 'action',
-        name: 'Behavior Task',
-        tags: ['Actions', 'leaf', 'task'],
-        color: 'var(--danger)',
-        inputs: [
-            { label: 'In', type: 'exec' },
-            { label: 'Message', type: 'string', key: 'message' }
-        ],
-        outputs: [{ label: 'exec_out', type: 'exec' }],
-        params: { name: 'Behavior Task', message: 'Hello' }
     },
     {
         type: 'log_message',
@@ -74,20 +48,30 @@ const nodeRegistry = [
     },
     {
         type: 'set_variable',
-        name: 'Set Variable',
-        tags: ['Data', 'set', 'store', 'memory'],
+        name: 'Set Local Variable',
+        tags: ['Data', 'local', 'set', 'store', 'memory'],
         color: '#9C27B0',
         inputs: [
             { label: 'exec_in', type: 'exec' },
-            { label: 'Value', type: 'any', key: 'value' }
+            { label: 'Value', type: 'any_not_exec', key: 'value' }
         ],
-        outputs: [{ label: 'Out', type: 'exec' }],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
         params: { name: 'myVar', value: null }
+    },
+    {
+        type: 'get_variable',
+        name: 'Get Local Variable',
+        tags: ['Data', 'local', 'get', 'read', 'memory'],
+        color: '#9C27B0',
+        inputs: [],
+        outputs: [{ label: 'Value', type: 'any_not_exec' }],
+        params: { name: 'myVar' }
     },
     {
         type: 'string',
         name: 'String Constant',
         tags: ['Data', 'variable', 'text'],
+        resizable: true,
         outputs: [{ label: '', type: 'string' }],
         params: { value: 'Hello World' }
     },
@@ -95,12 +79,10 @@ const nodeRegistry = [
         type: 'string_format',
         name: 'String Format',
         tags: ['Data', 'string', 'format', 'template'],
-        inputs: [
-            { label: 'Format "{}"', type: 'string', key: 'format' },
-            { label: 'Arg', type: 'any', key: 'arg1' }
-        ],
+        resizable: true,
+        inputs: [],
         outputs: [{ label: 'Result', type: 'string' }],
-        params: { format: 'Value: {}', arg1: null }
+        params: { format: 'Value: {}' }
     },
     {
         type: 'number',
@@ -197,8 +179,8 @@ const nodeRegistry = [
         name: 'Equal',
         tags: ['Logic', 'compare', '=='],
         inputs: [
-            { label: 'A', type: 'any', key: 'a' },
-            { label: 'B', type: 'any', key: 'b' }
+            { label: 'A', type: 'any_not_exec', key: 'a' },
+            { label: 'B', type: 'any_not_exec', key: 'b' }
         ],
         outputs: [{ label: 'Result', type: 'boolean' }],
         params: { a: null, b: null }

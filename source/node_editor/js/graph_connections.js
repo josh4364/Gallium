@@ -35,10 +35,20 @@ Object.assign(NodeGraph.prototype, {
                 return;
             }
 
+            const isAny = (t) => t === 'any';
+            const isAnyNotExec = (t) => t === 'any_not_exec';
+            const isExec = (t) => t === 'exec';
+
             if (fromPort.type !== toPort.type) {
-                console.warn("Connection type mismatch:", fromPort.type, "vs", toPort.type);
-                this.cancelDraftConnection();
-                return;
+                const canConnect = isAny(fromPort.type) || isAny(toPort.type) ||
+                    (isAnyNotExec(fromPort.type) && !isExec(toPort.type)) ||
+                    (isAnyNotExec(toPort.type) && !isExec(fromPort.type));
+
+                if (!canConnect) {
+                    console.warn("Connection type mismatch:", fromPort.type, "vs", toPort.type);
+                    this.cancelDraftConnection();
+                    return;
+                }
             }
 
             this.addConnection(fromNode, fromPort, toNode, toPort);
@@ -64,10 +74,29 @@ Object.assign(NodeGraph.prototype, {
 
         const conn = { fromNode, fromPort, toNode, toPort };
 
+        // Handle any/any_not_exec type assignment
+        if (toPort.type === 'any_not_exec' || toPort.type === 'any') {
+            toPort.type = fromPort.type;
+            const portEl = document.getElementById(toPort.id);
+            if (portEl) {
+                portEl.className = `port port-input port-type-${toPort.type}`;
+            }
+            if (toNode.type.includes('variable')) {
+                this.onVariableTypeChanged(toNode.params.name, toPort.type);
+            }
+        } else if (fromPort.type === 'any_not_exec' || fromPort.type === 'any') {
+            fromPort.type = toPort.type;
+            const portEl = document.getElementById(fromPort.id);
+            if (portEl) {
+                portEl.className = `port port-output port-type-${fromPort.type}`;
+            }
+        }
+
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "connection-line");
 
         const style = getComputedStyle(document.documentElement);
+        // Use the resolved type for color
         const color = style.getPropertyValue(`--type-${fromPort.type}`).trim() || '#fff';
         path.style.stroke = color;
         path.style.filter = `drop-shadow(0 0 8px ${color}66)`;
@@ -126,6 +155,56 @@ Object.assign(NodeGraph.prototype, {
         // Show inline editor
         const editor = conn.toNode.element.querySelector(`.inline-editor[data-port-id="${conn.toPort.id}"]`);
         if (editor) editor.style.display = '';
+
+        // Reset to any_not_exec if it was a wildcard port
+        const nodeDef = this.nodeRegistry.find(n => n.type === conn.toNode.type);
+        if (nodeDef) {
+            let isWildcard = false;
+            const portDef = nodeDef.inputs?.find(i => i.key === conn.toPort.key);
+            if (portDef && (portDef.type === 'any_not_exec' || portDef.type === 'any')) {
+                isWildcard = true;
+            } else if (conn.toNode.type === 'string_format' && conn.toPort.key?.startsWith('arg')) {
+                // Dynamic ports for string_format
+                isWildcard = true;
+            }
+
+            if (isWildcard) {
+                conn.toPort.type = 'any_not_exec';
+                const portEl = document.getElementById(conn.toPort.id);
+                if (portEl) {
+                    portEl.className = `port port-input port-type-any_not_exec`;
+                }
+                if (conn.toNode.type.includes('variable')) {
+                    this.onVariableTypeChanged(conn.toNode.params.name, 'any_not_exec');
+                }
+            }
+        }
+
+        // Also check fromPort if it was a wildcard (e.g. Get Variable)
+        const fromNodeDef = this.nodeRegistry.find(n => n.type === conn.fromNode.type);
+        if (fromNodeDef) {
+            const portDef = fromNodeDef.outputs?.find(o => o.label === conn.fromPort.label);
+            if (portDef && (portDef.type === 'any_not_exec' || portDef.type === 'any')) {
+                // Only reset if NO MORE connections are using this output
+                const otherConns = this.connections.filter(c => c !== conn && c.fromPort.id === conn.fromPort.id);
+                if (otherConns.length === 0) {
+                    let targetType = 'any_not_exec';
+                    if (conn.fromNode.type === 'get_variable' && conn.fromNode.params.name) {
+                        const setNode = this.nodes.find(n => n.type === 'set_variable' && n.params.name === conn.fromNode.params.name);
+                        if (setNode) {
+                            const valPort = setNode.inputs.find(i => i.key === 'value');
+                            if (valPort) targetType = valPort.type;
+                        }
+                    }
+
+                    conn.fromPort.type = targetType;
+                    const portEl = document.getElementById(conn.fromPort.id);
+                    if (portEl) {
+                        portEl.className = `port port-output port-type-${targetType}`;
+                    }
+                }
+            }
+        }
 
         this.connections = this.connections.filter(c => c !== conn);
         if (this.hoveredConnection === conn) {

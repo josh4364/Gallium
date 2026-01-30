@@ -306,7 +306,7 @@ class FunctionManager {
         const func = this.functionDB.getFunction(this.currentFunctionId);
         // Find Function Input nodes
         this.graph.nodes.forEach(node => {
-            if (node.type === 'function_input') {
+            if (node.type === 'start') {
                 this.updateFunctionInputNode(node, func);
             }
             if (node.type === 'function_return') {
@@ -315,7 +315,7 @@ class FunctionManager {
         });
         // We also need to update the DOM elements for these nodes to reflect new ports
         this.graph.nodes.forEach(node => {
-            if (node.type === 'function_input' || node.type === 'function_return') {
+            if (node.type === 'start' || node.type === 'function_return') {
                 this.graph.updateNodeElement(node); // This needs to exist or I use the internal createNodeElement re-render logic
                 // The graph.updateNodeElement only updates position. 
                 // I might need to re-create the DOM or update ports manually.
@@ -347,7 +347,7 @@ class FunctionManager {
             };
         });
         node.outputs = newOutputs;
-        node.title = "Function Inputs";
+        node.title = "Start";
         // Inputs? Function Input node usually has no inputs (it generates data).
         // Except maybe Exec?
         // Let's add Exec Output automatically? Or user defines it?
