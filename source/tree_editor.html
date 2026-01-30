@@ -744,6 +744,183 @@
             pointer-events: none;
             z-index: 9999;
         }
+
+        #function-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 280px;
+            max-height: calc(100% - 120px);
+            background: var(--node-bg);
+            border: 1px solid var(--node-border);
+            backdrop-filter: var(--glass-blur);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            gap: 0;
+            overflow-y: auto;
+            z-index: 90;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        #function-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #function-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .panel-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--node-border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-header {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .panel-label {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .panel-input,
+        .panel-textarea {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--node-border);
+            border-radius: 4px;
+            color: var(--text-main);
+            padding: 8px;
+            font-size: 12px;
+            font-family: inherit;
+            width: 100%;
+            outline: none;
+        }
+
+        .panel-input:focus,
+        .panel-textarea:focus {
+            border-color: var(--primary-accent);
+        }
+
+        .panel-textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .func-tag {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .func-tag.category-tag {
+            border: 1px solid var(--primary-accent);
+            background: rgba(187, 134, 252, 0.1);
+            font-weight: 600;
+        }
+
+        .func-tag .remove {
+            cursor: pointer;
+            opacity: 0.5;
+        }
+
+        .func-tag .remove:hover {
+            opacity: 1;
+        }
+
+        .tag-btn.add {
+            background: transparent;
+            border: 1px dashed var(--text-dim);
+            color: var(--text-dim);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .tag-btn.add:hover {
+            border-color: var(--primary-accent);
+            color: var(--primary-accent);
+        }
+
+        .io-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .io-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .io-name {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--node-border);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            min-width: 0;
+        }
+
+        .io-type {
+            width: 80px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--node-border);
+            color: white;
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .io-del {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 0 4px;
+            font-size: 16px;
+        }
+
+        .io-add {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--node-border);
+            color: var(--text-dim);
+            padding: 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .io-add:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
     </style>
 </head>
 
@@ -844,6 +1021,36 @@
         <span><span class="kbd">RMB</span> Context Menu</span>
     </div>
 
+    <div id="function-panel">
+        <div class="panel-section">
+            <div class="panel-header">Function</div>
+            <select id="function-selector"
+                style="width: 100%; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--node-border); border-radius: 4px;">
+                <!-- Populated by JS -->
+            </select>
+            <button class="tool-btn" style="width: 100%; margin-bottom: 10px; font-size: 11px;"
+                onclick="funcManager.createNewFunction()">+ New Function</button>
+
+            <label class="panel-label">Name</label>
+            <input type="text" id="func-name" class="panel-input">
+
+            <label class="panel-label">Description</label>
+            <textarea id="func-desc" class="panel-textarea"></textarea>
+
+            <div id="func-tags" class="tags-container"></div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Inputs</div>
+            <div id="func-inputs-list" class="io-list"></div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">Outputs</div>
+            <div id="func-outputs-list" class="io-list"></div>
+        </div>
+    </div>
+
     <div id="context-menu">
         <div class="window-header" id="menu-header">
             <span>Add Node</span>
@@ -857,9 +1064,31 @@
         </div>
     </div>
 
+    <script src="function_system.js"></script>
     <script src="tree_editor.js"></script>
     <script>
         const nodeRegistry = [
+            {
+                type: 'function_input',
+                name: 'Function Inputs',
+                tags: ['Function', 'input', 'start'],
+                inputs: [], // Dynamic
+                outputs: [{ label: 'Flow', type: 'exec' }] // Defaults
+            },
+            {
+                type: 'function_return',
+                name: 'Return',
+                tags: ['Function', 'output', 'end'],
+                inputs: [{ label: 'Flow', type: 'exec' }], // Defaults
+                outputs: [] // Dynamic
+            },
+            {
+                type: 'function_call',
+                name: 'Function Call',
+                tags: ['Function', 'call'],
+                inputs: [{ label: 'In', type: 'exec' }], // Dynamic
+                outputs: [{ label: 'Out', type: 'exec' }] // Dynamic
+            },
             {
                 type: 'selector',
                 name: 'Selector',
@@ -971,15 +1200,15 @@
             nodeRegistry: nodeRegistry
         });
 
-        // Initial setup with connections
-        const s1 = graph.addNode('selector', 100, 150);
-        const q1 = graph.addNode('sequence', 450, 150);
-        const a1 = graph.addNode('action', 800, 80);
-        const str1 = graph.addNode('string', 500, 40);
+        // Initialize Function System
+        const typeDB = new TypeDatabase();
+        const functionDB = new FunctionDatabase();
+        const funcManager = new FunctionManager(graph, typeDB, functionDB);
 
-        graph.addConnection(s1, s1.outputs[0], q1, q1.inputs[0]);
-        graph.addConnection(q1, q1.outputs[0], a1, a1.inputs[0]);
-        graph.addConnection(str1, str1.outputs[0], a1, a1.inputs[1]);
+        // Make globally available for UI
+        window.funcManager = funcManager;
+
+        // No longer creating static example nodes here, as FunctionManager will load the default function
 
         graph.render();
 

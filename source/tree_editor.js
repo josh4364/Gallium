@@ -208,11 +208,15 @@ class NodeGraph {
     }
 
     async saveToFile() {
-        const json = await this.serialize();
+        let json;
+        if (window.funcManager && window.funcManager.functionDB) {
+            await window.funcManager.saveCurrentFunction();
+            json = window.funcManager.functionDB.dump();
+        } else {
+            json = await this.serialize();
+        }
+
         const compressed = await this.compress(json);
-        // User wants "text file with b64 encoding" - compressed is data url, strip prefix?
-        // "b64 encoding" - the data URL has it.
-        // Let's just save the full data URL string or the raw b64.
         const b64 = compressed.split(',')[1];
 
         const blob = new Blob([b64], { type: 'text/plain' });
@@ -220,7 +224,7 @@ class NodeGraph {
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        a.download = 'graph_state.graph';
+        a.download = 'project_state.graph';
         document.body.appendChild(a);
         a.click();
 
@@ -238,20 +242,131 @@ class NodeGraph {
         const file = input.files[0];
         if (!file) return;
 
-        // Save current state before loading
-        await this.saveHistory("Pre-Load");
+        // Save current state before loading? If loading project, history is wiped/replaced.
 
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const b64 = e.target.result;
-            // Reconstruct data URL for decompress helper
-            const dataUrl = `data:application/octet-stream;base64,${b64}`;
-            await this.restoreState(dataUrl, false); // Don't restore view, we will recenter
-            this.recenter(); // Recenter after loading
-            await this.saveHistory("Loaded Graph"); // New history head
+            const content = e.target.result;
+
+            // Reconstruct data URL for decompression
+            const dataUrl = `data:application/octet-stream;base64,${content}`;
+
+            try {
+                const decompressed = await this.decompress(dataUrl);
+                const data = JSON.parse(decompressed);
+
+                // Detect Type
+                // Project DB is a map of ID -> Function Object
+                const keys = Object.keys(data);
+                const isProject = keys.some(k => k.startsWith('func_'));
+                const isGraph = data.nodes && data.connections;
+
+                if (isProject && window.funcManager) {
+                    if (window.funcManager.functionDB.load(decompressed)) {
+                        window.funcManager.updateSelector();
+                        // Load first function
+                        const all = window.funcManager.functionDB.getAllFunctions();
+                        if (all.length > 0) {
+                            await window.funcManager.loadFunction(all[0].id);
+                        } else {
+                            // Create default if empty db?
+                            window.funcManager.createNewFunction();
+                        }
+                        this.showNotification("Project Loaded");
+                    }
+                } else if (isGraph) {
+                    // Single graph load
+                    await this.loadData(decompressed);
+                    this.recenter();
+                    this.showNotification("Graph Loaded");
+                } else {
+                    console.error("Unknown file format");
+                    this.showNotification("Error: Unknown File Format");
+                }
+
+            } catch (err) {
+                console.error("Failed to load/decompress", err);
+                // Fallback try JSON parse directly? 
+                // Currently save is always compressed.
+                this.showNotification("Error Loading File");
+            }
         };
         reader.readAsText(file);
-        input.value = ''; // Reset
+        input.value = '';
+    }
+
+    clear() {
+        // Remove all DOM elements
+        this.nodes.forEach(n => {
+            if (n.element.parentNode) n.element.parentNode.removeChild(n.element);
+        });
+        this.connections.forEach(c => {
+            if (c.element) c.element.remove();
+            if (c.hitArea) c.hitArea.remove();
+        });
+
+        this.nodes = [];
+        this.connections = [];
+        this.selectedNode = null;
+        if (this.selectedNodes) this.selectedNodes.clear();
+        this.hoveredConnection = null;
+        this.history = [];
+        this.historyIndex = -1;
+        this.updateMinimap();
+
+        const countEl = document.getElementById('node-count');
+        if (countEl) countEl.innerText = 0;
+    }
+
+    async loadData(jsonString) {
+        this.isRestoring = true;
+        try {
+            const data = JSON.parse(jsonString);
+            this.clear();
+
+            // View
+            if (data.view) {
+                this.panX = data.view.panX;
+                this.panY = data.view.panY;
+                this.zoomLevel = data.view.zoom;
+                this.updateTransform();
+            }
+
+            // Restore Nodes
+            data.nodes.forEach(n => {
+                // Refresh function call details from DB if available
+                if (n.type === 'function_call' && n.params && n.params.functionId && window.funcManager) {
+                    const func = window.funcManager.functionDB.getFunction(n.params.functionId);
+                    if (func) {
+                        n.title = func.name;
+                    } else {
+                        n.title = "Missing: " + n.title;
+                        n.params.error = "Function Missing";
+                    }
+                }
+                this.addNode(n.type, n.x, n.y, n.id, n.params, n.inputs, n.outputs);
+            });
+
+            // Restore Connections
+            data.connections.forEach(c => {
+                const fromNode = this.nodes.find(n => n.id === c.fromNode);
+                const toNode = this.nodes.find(n => n.id === c.toNode);
+                if (fromNode && toNode) {
+                    const fromPort = fromNode.outputs.find(p => p.id === c.fromPort);
+                    const toPort = toNode.inputs.find(p => p.id === c.toPort);
+                    if (fromPort && toPort) {
+                        this.addConnection(fromNode, fromPort, toNode, toPort, true);
+                    }
+                }
+            });
+
+        } catch (e) {
+            console.error("Failed to load data", e);
+            this.showNotification("Error loading graph data");
+        } finally {
+            this.isRestoring = false;
+            this.updateMinimap();
+        }
     }
 
     initMinimapEvents() {
@@ -304,7 +419,7 @@ class NodeGraph {
 
                         if (filtered.length > 0) {
                             // Spawn the first match
-                            this.addNode(filtered[0].type, this.menuX, this.menuY);
+                            this.addNode(filtered[0].type, this.menuX, this.menuY, null, filtered[0].params);
                             this.closePalette();
                             e.preventDefault();
                             e.stopPropagation();
@@ -355,7 +470,29 @@ class NodeGraph {
 
         if (!this.nodeRegistry) return;
 
-        const filtered = this.nodeRegistry.filter(node => {
+        // Combine registry nodes with available functions
+        // Filter out generic function_call from the registry list so it doesn't show up in palette
+        let searchList = this.nodeRegistry.filter(n => n.type !== 'function_call');
+
+        if (window.funcManager && window.funcManager.functionDB) {
+            const funcs = window.funcManager.functionDB.getAllFunctions();
+            // Exclude current function to prevent recursion? Or allow it (recursion limits?)
+            // For now allow it.
+            funcs.forEach(f => {
+                if (f.id !== window.funcManager.currentFunctionId) {
+                    searchList.push({
+                        type: 'function_call',
+                        name: 'Call: ' + f.name,
+                        tags: [...f.tags, 'Function', 'call'],
+                        params: { functionId: f.id },
+                        // Visual hint?
+                        isFunction: true
+                    });
+                }
+            });
+        }
+
+        const filtered = searchList.filter(node => {
             if (query === '') return true;
             return node.name.toLowerCase().includes(query) ||
                 (node.tags && node.tags.some(t => t.toLowerCase().includes(query)));
@@ -364,7 +501,10 @@ class NodeGraph {
         if (query === '') {
             const categories = {};
             filtered.forEach(node => {
-                const cat = (node.tags && node.tags[0]) || 'General';
+                let cat = (node.tags && node.tags[0]) || 'General';
+                // Normalize to Title Case for case-insensitive grouping
+                cat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+
                 if (!categories[cat]) categories[cat] = [];
                 categories[cat].push(node);
             });
@@ -373,7 +513,9 @@ class NodeGraph {
                 const catEl = document.createElement('div');
                 const isExpanded = this.expandedCategories.has(cat);
                 catEl.className = `category-item ${!isExpanded ? 'collapsed' : ''}`;
-                catEl.textContent = cat; // Simple text content
+                catEl.innerHTML = cat; // Use innerHTML for potential styling
+                if (cat === 'Function') catEl.style.color = 'var(--secondary-accent)';
+
                 catEl.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
                 catEl.onclick = (e) => {
                     e.preventDefault();
@@ -412,7 +554,7 @@ class NodeGraph {
             ${node.name}
         `;
         div.onclick = () => {
-            this.addNode(node.type, this.menuX, this.menuY);
+            this.addNode(node.type, this.menuX, this.menuY, null, node.params);
             this.closePalette();
         };
         return div;
@@ -728,33 +870,222 @@ class NodeGraph {
     }
 
     addNode(type, x, y, id = null, params = null, savedInputs = null, savedOutputs = null) {
-        const nodeDef = this.nodeRegistry.find(n => n.type === type);
+        let nodeDef = this.nodeRegistry.find(n => n.type === type);
+
+        // If not in registry (e.g. dynamic function call without registry entry), use generic
+        if (!nodeDef && type === 'function_call') {
+            nodeDef = this.nodeRegistry.find(n => n.type === 'function_call');
+        }
+
         if (!nodeDef) {
             console.error(`Node type ${type} not found in registry`);
             return null;
         }
 
         const nodeId = id || 'node_' + Math.random().toString(36).substr(2, 9);
+        let nodeTitle = nodeDef.name;
+        let isFunctionCall = false;
+        let funcRef = null;
 
-        // If restoring, use saved ports logic to keep IDs, or regenerate if not provided
-        let inputs, outputs;
-
-        if (savedInputs) {
-            inputs = savedInputs.map(i => ({ ...i })); // deep copy?
-        } else {
-            inputs = (nodeDef.inputs || []).map(input => ({
-                ...input,
-                id: nodeId + '_' + (input.key || input.label.toLowerCase().replace(/\s+/g, '_'))
-            }));
+        // Force title update and resolve function ref
+        if (type === 'function_call' && params && params.functionId && window.funcManager) {
+            funcRef = window.funcManager.functionDB.getFunction(params.functionId);
+            if (funcRef) {
+                nodeTitle = funcRef.name;
+                isFunctionCall = true;
+            } else {
+                nodeTitle = "Missing: " + (params.functionName || "Function");
+                params.error = "Function Missing";
+            }
         }
 
-        if (savedOutputs) {
+        let inputs = [];
+        let outputs = [];
+
+        // Logic for Inputs
+        if (isFunctionCall && funcRef) {
+            // Smart Merge for Function Call Inputs
+            let execId = null;
+            if (savedInputs) {
+                const savedExec = savedInputs.find(i => i.type === 'exec');
+                if (savedExec) execId = savedExec.id;
+            }
+            inputs.push({
+                label: 'In',
+                type: 'exec',
+                id: execId || (nodeId + '_in_exec')
+            });
+
+            const usedInputIds = new Set();
+            if (execId) usedInputIds.add(execId);
+
+            funcRef.inputs.forEach(def => {
+                let pid = null;
+
+                // 1. Try to find existing ID by key (name) + type
+                if (savedInputs) {
+                    const match = savedInputs.find(i => !usedInputIds.has(i.id) && i.key === def.name && i.type === def.type);
+                    if (match) pid = match.id;
+                }
+                // 2. Fallback: Label match + type
+                if (!pid && savedInputs) {
+                    const matchLabel = savedInputs.find(i => !usedInputIds.has(i.id) && i.label === def.name && i.type === def.type);
+                    if (matchLabel) pid = matchLabel.id;
+                }
+                // 3. Fallback: Loose match by Name/Key (ignore type mismatch)
+                if (!pid && savedInputs) {
+                    const matchLoose = savedInputs.find(i => !usedInputIds.has(i.id) && (i.key === def.name || i.label === def.name));
+                    if (matchLoose) pid = matchLoose.id;
+                }
+                // 4. Fallback: Heuristic Match by Type (First available of same type)
+                if (!pid && savedInputs) {
+                    const matchType = savedInputs.find(i => !usedInputIds.has(i.id) && i.type === def.type);
+                    if (matchType) pid = matchType.id;
+                }
+
+                if (!pid) {
+                    pid = nodeId + '_' + (def.name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 4));
+                }
+
+                if (pid) usedInputIds.add(pid);
+
+                inputs.push({
+                    label: def.name,
+                    type: def.type,
+                    key: def.name,
+                    id: pid
+                });
+            });
+
+        } else if (savedInputs) {
+            // Standard restore
+            inputs = savedInputs.map(i => ({ ...i }));
+        } else {
+            // Fresh creation
+            let rawInputs = nodeDef.inputs || [];
+            if (type === 'function_return' && window.funcManager) {
+                const curFunc = window.funcManager.functionDB.getFunction(window.funcManager.currentFunctionId);
+                if (curFunc) {
+                    // Match FunctionManager.updateFunctionReturnNode logic:
+                    // ID: node.id + '_flow' for Exec
+                    // ID: node.id + '_in_' + output.id for others
+
+                    // We construct explicit IDs here so the map below doesn't mess it up
+                    inputs = [];
+                    inputs.push({
+                        label: 'End', type: 'exec', id: nodeId + '_flow'
+                    });
+
+                    curFunc.outputs.forEach(o => {
+                        inputs.push({
+                            label: o.name,
+                            type: o.type,
+                            key: o.id,
+                            id: nodeId + '_in_' + o.id
+                        });
+                    });
+
+                    // Bypass the map below
+                }
+            } else if (!isFunctionCall) {
+                // If it IS a function call but MISSING, we might want default ports?
+                if (type === 'function_call' && !funcRef) {
+                    // Empty or Error ports
+                }
+            }
+
+            if (inputs.length === 0 && rawInputs.length > 0) {
+                inputs = rawInputs.map(input => ({
+                    ...input,
+                    id: nodeId + '_' + (input.key || input.label.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 4))
+                }));
+            }
+        }
+
+
+        // Logic for Outputs
+        if (isFunctionCall && funcRef) {
+            // Smart Merge for Function Call Outputs
+            let execId = null;
+            if (savedOutputs) {
+                const savedExec = savedOutputs.find(o => o.type === 'exec');
+                if (savedExec) execId = savedExec.id;
+            }
+            outputs.push({
+                label: 'Out',
+                type: 'exec',
+                id: execId || (nodeId + '_out_exec')
+            });
+
+            const usedOutputIds = new Set();
+            if (execId) usedOutputIds.add(execId);
+
+            funcRef.outputs.forEach(def => {
+                let pid = null;
+                if (savedOutputs) {
+                    const match = savedOutputs.find(o => !usedOutputIds.has(o.id) && o.key === def.name && o.type === def.type);
+                    if (match) pid = match.id;
+                }
+                if (!pid && savedOutputs) {
+                    const matchLabel = savedOutputs.find(o => !usedOutputIds.has(o.id) && o.label === def.name && o.type === def.type);
+                    if (matchLabel) pid = matchLabel.id;
+                }
+                // Fallback: Loose match by Name/Key
+                if (!pid && savedOutputs) {
+                    const matchLoose = savedOutputs.find(o => !usedOutputIds.has(o.id) && (o.key === def.name || o.label === def.name));
+                    if (matchLoose) pid = matchLoose.id;
+                }
+                // Fallback: Heuristic Match by Type
+                if (!pid && savedOutputs) {
+                    const matchType = savedOutputs.find(o => !usedOutputIds.has(o.id) && o.type === def.type);
+                    if (matchType) pid = matchType.id;
+                }
+
+                if (!pid) {
+                    pid = nodeId + '_' + (def.name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 4));
+                }
+
+                if (pid) usedOutputIds.add(pid);
+
+                outputs.push({
+                    label: def.name,
+                    type: def.type,
+                    key: def.name,
+                    id: pid
+                });
+            });
+
+        } else if (savedOutputs) {
             outputs = savedOutputs.map(o => ({ ...o }));
         } else {
-            outputs = (nodeDef.outputs || []).map(output => ({
-                ...output,
-                id: nodeId + '_' + (output.key || output.label.toLowerCase().replace(/\s+/g, '_'))
-            }));
+            let rawOutputs = nodeDef.outputs || [];
+            if (type === 'function_input' && window.funcManager) {
+                const curFunc = window.funcManager.functionDB.getFunction(window.funcManager.currentFunctionId);
+                if (curFunc) {
+                    // Match FunctionManager.updateFunctionInputNode logic:
+                    // ID: node.id + '_flow' for Exec
+                    // ID: node.id + '_out_' + input.id for others
+                    outputs = [];
+                    outputs.push({
+                        label: 'Start', type: 'exec', id: nodeId + '_flow'
+                    });
+                    curFunc.inputs.forEach(i => {
+                        outputs.push({
+                            label: i.name,
+                            type: i.type,
+                            key: i.id,
+                            id: nodeId + '_out_' + i.id
+                        });
+                    });
+                }
+            }
+
+            if (outputs.length === 0 && rawOutputs.length > 0) {
+                outputs = rawOutputs.map(output => ({
+                    ...output,
+                    id: nodeId + '_' + (output.key || output.label.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 4))
+                }));
+            }
         }
 
         const nodeParams = params ? JSON.parse(JSON.stringify(params)) : JSON.parse(JSON.stringify(nodeDef.params || {}));
@@ -764,11 +1095,17 @@ class NodeGraph {
             type,
             x: x !== undefined ? x : (this.menuX || 100),
             y: y !== undefined ? y : (this.menuY || 100),
-            title: nodeDef.name,
+            title: nodeTitle,
             inputs,
             outputs,
             params: nodeParams
         };
+
+        // Handle error state visual
+        if (nodeParams.error) {
+            node.error = nodeParams.error;
+            node.title = "ERROR: " + (nodeDef.name);
+        }
 
         this.nodes.push(node);
         this.createNodeElement(node);
@@ -810,14 +1147,21 @@ class NodeGraph {
     createNodeElement(node) {
         const div = document.createElement('div');
         div.className = `node node-type-${node.type}`;
-        div.id = node.id;
+        if (node.error) {
+            div.style.borderColor = 'var(--danger)';
+            div.style.boxShadow = '0 0 10px var(--danger)';
+        }
+        if (this.selectedNodes.has(node) || this.selectedNode === node) {
+            div.classList.add('selected');
+        }
         div.style.left = node.x + 'px';
         div.style.top = node.y + 'px';
+        div.id = node.id;
 
         // Header
         const header = document.createElement('div');
         header.className = 'node-header';
-        header.innerText = node.title;
+        header.innerHTML = node.title;
         div.appendChild(header);
 
         // Content (for nodes with central editors)
@@ -848,155 +1192,203 @@ class NodeGraph {
         }
 
         // Flex container for the node body
-        const mainRow = document.createElement('div');
-        mainRow.className = 'node-main-row';
+        const contentRow = document.createElement('div');
+        contentRow.className = 'node-main-row';
+        div.appendChild(contentRow);
 
         const inputsCol = document.createElement('div');
         inputsCol.className = 'node-ports-col node-inputs';
+        contentRow.appendChild(inputsCol);
 
-        const contentCol = document.createElement('div');
-        contentCol.className = 'node-content-col';
+        const centerCol = document.createElement('div');
+        centerCol.className = 'node-content-col';
+        contentRow.appendChild(centerCol);
 
         const outputsCol = document.createElement('div');
         outputsCol.className = 'node-ports-col node-outputs';
+        contentRow.appendChild(outputsCol);
 
-        mainRow.appendChild(inputsCol);
-        mainRow.appendChild(contentCol);
-        mainRow.appendChild(outputsCol);
+        // Params / Widgets
+        const nodeDef = this.nodeRegistry.find(n => n.type === node.type) || { params: {} };
 
-        if (['string', 'number', 'boolean', 'bool'].includes(node.type)) {
-            // Dedicated constant nodes render their editor in the body content col
-            const editor = this.createInlineEditor(node.type, node.params.value, (val) => {
-                node.params.value = val;
-            }, { resizable: true, multiline: true });
-            editor.classList.add('node-input');
-            content.appendChild(editor);
-        }
-        div.appendChild(mainRow);
+        // Helper to check if a param is exposed as an input port
+        const isParamPort = (key) => node.inputs.some(i => i.key === key);
 
-        // Add Ports
-        const createPort = (portData, isInput) => {
-            const portWrapper = document.createElement('div');
-            portWrapper.className = `port-wrapper ${isInput ? 'port-wrapper-input' : 'port-wrapper-output'}`;
-            // No absolute positioning or top calculation
+        Object.keys(node.params).forEach(key => {
+            if (isParamPort(key)) return; // Skip if it's a port
 
-            const port = document.createElement('div');
-            port.className = `port port-${isInput ? 'input' : 'output'} port-type-${portData.type}`;
-            port.id = portData.id;
+            const val = node.params[key];
+            const widget = document.createElement('div');
+            widget.style.padding = '0 10px 10px 10px';
 
-            port.onmousedown = (e) => {
-                e.stopPropagation();
-                this.startConnection(node, portData, isInput ? 'input' : 'output');
-            };
-            port.onmouseup = (e) => {
-                e.stopPropagation();
-                this.finishConnection(node, portData, isInput ? 'input' : 'output');
-            };
-
-            // Order matters for flex: input -> Port, then Label, then Editor
-            // Output -> Port, then Label
-
-            if (isInput) {
-                // Input: [Port] [Label] [Editor]
-                portWrapper.appendChild(port);
-                if (portData.label) {
-                    const label = document.createElement('span');
-                    label.className = 'port-label';
-                    if (portData.label.length <= 1) label.classList.add('port-label-small');
-                    label.innerText = portData.label;
-                    portWrapper.appendChild(label);
-                }
-            } else {
-                // Output: [Label] [Port]
-                if (portData.label) {
-                    const label = document.createElement('span');
-                    label.className = 'port-label';
-                    label.innerText = portData.label;
-                    portWrapper.appendChild(label);
-                }
-                portWrapper.appendChild(port);
-            }
-
-            // Inline Editor for Inputs
-            if (isInput && portData.key && node.params.hasOwnProperty(portData.key)) {
-                const editor = this.createInlineEditor(portData.type, node.params[portData.key], (val) => {
-                    node.params[portData.key] = val;
-                    this.renderConnections();
-                }, {
-                    resizable: portData.type === 'string',
-                    multiline: false // Use auto-expanding single line mode
-                });
-                editor.classList.add('inline-editor');
-                if (node.type.startsWith('math_')) {
-                    editor.classList.add('math-input');
-                }
-                editor.dataset.portId = portData.id;
-                portWrapper.appendChild(editor);
-
-                // Initial visibility check
-                if (this.connections.some(c => c.toPort.id === portData.id)) {
-                    editor.style.display = 'none';
-                }
-            }
-
-            return portWrapper;
-        };
-
-        // Move content into the content column
-        if (content.childNodes.length > 0) {
-            contentCol.appendChild(content);
-        }
-
-        node.inputs.forEach((input) => {
-            inputsCol.appendChild(createPort(input, true));
-        });
-
-        node.outputs.forEach((output) => {
-            outputsCol.appendChild(createPort(output, false));
-        });
-
-        // Remove manual min-height calculation; let Flexbox handle it
-
-        div.onmousedown = (e) => {
-            if (e.button !== 0) return;
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-            e.stopPropagation();
-
-            if (e.shiftKey) {
-                if (this.selectedNodes.has(node)) {
-                    this.selectedNodes.delete(node);
-                    node.element.classList.remove('selected');
-                    if (this.selectedNode === node) this.selectedNode = null;
-                    return;
+            if (typeof val === 'boolean') {
+                const toggle = document.createElement('div');
+                toggle.className = `bool-toggle ${val ? 'is-true' : 'is-false'}`;
+                toggle.innerText = val ? 'TRUE' : 'FALSE';
+                toggle.onclick = (e) => {
+                    node.params[key] = !node.params[key];
+                    toggle.className = `bool-toggle ${node.params[key] ? 'is-true' : 'is-false'}`;
+                    toggle.innerText = node.params[key] ? 'TRUE' : 'FALSE';
+                    this.saveHistory('Toggle Param');
+                    // Trigger updates if needed
+                };
+                widget.appendChild(toggle);
+            } else if (typeof val === 'string' || typeof val === 'number') {
+                if (node.type === 'string' && key === 'value') {
+                    const area = document.createElement('textarea');
+                    area.className = 'node-textarea';
+                    area.value = val;
+                    area.oninput = (e) => {
+                        node.params[key] = e.target.value;
+                    };
+                    area.onchange = () => this.saveHistory('Edit String');
+                    // Prevent drag
+                    area.onmousedown = e => e.stopPropagation();
+                    widget.appendChild(area);
                 } else {
-                    this.selectNode(node, true);
+                    const input = document.createElement('input');
+                    input.type = typeof val === 'number' ? 'number' : 'text';
+                    input.className = 'node-input inline-editor';
+                    if (typeof val === 'number') input.classList.add('math-input');
+                    input.value = val;
+                    input.oninput = (e) => {
+                        node.params[key] = typeof val === 'number' ? parseFloat(e.target.value) : e.target.value;
+                    };
+                    input.onchange = () => this.saveHistory('Edit Param');
+                    input.onmousedown = e => e.stopPropagation();
+                    widget.appendChild(input);
                 }
-            } else {
-                if (!this.selectedNodes.has(node)) {
+            }
+            // Label for param
+            if (node.type !== 'string' && node.type !== 'number' && node.type !== 'boolean') {
+                const lbl = document.createElement('div');
+                lbl.innerText = key;
+                lbl.style.fontSize = '10px';
+                lbl.style.color = '#777';
+                lbl.style.marginBottom = '2px';
+                centerCol.appendChild(lbl);
+            }
+            centerCol.appendChild(widget);
+        });
+
+        // Create Ports
+        if (node.inputs) {
+            node.inputs.forEach(input => {
+                inputsCol.appendChild(this.createPort(node, input, true));
+            });
+        }
+        if (node.outputs) {
+            node.outputs.forEach(output => {
+                outputsCol.appendChild(this.createPort(node, output, false));
+            });
+        }
+
+        // Event listeners
+        div.onmousedown = (e) => {
+            // If clicking header or empty space
+            if (e.target === div || e.target === header || e.target === contentRow || e.target === centerCol) {
+                this.isDraggingNode = node;
+                this.nodeOrigX = node.x;
+                this.nodeOrigY = node.y;
+                this.dragStartX = e.clientX;
+                this.dragStartY = e.clientY;
+
+                if (e.shiftKey) {
+                    this.selectNode(node, true);
+                } else if (!this.selectedNodes.has(node)) {
                     this.selectNode(node, false);
                 }
+
+                // Store initial positions of all key nodes
+                this.dragStartPositions = new Map();
+                this.selectedNodes.forEach(n => {
+                    this.dragStartPositions.set(n.id, { x: n.x, y: n.y });
+                });
+
+                e.stopPropagation();
             }
+        };
 
-            this.isDraggingNode = node;
-            this.dragStartX = e.clientX;
-            this.dragStartY = e.clientY;
-            this.nodeOrigX = node.x;
-            this.nodeOrigY = node.y;
+        // Z-Index handling on click
+        div.addEventListener('mousedown', () => {
+            // Move to end of DOM (highest Z)
+            if (div.parentNode) div.parentNode.appendChild(div);
+        });
 
-            this.dragStartPositions = new Map();
-            this.selectedNodes.forEach(n => {
-                this.dragStartPositions.set(n.id, { x: n.x, y: n.y });
-            });
+        // Double click to focus?
+        div.ondblclick = (e) => {
+            e.stopPropagation();
+            // Maybe open detailed editor?
         };
 
         this.nodesLayer.appendChild(div);
         node.element = div;
-
         // Watch for resizes (manual or auto) to update connections
         const ro = new ResizeObserver(() => {
             this.renderConnections();
         });
         ro.observe(div);
+    }
+
+    createPort(node, portData, isInput) {
+        const portWrapper = document.createElement('div');
+        portWrapper.className = `port-wrapper ${isInput ? 'port-wrapper-input' : 'port-wrapper-output'}`;
+
+        const port = document.createElement('div');
+        port.className = `port port-${isInput ? 'input' : 'output'} port-type-${portData.type}`;
+        port.id = portData.id;
+
+        port.onmousedown = (e) => {
+            e.stopPropagation();
+            this.startConnection(node, portData, isInput ? 'input' : 'output');
+        };
+        port.onmouseup = (e) => {
+            e.stopPropagation();
+            this.finishConnection(node, portData, isInput ? 'input' : 'output');
+        };
+
+        if (isInput) {
+            portWrapper.appendChild(port);
+            if (portData.label) {
+                const label = document.createElement('span');
+                label.className = 'port-label';
+                if (portData.label.length <= 1) label.classList.add('port-label-small');
+                label.innerText = portData.label;
+                portWrapper.appendChild(label);
+            }
+        } else {
+            if (portData.label) {
+                const label = document.createElement('span');
+                label.className = 'port-label';
+                label.innerText = portData.label;
+                portWrapper.appendChild(label);
+            }
+            portWrapper.appendChild(port);
+        }
+
+        // Inline Editor for Inputs
+        if (isInput && portData.key && node.params.hasOwnProperty(portData.key)) {
+            const editor = this.createInlineEditor(portData.type, node.params[portData.key], (val) => {
+                node.params[portData.key] = val;
+                this.renderConnections(); // Value change might affect things?
+            }, {
+                resizable: portData.type === 'string',
+                multiline: false
+            });
+            editor.classList.add('inline-editor');
+            if (node.type.startsWith('math_')) {
+                editor.classList.add('math-input');
+            }
+            editor.dataset.portId = portData.id;
+            portWrapper.appendChild(editor);
+
+            // Initial visibility check
+            if (this.connections.some(c => c.toPort.id === portData.id)) {
+                editor.style.display = 'none';
+            }
+        }
+
+        return portWrapper;
     }
 
     createInlineEditor(type, value, onChange, options = {}) {
