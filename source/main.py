@@ -201,6 +201,41 @@ def main():
                         "type": "state_update",
                         "data": sim_state.get_state()
                     })
+
+                # Handle Get Structs List
+                elif isinstance(msg, dict) and msg.get("type") == "get_structs":
+                    structs = sim_state.struct_manager.get_all_structs_data()
+                    server.broadcast({
+                        "type": "struct_list",
+                        "structs": structs
+                    })
+
+                # Handle Save Struct
+                elif isinstance(msg, dict) and msg.get("type") == "save_struct":
+                    struct_id = msg.get("id")
+                    struct_data = msg.get("data")
+                    success = sim_state.struct_manager.save_struct(struct_id, struct_data)
+                    server.broadcast({
+                        "type": "struct_save_response",
+                        "id": struct_id,
+                        "success": success
+                    })
+
+                # Handle Delete Struct
+                elif isinstance(msg, dict) and msg.get("type") == "delete_struct":
+                    struct_id = msg.get("id")
+                    success = sim_state.struct_manager.delete_struct(struct_id)
+                    server.broadcast({
+                        "type": "struct_delete_response",
+                        "id": struct_id,
+                        "success": success
+                    })
+                    # Send updated struct list
+                    structs = sim_state.struct_manager.get_all_structs_data()
+                    server.broadcast({
+                        "type": "struct_list",
+                        "structs": structs
+                    })
                      
                 # Handle File List Request
                 elif isinstance(msg, dict) and msg.get("type") == "get_files":

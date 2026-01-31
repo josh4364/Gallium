@@ -8,6 +8,7 @@ class TypeEditor {
         this.searchField = document.getElementById('type-search');
         this.structEditorSection = document.getElementById('struct-editor-section');
         this.structNameInput = document.getElementById('struct-name-input');
+        this.structTagInput = document.getElementById('struct-tag-input');
         this.fieldsList = document.getElementById('struct-fields-list');
     }
 
@@ -32,6 +33,12 @@ class TypeEditor {
     onStructNameChange(newName) {
         if (this.selectedStructId) {
             this.db.updateStruct(this.selectedStructId, { name: newName });
+        }
+    }
+
+    onStructTagChange(newTag) {
+        if (this.selectedStructId) {
+            this.db.updateStruct(this.selectedStructId, { tag: newTag });
         }
     }
 
@@ -65,6 +72,7 @@ class TypeEditor {
             if (s) {
                 this.structEditorSection.style.display = 'block';
                 this.structNameInput.value = s.name;
+                if (this.structTagInput) this.structTagInput.value = s.tag || '';
                 this.renderFields(s);
             } else {
                 this.structEditorSection.style.display = 'none';
@@ -99,51 +107,121 @@ class TypeEditor {
         struct.fields.forEach((field, index) => {
             const row = document.createElement('div');
             row.className = 'field-row';
+            row.style.alignItems = 'flex-start';
 
             const nameInput = document.createElement('input');
             nameInput.className = 'io-name';
+            nameInput.style.width = '100px';
             nameInput.value = field.name;
             nameInput.onchange = (e) => {
                 field.name = e.target.value;
-                this.db.notifyChanged();
+                this.db.updateStruct(struct.id, { fields: struct.fields });
             };
             row.appendChild(nameInput);
 
-            const typeSelect = document.createElement('select');
-            typeSelect.className = 'io-type';
-            typeSelect.style.flex = "1";
+            // Use the complex type selector
+            const typeSelector = this.createComplexTypeSelector(field.type, (newType) => {
+                field.type = newType;
+                this.db.updateStruct(struct.id, { fields: struct.fields });
+            });
+            typeSelector.style.flex = "1";
+            row.appendChild(typeSelector);
 
-            // Determine current base type and modifiers
-            let baseType = field.type;
+            const controlsDiv = document.createElement('div');
+            controlsDiv.style.display = 'flex';
+            controlsDiv.style.flexDirection = 'column';
+            controlsDiv.style.gap = '2px';
+
+            const upBtn = document.createElement('button');
+            upBtn.className = 'field-btn';
+            upBtn.textContent = '↑';
+            upBtn.onclick = () => this.db.moveField(struct.id, index, index - 1);
+            controlsDiv.appendChild(upBtn);
+
+            const downBtn = document.createElement('button');
+            downBtn.className = 'field-btn';
+            downBtn.textContent = '↓';
+            downBtn.onclick = () => this.db.moveField(struct.id, index, index + 1);
+            controlsDiv.appendChild(downBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'field-btn';
+            delBtn.textContent = '✕';
+            delBtn.style.color = 'var(--danger)';
+            delBtn.onclick = () => this.db.removeField(struct.id, index);
+            controlsDiv.appendChild(delBtn);
+
+            row.appendChild(controlsDiv);
+            this.fieldsList.appendChild(row);
+        });
+    }
+
+    createComplexTypeSelector(currentType, onChange) {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.width = '100%';
+
+        let activeType = currentType;
+
+        const refresh = () => {
+            container.innerHTML = '';
+            container.appendChild(renderSelector(activeType, (newType) => {
+                activeType = newType;
+                onChange(newType);
+                refresh();
+            }));
+        };
+
+        const renderSelector = (targetType, onUpdate) => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.flexDirection = 'column';
+            row.style.gap = '4px';
+            row.style.width = '100%';
+
+            const topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.gap = '2px';
+            topRow.style.width = '100%';
+            row.appendChild(topRow);
+
+            let baseType = targetType;
             let modifier = 'none';
             let mapValueType = 'string';
 
-            if (field.type.startsWith('list:')) {
+            if (targetType.startsWith('list:')) {
                 modifier = 'list';
-                baseType = field.type.substring(5);
-            } else if (field.type.startsWith('map:')) {
+                baseType = targetType.substring(5);
+            } else if (targetType.startsWith('map:')) {
                 modifier = 'map';
-                const parts = field.type.substring(4).split(':');
-                baseType = parts[0];
-                mapValueType = parts[1] || 'string';
+                const rest = targetType.substring(4);
+                if (rest.startsWith('struct:')) {
+                    const parts = rest.split(':');
+                    baseType = parts[0] + ':' + parts[1];
+                    mapValueType = parts.slice(2).join(':') || 'string';
+                } else {
+                    const idx = rest.indexOf(':');
+                    if (idx !== -1) {
+                        baseType = rest.substring(0, idx);
+                        mapValueType = rest.substring(idx + 1);
+                    } else {
+                        baseType = rest;
+                        mapValueType = 'string';
+                    }
+                }
             }
 
-            const updateFieldType = () => {
-                if (modifier === 'list') {
-                    field.type = `list:${baseType}`;
-                } else if (modifier === 'map') {
-                    field.type = `map:${baseType}:${mapValueType}`;
-                } else {
-                    field.type = baseType;
-                }
-                this.db.notifyChanged();
-            };
+            const primitives = this.db.primitives.filter(p => !['exec', 'any', 'any_not_exec'].includes(p.id));
+            const structs = this.db.getStructs().map(s => `struct:${s.id}`);
+            const allBase = [...primitives.map(p => p.id), ...structs];
 
-            // Populate base types
-            const availableTypes = this.db.primitives.filter(p => p.id !== 'exec' && p.id !== 'any_not_exec' && p.id !== 'any');
-            const structTypes = this.db.getStructs().filter(sid => sid.id !== struct.id).map(s => `struct:${s.id}`);
+            // MAIN TYPE SELECTOR
+            const typeSelect = document.createElement('select');
+            typeSelect.className = 'io-type';
+            typeSelect.style.flex = "1";
+            typeSelect.style.width = "0"; // Allow flex shrink
 
-            const allBase = [...availableTypes.map(p => p.id), ...structTypes];
             allBase.forEach(tStr => {
                 const details = this.db.getTypeDetails(tStr);
                 const opt = document.createElement('option');
@@ -153,70 +231,73 @@ class TypeEditor {
                 typeSelect.appendChild(opt);
             });
 
-            typeSelect.onchange = (e) => {
-                baseType = e.target.value;
-                updateFieldType();
-            };
-            row.appendChild(typeSelect);
-
-            // Modifier select
+            // MODIFIER SELECTOR
             const modSelect = document.createElement('select');
             modSelect.className = 'io-type';
-            modSelect.style.width = "60px";
-            ['none', 'list', 'map'].forEach(m => {
+            modSelect.style.width = '50px';
+            [['none', '-'], ['list', '[]'], ['map', '{}']].forEach(([m, label]) => {
                 const opt = document.createElement('option');
                 opt.value = m;
-                opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+                opt.textContent = label;
                 if (m === modifier) opt.selected = true;
                 modSelect.appendChild(opt);
             });
-            modSelect.onchange = (e) => {
-                modifier = e.target.value;
-                updateFieldType();
-                this.renderFields(struct); // Re-render to show/hide map value select
+
+            typeSelect.onchange = (e) => {
+                const newBase = e.target.value;
+                if (modifier === 'list') onUpdate(`list:${newBase}`);
+                else if (modifier === 'map') onUpdate(`map:${newBase}:${mapValueType}`);
+                else onUpdate(newBase);
             };
-            row.appendChild(modSelect);
 
-            if (modifier === 'map') {
-                const mapValSelect = document.createElement('select');
-                mapValSelect.className = 'io-type';
-                mapValSelect.style.flex = "1";
-                allBase.forEach(tStr => {
-                    const details = this.db.getTypeDetails(tStr);
-                    const opt = document.createElement('option');
-                    opt.value = tStr;
-                    opt.textContent = details.name;
-                    if (tStr === mapValueType) opt.selected = true;
-                    mapValSelect.appendChild(opt);
-                });
-                mapValSelect.onchange = (e) => {
-                    mapValueType = e.target.value;
-                    updateFieldType();
-                };
-                row.appendChild(mapValSelect);
+            modSelect.onchange = (e) => {
+                const newMod = e.target.value;
+                if (newMod === 'list') onUpdate(`list:${baseType}`);
+                else if (newMod === 'map') onUpdate(`map:${baseType}:${mapValueType}`);
+                else onUpdate(baseType);
+            };
+
+            topRow.appendChild(typeSelect);
+            topRow.appendChild(modSelect);
+
+            if (modifier === 'list') {
+                const subContainer = document.createElement('div');
+                subContainer.style.marginLeft = '10px';
+                subContainer.style.borderLeft = '1px solid var(--node-border)';
+                subContainer.style.paddingLeft = '6px';
+
+                // Show label "of"
+                const lbl = document.createElement('div');
+                lbl.innerText = 'of';
+                lbl.style.fontSize = '9px'; lbl.style.color = '#777';
+                subContainer.appendChild(lbl);
+
+                subContainer.appendChild(renderSelector(baseType, (newInner) => {
+                    onUpdate(`list:${newInner}`);
+                }));
+                row.appendChild(subContainer);
+            } else if (modifier === 'map') {
+                const subContainer = document.createElement('div');
+                subContainer.style.marginLeft = '10px';
+                subContainer.style.borderLeft = '1px solid var(--node-border)';
+                subContainer.style.paddingLeft = '6px';
+
+                // Show label "value"
+                const lbl = document.createElement('div');
+                lbl.innerText = 'value';
+                lbl.style.fontSize = '9px'; lbl.style.color = '#777';
+                subContainer.appendChild(lbl);
+
+                subContainer.appendChild(renderSelector(mapValueType, (newVal) => {
+                    onUpdate(`map:${baseType}:${newVal}`);
+                }));
+                row.appendChild(subContainer);
             }
+            return row;
+        };
 
-            const upBtn = document.createElement('button');
-            upBtn.className = 'field-btn';
-            upBtn.textContent = '↑';
-            upBtn.onclick = () => this.db.moveField(struct.id, index, index - 1);
-            row.appendChild(upBtn);
-
-            const downBtn = document.createElement('button');
-            downBtn.className = 'field-btn';
-            downBtn.textContent = '↓';
-            downBtn.onclick = () => this.db.moveField(struct.id, index, index + 1);
-            row.appendChild(downBtn);
-
-            const delBtn = document.createElement('button');
-            delBtn.className = 'field-btn';
-            delBtn.textContent = '✕';
-            delBtn.style.color = 'var(--danger)';
-            delBtn.onclick = () => this.db.removeField(struct.id, index);
-            row.appendChild(delBtn);
-
-            this.fieldsList.appendChild(row);
-        });
+        refresh();
+        return container;
     }
 }
 

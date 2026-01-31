@@ -1,0 +1,10 @@
+{
+    "id": "struct_r36fs95ld",
+    "name": "Struct2",
+    "fields": [
+        {
+            "name": "nested blobs",
+            "type": "list:struct:struct_yzf6l19kx"
+        }
+    ]
+}

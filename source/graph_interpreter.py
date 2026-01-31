@@ -5,12 +5,13 @@ from source.ai_system import AI_Eval
 logger = logging.getLogger("GraphInterpreter")
 
 class GraphInterpreter:
-    def __init__(self, simulation_state=None, function_manager=None):
+    def __init__(self, simulation_state=None, function_manager=None, struct_manager=None):
         self.nodes = {}
         self.connections = []
         self.context = {} 
         self.sim_state = simulation_state
         self.function_manager = function_manager
+        self.struct_manager = struct_manager
         self.output_cache = {} # nodeId -> outputId -> value
         self.call_stack = [] # Stack of parent states for recursion
         self.return_stack = [] # Stack of return values from function calls

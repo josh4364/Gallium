@@ -35,20 +35,37 @@ class TypeDatabase {
         return this.structs.find(s => s.id === id);
     }
 
+    // Save a specific struct to the server
+    _saveStructToServer(struct) {
+        if (window.parent && window.parent.saveStructToServer) {
+            window.parent.saveStructToServer(struct.id, struct);
+        }
+    }
+
+    // Delete a struct from the server
+    _deleteStructFromServer(id) {
+        if (window.parent && window.parent.deleteStructFromServer) {
+            window.parent.deleteStructFromServer(id);
+        }
+    }
+
     addStruct(name) {
         const id = 'struct_' + Math.random().toString(36).substr(2, 9);
         const newStruct = {
             id: id,
             name: name || 'NewStruct',
-            fields: []
+            fields: [],
+            tag: ''
         };
         this.structs.push(newStruct);
+        this._saveStructToServer(newStruct);
         this.notifyChanged();
         return newStruct;
     }
 
     deleteStruct(id) {
         this.structs = this.structs.filter(s => s.id !== id);
+        this._deleteStructFromServer(id);
         this.notifyChanged();
     }
 
@@ -56,6 +73,7 @@ class TypeDatabase {
         const s = this.getStruct(id);
         if (s) {
             Object.assign(s, updates);
+            this._saveStructToServer(s);
             this.notifyChanged();
         }
     }
@@ -64,6 +82,7 @@ class TypeDatabase {
         const s = this.getStruct(structId);
         if (s) {
             s.fields.push({ name: name || 'newField', type: typeStr || 'string' });
+            this._saveStructToServer(s);
             this.notifyChanged();
         }
     }
@@ -72,6 +91,7 @@ class TypeDatabase {
         const s = this.getStruct(structId);
         if (s && s.fields[fieldIndex]) {
             s.fields.splice(fieldIndex, 1);
+            this._saveStructToServer(s);
             this.notifyChanged();
         }
     }
@@ -81,6 +101,7 @@ class TypeDatabase {
         if (s && s.fields[fromIndex] && s.fields[toIndex] !== undefined) {
             const field = s.fields.splice(fromIndex, 1)[0];
             s.fields.splice(toIndex, 0, field);
+            this._saveStructToServer(s);
             this.notifyChanged();
         }
     }
@@ -164,6 +185,26 @@ class TypeDatabase {
             this.notifyChanged();
         }
     }
+
+    // Load structs from server response (called on initial load)
+    importFromServer(structsArray) {
+        if (Array.isArray(structsArray)) {
+            this.structs = structsArray;
+            console.log("TypeDatabase: Imported", structsArray.length, "structs from server");
+            this.notifyChanged();
+        }
+    }
 }
 
 window.TypeDatabase = TypeDatabase;
+
+// Global handler called from index.html when server sends struct_list
+window.importStructList = function (structs) {
+    if (window.typeDB) {
+        window.typeDB.importFromServer(structs);
+    } else {
+        // Queue for later if typeDB not ready yet
+        window._pendingStructs = structs;
+    }
+};
+

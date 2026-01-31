@@ -856,7 +856,8 @@ html {
     top: 80px;
     left: 20px;
     width: 280px;
-    max-height: calc(100% - 120px);
+    bottom: 60px;
+    /* Leave room for status bar */
     background: var(--node-bg);
     border: 1px solid var(--node-border);
     backdrop-filter: var(--glass-blur);
@@ -868,6 +869,13 @@ html {
     overflow-y: auto;
     z-index: 90;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#function-panel.hidden {
+    transform: translateX(-320px);
+    opacity: 0;
+    pointer-events: none;
 }
 
 #function-panel::-webkit-scrollbar {
@@ -1028,23 +1036,82 @@ html {
     color: white;
 }
 
+/* ... existing scrollbar logic ... */
+
 #type-panel {
     position: absolute;
-    top: 180px;
+    top: 80px;
+    left: 320px;
+    /* Default next to function panel */
     right: 20px;
-    width: 250px;
-    max-height: calc(100% - 220px);
+    bottom: 60px;
     background: var(--node-bg);
     border: 1px solid var(--node-border);
     backdrop-filter: var(--glass-blur);
     border-radius: 4px;
-    display: flex;
+    display: none;
+    /* Hidden by default or toggled */
     flex-direction: column;
     padding: 0;
     gap: 0;
-    overflow-y: auto;
-    z-index: 90;
+    overflow-y: hidden;
+    /* Changed to hidden to allow internal scrolling regions */
+    z-index: 95;
+    /* Higher than function panel? Or same? */
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+#type-panel.active {
+    display: flex;
+}
+
+/* When function panel is hidden, type panel expands */
+body.func-panel-hidden #type-panel {
+    left: 20px;
+}
+
+/* Internal layout for type panel to handle large area */
+#type-panel .panel-section {
+    /* override padding for large view */
+}
+
+#type-list-container {
+    flex: 1;
+    max-height: none !important;
+    /* Remove the old limit */
+    overflow-y: auto;
+}
+
+#struct-editor-section {
+    flex: 1;
+    overflow-y: auto;
+    border-top: none !important;
+    border-left: 1px solid var(--node-border);
+    padding-top: 0 !important;
+}
+
+/* Horizontal layout for Type Panel when active */
+#type-panel-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+#type-list-column {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--node-border);
+    padding: 16px;
+    overflow-y: auto;
+}
+
+#struct-editor-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    overflow-y: auto;
 }
 
 #type-panel::-webkit-scrollbar {

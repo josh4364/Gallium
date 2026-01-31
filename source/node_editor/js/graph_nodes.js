@@ -111,16 +111,17 @@ Object.assign(NodeGraph.prototype, {
         // Add user structures
         if (window.typeDB) {
             window.typeDB.getStructs().forEach(s => {
+                const category = s.tag && s.tag.trim() ? s.tag.trim() : 'Struct';
                 searchList.push({
                     type: 'struct_make',
                     name: 'Make ' + s.name,
-                    tags: ['Struct', 'make', s.name],
+                    tags: [category, 'make', s.name],
                     params: { structId: s.id }
                 });
                 searchList.push({
                     type: 'struct_access',
                     name: 'Access ' + s.name,
-                    tags: ['Struct', 'access', s.name],
+                    tags: [category, 'access', s.name],
                     params: { structId: s.id }
                 });
             });

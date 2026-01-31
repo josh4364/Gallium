@@ -565,6 +565,7 @@
                 statusInd.className = "status-indicator connected";
                 addLog("System", "WebSocket connection established.", "success");
                 requestFunctions(); // Fetch functions
+                requestStructs(); // Fetch structs
                 sendAction('get_state'); // Fetch initial state
             };
 
@@ -631,6 +632,19 @@
             sendAction('delete_function', { id });
         };
 
+        // Exposed for iframe - Struct Operations
+        window.saveStructToServer = (id, data) => {
+            sendAction('save_struct', { id, data });
+        };
+
+        window.deleteStructFromServer = (id) => {
+            sendAction('delete_struct', { id });
+        };
+
+        window.requestServerStructs = () => {
+            requestStructs();
+        };
+
         function addLog(source, text, type = "info") {
             const row = document.createElement('div');
             row.className = 'log-entry';
@@ -658,6 +672,12 @@
         function requestFunctions() {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'get_functions' }));
+            }
+        }
+
+        function requestStructs() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'get_structs' }));
             }
         }
 
@@ -759,6 +779,31 @@
                 }
             } else if (msg.type === 'error') {
                 addLog("Server", msg.message, "error");
+            } else if (msg.type === 'struct_list') {
+                // Forward to Iframe
+                const iframe = document.getElementById('node-editor-frame');
+                if (iframe && iframe.contentWindow && iframe.contentWindow.importStructList) {
+                    iframe.contentWindow.importStructList(msg.structs);
+                } else {
+                    // Retry on load
+                    iframe.onload = () => {
+                        if (iframe.contentWindow.importStructList) {
+                            iframe.contentWindow.importStructList(msg.structs);
+                        }
+                    };
+                }
+            } else if (msg.type === 'struct_save_response') {
+                if (msg.success) {
+                    console.log("Struct saved:", msg.id);
+                } else {
+                    addLog("Server", `Failed to save struct ${msg.id}.`, "error");
+                }
+            } else if (msg.type === 'struct_delete_response') {
+                if (msg.success) {
+                    console.log("Struct deleted:", msg.id);
+                } else {
+                    addLog("Server", `Failed to delete struct ${msg.id}.`, "error");
+                }
             }
         }
     </script>

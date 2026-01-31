@@ -14,6 +14,12 @@ window.typeEditor = typeEditor;
 window.funcManager = funcManager;
 window.graph = graph; // Make graph globally available too (for HTML onclick handlers)
 
+// Check if structs arrived before typeDB was ready
+if (window._pendingStructs) {
+    typeDB.importFromServer(window._pendingStructs);
+    delete window._pendingStructs;
+}
+
 window.openTypePanel = () => {
     document.getElementById('type-panel').classList.add('active');
 };
@@ -82,4 +88,35 @@ window.showAddMenu = function (e) {
     if (e.stopPropagation) e.stopPropagation();
     if (e.preventDefault) e.preventDefault();
     return false;
+};
+
+// Toggle Handlers
+window.toggleFunctionPanel = () => {
+    const panel = document.getElementById('function-panel');
+    const btn = document.getElementById('btn-toggle-functions');
+    const isOpen = !panel.classList.contains('hidden');
+
+    if (isOpen) {
+        panel.classList.add('hidden');
+        btn.classList.remove('active');
+        document.body.classList.add('func-panel-hidden');
+    } else {
+        panel.classList.remove('hidden');
+        btn.classList.add('active');
+        document.body.classList.remove('func-panel-hidden');
+    }
+};
+
+window.toggleTypePanel = () => {
+    const panel = document.getElementById('type-panel');
+    const btn = document.getElementById('btn-toggle-types');
+    const isActive = panel.classList.contains('active');
+
+    if (isActive) {
+        panel.classList.remove('active');
+        btn.classList.remove('active');
+    } else {
+        panel.classList.add('active');
+        btn.classList.add('active');
+    }
 };

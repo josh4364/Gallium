@@ -1,0 +1,14 @@
+{
+    "id": "struct_yzf6l19kx",
+    "name": "Blob",
+    "fields": [
+        {
+            "name": "field 1",
+            "type": "string"
+        },
+        {
+            "name": "field 2",
+            "type": "number"
+        }
+    ]
+}

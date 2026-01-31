@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from source.graph_interpreter import GraphInterpreter
 from source.function_manager import FunctionManager
+from source.struct_manager import StructManager
 
 logger = logging.getLogger("SimulationState")
 
@@ -19,7 +20,8 @@ class SimulationState:
         
         # Graph Integration - System root is where we store our system graphs
         self.func_manager = FunctionManager(system_root=self.system_root)
-        self.interpreter = GraphInterpreter(self, self.func_manager)
+        self.struct_manager = StructManager(system_root=self.system_root)
+        self.interpreter = GraphInterpreter(self, self.func_manager, self.struct_manager)
         self.workflow_hooks = {
             "on_start": None,
             "on_tick": None
