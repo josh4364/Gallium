@@ -39,12 +39,36 @@ const nodeRegistry = [
         name: 'Log Message',
         tags: ['Actions', 'print', 'debug', 'log'],
         color: '#2196F3',
+        resizable: true,
         inputs: [
             { label: 'exec_in', type: 'exec' },
             { label: 'Message', type: 'string', key: 'message' }
         ],
         outputs: [{ label: 'exec_out', type: 'exec' }],
         params: { message: 'Hello World' }
+    },
+    {
+        type: 'ai_eval',
+        name: 'AI Eval',
+        tags: ['AI', 'llm', 'gemini', 'eval'],
+        color: '#E91E63',
+        resizable: true,
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Model', type: 'string', key: 'model_name' },
+            { label: 'System Prompt', type: 'string', key: 'system_prompt' },
+            { label: 'Prompt', type: 'string', key: 'prompt' }
+        ],
+        outputs: [
+            { label: 'exec_out', type: 'exec' },
+            { label: 'Response', type: 'string', key: 'response' },
+            { label: 'Changed Files', type: 'list:string', key: 'changed_files' }
+        ],
+        params: {
+            model_name: 'gemini-3-flash-preview',
+            system_prompt: 'You are a helpful coding assistant.',
+            prompt: ''
+        }
     },
     {
         type: 'set_variable',
@@ -206,5 +230,15 @@ const nodeRegistry = [
         ],
         outputs: [{ label: 'Result', type: 'boolean' }],
         params: { a: 0, b: 0 }
+    },
+    {
+        type: 'to_string',
+        name: 'To String',
+        tags: ['Data', 'string', 'convert', 'format', 'print'],
+        inputs: [
+            { label: 'Value', type: 'any_not_exec', key: 'value' }
+        ],
+        outputs: [{ label: 'String', type: 'string' }],
+        params: { value: null }
     }
 ];

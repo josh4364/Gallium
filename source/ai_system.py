@@ -11,15 +11,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AI_System")
 
 # Load API Key
-# Assuming KEYS_FILE is handled similarly to main.py or environment
-# For now, we'll try to load from keys.json if it exists, or env
+KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "keys.json")
 try:
-    import json
-    with open("keys.json", "r") as f:
-        keys = json.load(f)
-        os.environ["GEMINI_API_KEY"] = keys.get("GEMINI_API_KEY", "")
-except FileNotFoundError:
-    pass
+    if os.path.exists(KEY_FILE):
+        import json
+        with open(KEY_FILE, "r") as f:
+            keys = json.load(f)
+            # Try both casings
+            api_key = keys.get("gemini_api_key") or keys.get("GEMINI_API_KEY")
+            if api_key:
+                os.environ["GEMINI_API_KEY"] = api_key
+                logger.info("Loaded API Key from keys.json")
+except Exception as e:
+    logger.warning(f"Failed to load keys.json: {e}")
 
 _CLIENT = None
 

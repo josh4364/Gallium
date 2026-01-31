@@ -1,4 +1,6 @@
 import logging
+import subprocess
+from source.ai_system import AI_Eval
 
 logger = logging.getLogger("GraphInterpreter")
 
@@ -164,6 +166,126 @@ class GraphInterpreter:
             msg = self.get_input_value(node, 'message')
             if self.sim_state:
                 self.sim_state._add_event(f"Action: {msg}", "info")
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'list_set':
+            lst = self.get_input_value(node, 'list')
+            idx = int(self.get_input_value(node, 'index') or 0)
+            val = self.get_input_value(node, 'value')
+            if isinstance(lst, list) and 0 <= idx < len(lst):
+                lst[idx] = val
+            elif isinstance(lst, list) and idx == len(lst):
+                lst.append(val)
+                
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = lst
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'list_add':
+            lst = self.get_input_value(node, 'list')
+            val = self.get_input_value(node, 'value')
+            if isinstance(lst, list):
+                lst.append(val)
+            
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = lst
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'list_remove_at':
+            lst = self.get_input_value(node, 'list')
+            idx = int(self.get_input_value(node, 'index') or 0)
+            if isinstance(lst, list) and 0 <= idx < len(lst):
+                lst.pop(idx)
+            
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = lst
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'ai_eval':
+            model_name = self.get_input_value(node, 'model_name')
+            system_prompt = self.get_input_value(node, 'system_prompt')
+            prompt = self.get_input_value(node, 'prompt')
+
+            if self.sim_state:
+                self.sim_state._add_event(f"AI Eval: {prompt[:100]}...", "info")
+
+            # Get before status
+            before_files = set(self._get_git_changed_files())
+
+            # Call AI (blocks)
+            try:
+                response = AI_Eval(
+                    system_prompt=system_prompt,
+                    user_prompt=prompt,
+                    model_name=model_name
+                )
+            except Exception as e:
+                logger.error(f"AI_Eval failed: {e}")
+                response = f"Error: {str(e)}"
+
+            # Get after status
+            after_files = set(self._get_git_changed_files())
+            
+            # Detect files that became modified or were newly created
+            # Note: This won't detect if an already modified file was changed again,
+            # but it will detect files that are currently modified.
+            # Let's just return all currently modified files as 'changed_files' for simplicity,
+            # or the delta if we want to be more specific.
+            # User said "list of files that were changed by this llm call".
+            # The delta (after - before) is a good start.
+            changed_files = list(after_files - before_files)
+
+            # Store in output cache
+            if node['id'] not in self.output_cache: 
+                self.output_cache[node['id']] = {}
+                
+            for output_port in node.get('outputs', []):
+                key = output_port.get('key')
+                if key == 'response':
+                    self.output_cache[node['id']][output_port['id']] = response
+                elif key == 'changed_files':
+                    self.output_cache[node['id']][output_port['id']] = changed_files
+
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'map_set':
+            map_obj = self.get_input_value(node, 'map')
+            key = self.get_input_value(node, 'key')
+            val = self.get_input_value(node, 'value')
+            if isinstance(map_obj, dict):
+                map_obj[key] = val
+            
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'map'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = map_obj
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'map_remove':
+            map_obj = self.get_input_value(node, 'map')
+            key = self.get_input_value(node, 'key')
+            if isinstance(map_obj, dict) and key in map_obj:
+                del map_obj[key]
+            
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = map_obj
+            return self.follow_flow(node, 'exec_out')
+
+        elif node_type == 'list_clear':
+            lst = self.get_input_value(node, 'list')
+            if isinstance(lst, list):
+                lst.clear()
+            
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = lst
             return self.follow_flow(node, 'exec_out')
 
         else:
@@ -352,7 +474,120 @@ class GraphInterpreter:
             except:
                 val = False
 
+        elif nt == 'list_create':
+            val = []
+            # We look for inputs with keys like 'in_0', 'in_1', etc.
+            inputs = node.get('inputs', [])
+            # Filter for element inputs (avoid num_elements)
+            element_inputs = [i for i in inputs if i.get('key', '').startswith('in_')]
+            sorted_inputs = sorted(element_inputs, key=lambda i: i.get('label', '0'))
+            for i in sorted_inputs:
+                if 'key' in i:
+                    val.append(self.get_input_value(node, i['key']))
+
+        elif nt == 'struct_make':
+            val = {}
+            for input_port in node.get('inputs', []):
+                key = input_port.get('key')
+                if key:
+                    val[key] = self.get_input_value(node, key)
+        
+        elif nt == 'struct_access':
+            obj = self.get_input_value(node, 'object')
+            port = next((p for p in node.get('outputs', []) if p['id'] == port_id), None)
+            if port and isinstance(obj, dict):
+                val = obj.get(port['key'])
+
+        elif nt == 'list_get':
+            lst = self.get_input_value(node, 'list')
+            idx = int(self.get_input_value(node, 'index') or 0)
+            if isinstance(lst, list) and 0 <= idx < len(lst):
+                val = lst[idx]
+            else:
+                val = None
+
+        elif nt == 'map_create':
+            val = {}
+
+        elif nt == 'map_get':
+            map_obj = self.get_input_value(node, 'map')
+            key = self.get_input_value(node, 'key')
+            if isinstance(map_obj, dict):
+                val = map_obj.get(key)
+            else:
+                val = None
+
+        elif nt == 'list_length':
+            lst = self.get_input_value(node, 'list')
+            if isinstance(lst, list):
+                val = len(lst)
+            else:
+                val = 0
+
+        elif nt == 'list_contains':
+            lst = self.get_input_value(node, 'list')
+            search_val = self.get_input_value(node, 'value')
+            if isinstance(lst, list):
+                val = search_val in lst
+            else:
+                val = False
+
+        elif nt == 'to_string':
+            input_val = self.get_input_value(node, 'value')
+            val = self._value_to_string(input_val)
+
         # Cache it
         if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
         self.output_cache[node['id']][port_id] = val
         return val
+
+    def _get_git_changed_files(self):
+        """Returns a list of files modified or untracked in the current git repo."""
+        try:
+            # We use porcelain for stable machine-readable output
+            result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                return []
+            
+            files = []
+            for line in result.stdout.splitlines():
+                if len(line) >= 4:
+                    # Format: XY filename (where XY is status)
+                    files.append(line[3:].strip())
+            return files
+        except Exception as e:
+            logger.warning(f"Failed to get git status: {e}")
+            return []
+
+    def _value_to_string(self, value):
+        """
+        Converts any value type to a string representation.
+        Supports primitives (number, boolean, string), lists, maps, and custom structs.
+        """
+        import json
+        
+        if value is None:
+            return "null"
+        elif isinstance(value, bool):
+            return "true" if value else "false"
+        elif isinstance(value, (int, float)):
+            # Format numbers nicely - remove trailing zeros for floats
+            if isinstance(value, float) and value.is_integer():
+                return str(int(value))
+            return str(value)
+        elif isinstance(value, str):
+            return value
+        elif isinstance(value, list):
+            # Format list with JSON-like syntax
+            items = [self._value_to_string(item) for item in value]
+            return "[" + ", ".join(items) + "]"
+        elif isinstance(value, dict):
+            # Format dict/struct with JSON-like syntax  
+            pairs = [f'"{k}": {self._value_to_string(v)}' for k, v in value.items()]
+            return "{" + ", ".join(pairs) + "}"
+        else:
+            # Fallback for any other type
+            try:
+                return str(value)
+            except:
+                return "<unknown>"

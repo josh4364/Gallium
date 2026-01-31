@@ -35,6 +35,7 @@ from source.simulation_state import SimulationState
 from source import tools
 
 def main():
+    load_environment()
     # Capture Initial CWD as System Root (for graphs/manifests)
     system_root = os.getcwd()
 

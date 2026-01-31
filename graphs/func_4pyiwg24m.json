@@ -1,0 +1,628 @@
+{
+    "id": "func_4pyiwg24m",
+    "name": "Map testing",
+    "description": "",
+    "tags": [
+        "map"
+    ],
+    "inputs": [],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_27mubghj1",
+            "type": "start",
+            "x": 324.673810556647,
+            "y": 170.27337620304155,
+            "width": 300,
+            "height": 120,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_27mubghj1_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_lutifq8tf",
+            "type": "map_create",
+            "x": 897.0179864995363,
+            "y": 246.88327736065037,
+            "width": 300,
+            "height": 156,
+            "title": "Create Map (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_lutifq8tf_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                }
+            ]
+        },
+        {
+            "id": "node_4cfoscq4s",
+            "type": "map_set",
+            "x": 898.985706563516,
+            "y": 465.3002044623948,
+            "width": 300,
+            "height": 186,
+            "title": "Map Set (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_4cfoscq4s_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_4cfoscq4s_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_4cfoscq4s_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                },
+                {
+                    "id": "node_4cfoscq4s_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_4cfoscq4s_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_4cfoscq4s_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                }
+            ]
+        },
+        {
+            "id": "node_3rpr9ui38",
+            "type": "map_get",
+            "x": 896.3620798115431,
+            "y": 715.8565592758073,
+            "width": 300,
+            "height": 120,
+            "title": "Map Get (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_3rpr9ui38_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_3rpr9ui38_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_3rpr9ui38_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_dpkn0g4e0",
+            "type": "map_get",
+            "x": 1500.0553563951355,
+            "y": 1157.2250770012242,
+            "width": 300,
+            "height": 120,
+            "title": "Map Get (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_dpkn0g4e0_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_dpkn0g4e0_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_dpkn0g4e0_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_sp4warpvl",
+            "type": "map_remove",
+            "x": 1505.9180285199147,
+            "y": 964.2265584625756,
+            "width": 300,
+            "height": 147,
+            "title": "Map Remove (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_sp4warpvl_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_sp4warpvl_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_sp4warpvl_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_sp4warpvl_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_sp4warpvl_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                }
+            ]
+        },
+        {
+            "id": "node_5awu34mhe",
+            "type": "log_message",
+            "x": 867.5021855398411,
+            "y": 63.8853114105403,
+            "width": 338,
+            "height": 155,
+            "title": "Log Message",
+            "params": {
+                "message": "Map test, creating a map of string -> string\nSetting a value"
+            },
+            "inputs": [
+                {
+                    "id": "node_5awu34mhe_exec_in_ye1d",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_5awu34mhe_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_5awu34mhe_exec_out_xugb",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_4cyjvnk4c",
+            "type": "string",
+            "x": 358.5185956570976,
+            "y": 490.2246586061374,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "My Key"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_4cyjvnk4c__06sy",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_ne3ie25yg",
+            "type": "string",
+            "x": 353.27134215315175,
+            "y": 646.3304503485252,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "This is the value."
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_ne3ie25yg__qka6",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_8319jifnb",
+            "type": "log_message",
+            "x": 1506.3552996452436,
+            "y": 622.717809580769,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_8319jifnb_exec_in_yg81",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_8319jifnb_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_8319jifnb_exec_out_0uym",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_7uo61nf67",
+            "type": "string_format",
+            "x": 1505.0434862692573,
+            "y": 763.0818408113195,
+            "width": 300,
+            "height": 128,
+            "title": "String Format",
+            "params": {
+                "format": "Map {} = {}",
+                "arg1": null,
+                "arg2": null
+            },
+            "inputs": [
+                {
+                    "id": "node_7uo61nf67_in_arg1_tsw7",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_7uo61nf67_in_arg2_g0gn",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_7uo61nf67_result_0b9a",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_2ow5nw2we",
+            "type": "log_message",
+            "x": 2062.140687953503,
+            "y": 968.2849513411668,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_2ow5nw2we_exec_in_zjmz",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_2ow5nw2we_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_2ow5nw2we_exec_out_plc0",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_s4r1wutpy",
+            "type": "string_format",
+            "x": 2064.351011980261,
+            "y": 1113.3039624419562,
+            "width": 300,
+            "height": 128,
+            "title": "String Format",
+            "params": {
+                "format": "After remove (This should throw an error)\nMap {} = {}",
+                "arg1": null,
+                "arg2": null
+            },
+            "inputs": [
+                {
+                    "id": "node_s4r1wutpy_in_arg1_rdmq",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_s4r1wutpy_in_arg2_6kcu",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_s4r1wutpy_result_tud8",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_2urz1vr6b",
+            "type": "log_message",
+            "x": 1963.3967751967741,
+            "y": 678.348386349508,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_2urz1vr6b_exec_in_u4hm",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_2urz1vr6b_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_2urz1vr6b_exec_out_cee7",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_5cr7tykq5",
+            "type": "to_string",
+            "x": 1948.7451798946997,
+            "y": 826.3294989004596,
+            "width": 300,
+            "height": 120,
+            "title": "To String",
+            "params": {
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_5cr7tykq5_value",
+                    "label": "Value",
+                    "type": "map:string:string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_5cr7tykq5_string_k5do",
+                    "label": "String",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_27mubghj1",
+            "fromPort": "node_27mubghj1_flow",
+            "toNode": "node_5awu34mhe",
+            "toPort": "node_5awu34mhe_exec_in_ye1d"
+        },
+        {
+            "fromNode": "node_5awu34mhe",
+            "fromPort": "node_5awu34mhe_exec_out_xugb",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_exec_in"
+        },
+        {
+            "fromNode": "node_lutifq8tf",
+            "fromPort": "node_lutifq8tf_out",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_map"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_3rpr9ui38",
+            "toPort": "node_3rpr9ui38_map"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_key"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_3rpr9ui38",
+            "toPort": "node_3rpr9ui38_key"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_sp4warpvl",
+            "toPort": "node_sp4warpvl_key"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_dpkn0g4e0",
+            "toPort": "node_dpkn0g4e0_key"
+        },
+        {
+            "fromNode": "node_ne3ie25yg",
+            "fromPort": "node_ne3ie25yg__qka6",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_val"
+        },
+        {
+            "fromNode": "node_7uo61nf67",
+            "fromPort": "node_7uo61nf67_result_0b9a",
+            "toNode": "node_8319jifnb",
+            "toPort": "node_8319jifnb_message"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_7uo61nf67",
+            "toPort": "node_7uo61nf67_in_arg1_tsw7"
+        },
+        {
+            "fromNode": "node_3rpr9ui38",
+            "fromPort": "node_3rpr9ui38_val",
+            "toNode": "node_7uo61nf67",
+            "toPort": "node_7uo61nf67_in_arg2_g0gn"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_exec_out",
+            "toNode": "node_8319jifnb",
+            "toPort": "node_8319jifnb_exec_in_yg81"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_s4r1wutpy",
+            "toPort": "node_s4r1wutpy_in_arg1_rdmq"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_sp4warpvl",
+            "toPort": "node_sp4warpvl_map"
+        },
+        {
+            "fromNode": "node_sp4warpvl",
+            "fromPort": "node_sp4warpvl_out",
+            "toNode": "node_dpkn0g4e0",
+            "toPort": "node_dpkn0g4e0_map"
+        },
+        {
+            "fromNode": "node_dpkn0g4e0",
+            "fromPort": "node_dpkn0g4e0_val",
+            "toNode": "node_s4r1wutpy",
+            "toPort": "node_s4r1wutpy_in_arg2_6kcu"
+        },
+        {
+            "fromNode": "node_sp4warpvl",
+            "fromPort": "node_sp4warpvl_exec_out",
+            "toNode": "node_2ow5nw2we",
+            "toPort": "node_2ow5nw2we_exec_in_zjmz"
+        },
+        {
+            "fromNode": "node_s4r1wutpy",
+            "fromPort": "node_s4r1wutpy_result_tud8",
+            "toNode": "node_2ow5nw2we",
+            "toPort": "node_2ow5nw2we_message"
+        },
+        {
+            "fromNode": "node_5cr7tykq5",
+            "fromPort": "node_5cr7tykq5_string_k5do",
+            "toNode": "node_2urz1vr6b",
+            "toPort": "node_2urz1vr6b_message"
+        },
+        {
+            "fromNode": "node_8319jifnb",
+            "fromPort": "node_8319jifnb_exec_out_0uym",
+            "toNode": "node_2urz1vr6b",
+            "toPort": "node_2urz1vr6b_exec_in_u4hm"
+        },
+        {
+            "fromNode": "node_2urz1vr6b",
+            "fromPort": "node_2urz1vr6b_exec_out_cee7",
+            "toNode": "node_sp4warpvl",
+            "toPort": "node_sp4warpvl_exec_in"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_5cr7tykq5",
+            "toPort": "node_5cr7tykq5_value"
+        }
+    ],
+    "view": {
+        "panX": -581.0566523420098,
+        "panY": -237.98602463682982,
+        "zoom": 0.68251953414139
+    }
+}

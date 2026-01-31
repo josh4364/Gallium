@@ -11,9 +11,9 @@
         {
             "id": "node_bvke7wsgm",
             "type": "start",
-            "x": -41.79104047080099,
-            "y": 62.84584591393421,
-            "width": 240,
+            "x": -71.04225036562283,
+            "y": 88.75222237806268,
+            "width": 300,
             "height": 120,
             "title": "Start",
             "params": {},
@@ -27,24 +27,24 @@
             ]
         },
         {
-            "id": "node_5rnnbu3o3",
+            "id": "node_zpscqq3qz",
             "type": "log_message",
-            "x": 466,
-            "y": 93,
+            "x": 360.17707465064314,
+            "y": 80.58734969544302,
             "width": 338,
             "height": 130,
             "title": "Log Message",
             "params": {
-                "message": "On start"
+                "message": "Prompting gemini..."
             },
             "inputs": [
                 {
-                    "id": "node_5rnnbu3o3_in_ktmo",
+                    "id": "node_zpscqq3qz_exec_in_med9",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_5rnnbu3o3_message",
+                    "id": "node_zpscqq3qz_message",
                     "label": "Message",
                     "type": "string",
                     "key": "message"
@@ -52,31 +52,31 @@
             ],
             "outputs": [
                 {
-                    "id": "node_5rnnbu3o3_out_dbvh",
+                    "id": "node_zpscqq3qz_exec_out_h6n2",
                     "label": "exec_out",
                     "type": "exec"
                 }
             ]
         },
         {
-            "id": "node_yo9j8xyi9",
+            "id": "node_rshe5jyoo",
             "type": "log_message",
-            "x": 464.95939189878584,
-            "y": 352.1675339251097,
-            "width": 240,
+            "x": 1327.4021385170845,
+            "y": 149.42054442458854,
+            "width": 300,
             "height": 128,
             "title": "Log Message",
             "params": {
-                "message": "After nested call"
+                "message": "Hello World"
             },
             "inputs": [
                 {
-                    "id": "node_yo9j8xyi9_in_ass9",
+                    "id": "node_rshe5jyoo_exec_in_hnxi",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_yo9j8xyi9_message",
+                    "id": "node_rshe5jyoo_message",
                     "label": "Message",
                     "type": "string",
                     "key": "message"
@@ -84,58 +84,57 @@
             ],
             "outputs": [
                 {
-                    "id": "node_yo9j8xyi9_out_9j5j",
+                    "id": "node_rshe5jyoo_exec_out_4hs7",
                     "label": "exec_out",
                     "type": "exec"
                 }
             ]
         },
         {
-            "id": "node_6bjj8zshu",
-            "type": "function_call",
-            "x": 466.92470156106515,
-            "y": 228.0874400571371,
-            "width": 346,
-            "height": 120,
-            "title": "Nested call",
+            "id": "node_73oxlpu3a",
+            "type": "string_format",
+            "x": 163.24958869100743,
+            "y": 291.1665228837755,
+            "width": 570,
+            "height": 464,
+            "title": "String Format",
             "params": {
-                "functionId": "func_vnspzpweu"
+                "format": "Generate a C hello world example output only the code without any ``` code block markers"
             },
-            "inputs": [
-                {
-                    "id": "node_6bjj8zshu_in_exec",
-                    "label": "exec_in",
-                    "type": "exec"
-                }
-            ],
+            "inputs": [],
             "outputs": [
                 {
-                    "id": "node_6bjj8zshu_out_exec",
-                    "label": "exec_out",
-                    "type": "exec"
+                    "id": "node_73oxlpu3a_result_qo7e",
+                    "label": "Result",
+                    "type": "string"
                 }
             ]
         },
         {
-            "id": "node_ac01cbh1o",
-            "type": "set_variable",
-            "x": 404.13191523666643,
-            "y": -129.83774016508758,
+            "id": "node_xi82jxnpx",
+            "type": "list_add",
+            "x": 1313.1173451272346,
+            "y": 362.7757125220196,
             "width": 346,
-            "height": 128,
-            "title": "Set Local Variable",
+            "height": 167,
+            "title": "List Add (String)",
             "params": {
-                "name": "message for later",
-                "value": null
+                "element_type": "string"
             },
             "inputs": [
                 {
-                    "id": "node_ac01cbh1o_exec_in_bnyb",
+                    "id": "node_xi82jxnpx_exec_in",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_ac01cbh1o_value",
+                    "id": "node_xi82jxnpx_list",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                },
+                {
+                    "id": "node_xi82jxnpx_val",
                     "label": "Value",
                     "type": "string",
                     "key": "value"
@@ -143,185 +142,258 @@
             ],
             "outputs": [
                 {
-                    "id": "node_ac01cbh1o_out_f41g",
+                    "id": "node_xi82jxnpx_exec_out",
                     "label": "exec_out",
                     "type": "exec"
-                }
-            ]
-        },
-        {
-            "id": "node_x16x6fypd",
-            "type": "string",
-            "x": -194.02161050198833,
-            "y": -306.57364999675104,
-            "width": 442,
-            "height": 274,
-            "title": "String Constant",
-            "params": {
-                "value": "sloppa                                                                                      wide"
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_x16x6fypd__szid",
-                    "label": "",
-                    "type": "string"
-                }
-            ]
-        },
-        {
-            "id": "node_noo5umff5",
-            "type": "get_variable",
-            "x": 96.65510196112518,
-            "y": 435.6500344510072,
-            "width": 268,
-            "height": 120,
-            "title": "Get Local Variable",
-            "params": {
-                "name": "message for later"
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_noo5umff5_value_1bow",
-                    "label": "Value",
-                    "type": "string"
-                }
-            ]
-        },
-        {
-            "id": "node_9e55wwkj1",
-            "type": "function_return",
-            "x": 799.4746024235087,
-            "y": 361.2049687298482,
-            "width": 240,
-            "height": 120,
-            "title": "Return",
-            "params": {},
-            "inputs": [
-                {
-                    "id": "node_9e55wwkj1_flow",
-                    "label": "exec_in",
-                    "type": "exec"
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "id": "node_kwl6k0s07",
-            "type": "number",
-            "x": 90.77519217045835,
-            "y": 640.9130628443344,
-            "width": 240,
-            "height": 120,
-            "title": "Number Constant",
-            "params": {
-                "value": 42
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_kwl6k0s07__rfx6",
-                    "label": "",
-                    "type": "number"
-                }
-            ]
-        },
-        {
-            "id": "node_3tqgzx9dt",
-            "type": "string_format",
-            "x": 515.3210042800804,
-            "y": 577.1014659595974,
-            "width": 483,
-            "height": 247,
-            "title": "String Format",
-            "params": {
-                "format": "Value 1 {} \nValue 2 {}\n\nYep.\n\n\n\n\n\n\n\n\n\n\n\n\nReally long content\n\n\n\nvery",
-                "arg1": null,
-                "arg2": null
-            },
-            "inputs": [
-                {
-                    "id": "node_3tqgzx9dt_in_arg1_m5hh",
-                    "label": "Arg 1",
-                    "type": "number",
-                    "key": "arg1"
                 },
                 {
-                    "id": "node_3tqgzx9dt_in_arg2_ukc0",
-                    "label": "Arg 2",
+                    "id": "node_xi82jxnpx_out",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_d13390d8z",
+            "type": "ai_eval",
+            "x": 812.1224987519586,
+            "y": 131.6469581020091,
+            "width": 395,
+            "height": 223,
+            "title": "AI Eval",
+            "params": {
+                "model_name": "gemini-3-flash-preview",
+                "system_prompt": "You are a helpful coding assistant.",
+                "prompt": ""
+            },
+            "inputs": [
+                {
+                    "id": "node_d13390d8z_exec_in_licy",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_d13390d8z_model_name",
+                    "label": "Model",
                     "type": "string",
-                    "key": "arg2"
+                    "key": "model_name"
+                },
+                {
+                    "id": "node_d13390d8z_system_prompt",
+                    "label": "System Prompt",
+                    "type": "string",
+                    "key": "system_prompt"
+                },
+                {
+                    "id": "node_d13390d8z_prompt",
+                    "label": "Prompt",
+                    "type": "string",
+                    "key": "prompt"
                 }
             ],
             "outputs": [
                 {
-                    "id": "node_3tqgzx9dt_result_t6j8",
-                    "label": "Result",
-                    "type": "string"
+                    "id": "node_d13390d8z_exec_out_dbzr",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_d13390d8z_response",
+                    "label": "Response",
+                    "type": "string",
+                    "key": "response"
+                },
+                {
+                    "id": "node_d13390d8z_changed_files",
+                    "label": "Changed Files",
+                    "type": "list:string",
+                    "key": "changed_files"
+                }
+            ]
+        },
+        {
+            "id": "node_s4zgkyyhf",
+            "type": "list_get",
+            "x": 1318.2335613412517,
+            "y": 545.3667677139059,
+            "width": 346,
+            "height": 128,
+            "title": "List Get (String)",
+            "params": {
+                "element_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_s4zgkyyhf_list",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                },
+                {
+                    "id": "node_s4zgkyyhf_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_s4zgkyyhf_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_rewkdqd2b",
+            "type": "list_set",
+            "x": 1316.7030383317028,
+            "y": 688.8413820645836,
+            "width": 346,
+            "height": 206,
+            "title": "List Set (String)",
+            "params": {
+                "element_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_rewkdqd2b_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_rewkdqd2b_list",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                },
+                {
+                    "id": "node_rewkdqd2b_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                },
+                {
+                    "id": "node_rewkdqd2b_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_rewkdqd2b_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_rewkdqd2b_out",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_lrim7jz29",
+            "type": "list_remove_at",
+            "x": 1318.0493601973296,
+            "y": 906.9455242961412,
+            "width": 346,
+            "height": 167,
+            "title": "List Remove At (String)",
+            "params": {
+                "element_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_lrim7jz29_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_lrim7jz29_list",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                },
+                {
+                    "id": "node_lrim7jz29_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_lrim7jz29_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_lrim7jz29_out",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
                 }
             ]
         }
     ],
     "connections": [
         {
-            "fromNode": "node_5rnnbu3o3",
-            "fromPort": "node_5rnnbu3o3_out_dbvh",
-            "toNode": "node_6bjj8zshu",
-            "toPort": "node_6bjj8zshu_in_exec"
+            "fromNode": "node_zpscqq3qz",
+            "fromPort": "node_zpscqq3qz_exec_out_h6n2",
+            "toNode": "node_d13390d8z",
+            "toPort": "node_d13390d8z_exec_in_licy"
         },
         {
-            "fromNode": "node_6bjj8zshu",
-            "fromPort": "node_6bjj8zshu_out_exec",
-            "toNode": "node_yo9j8xyi9",
-            "toPort": "node_yo9j8xyi9_in_ass9"
+            "fromNode": "node_d13390d8z",
+            "fromPort": "node_d13390d8z_exec_out_dbzr",
+            "toNode": "node_rshe5jyoo",
+            "toPort": "node_rshe5jyoo_exec_in_hnxi"
+        },
+        {
+            "fromNode": "node_d13390d8z",
+            "fromPort": "node_d13390d8z_changed_files",
+            "toNode": "node_xi82jxnpx",
+            "toPort": "node_xi82jxnpx_list"
+        },
+        {
+            "fromNode": "node_d13390d8z",
+            "fromPort": "node_d13390d8z_changed_files",
+            "toNode": "node_s4zgkyyhf",
+            "toPort": "node_s4zgkyyhf_list"
+        },
+        {
+            "fromNode": "node_d13390d8z",
+            "fromPort": "node_d13390d8z_changed_files",
+            "toNode": "node_rewkdqd2b",
+            "toPort": "node_rewkdqd2b_list"
+        },
+        {
+            "fromNode": "node_d13390d8z",
+            "fromPort": "node_d13390d8z_changed_files",
+            "toNode": "node_lrim7jz29",
+            "toPort": "node_lrim7jz29_list"
+        },
+        {
+            "fromNode": "node_73oxlpu3a",
+            "fromPort": "node_73oxlpu3a_result_qo7e",
+            "toNode": "node_d13390d8z",
+            "toPort": "node_d13390d8z_prompt"
         },
         {
             "fromNode": "node_bvke7wsgm",
             "fromPort": "node_bvke7wsgm_flow",
-            "toNode": "node_ac01cbh1o",
-            "toPort": "node_ac01cbh1o_exec_in_bnyb"
-        },
-        {
-            "fromNode": "node_ac01cbh1o",
-            "fromPort": "node_ac01cbh1o_out_f41g",
-            "toNode": "node_5rnnbu3o3",
-            "toPort": "node_5rnnbu3o3_in_ktmo"
-        },
-        {
-            "fromNode": "node_x16x6fypd",
-            "fromPort": "node_x16x6fypd__szid",
-            "toNode": "node_ac01cbh1o",
-            "toPort": "node_ac01cbh1o_value"
-        },
-        {
-            "fromNode": "node_yo9j8xyi9",
-            "fromPort": "node_yo9j8xyi9_out_9j5j",
-            "toNode": "node_9e55wwkj1",
-            "toPort": "node_9e55wwkj1_flow"
-        },
-        {
-            "fromNode": "node_3tqgzx9dt",
-            "fromPort": "node_3tqgzx9dt_result_t6j8",
-            "toNode": "node_yo9j8xyi9",
-            "toPort": "node_yo9j8xyi9_message"
-        },
-        {
-            "fromNode": "node_noo5umff5",
-            "fromPort": "node_noo5umff5_value_1bow",
-            "toNode": "node_3tqgzx9dt",
-            "toPort": "node_3tqgzx9dt_in_arg2_ukc0"
-        },
-        {
-            "fromNode": "node_kwl6k0s07",
-            "fromPort": "node_kwl6k0s07__rfx6",
-            "toNode": "node_3tqgzx9dt",
-            "toPort": "node_3tqgzx9dt_in_arg1_m5hh"
+            "toNode": "node_zpscqq3qz",
+            "toPort": "node_zpscqq3qz_exec_in_med9"
         }
     ],
     "view": {
-        "panX": 350.65505340344976,
-        "panY": 145.0058895167299,
-        "zoom": 0.7287176473438534
+        "panX": 499.10543707270773,
+        "panY": 43.86448141166443,
+        "zoom": 0.6930032318105418
     }
 }

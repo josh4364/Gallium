@@ -38,6 +38,7 @@ Object.assign(NodeGraph.prototype, {
                 toNode: c.toNode.id,
                 toPort: c.toPort.id
             })),
+            types: window.typeDB ? window.typeDB.serialize() : null,
             view: { panX: this.panX, panY: this.panY, zoom: this.zoomLevel }
         };
         return JSON.stringify(data);
@@ -289,6 +290,11 @@ Object.assign(NodeGraph.prototype, {
             }
 
             this.clear();
+
+            // Restore Types
+            if (data.types && window.typeDB) {
+                window.typeDB.load(data.types);
+            }
 
             // View
             if (data.view) {

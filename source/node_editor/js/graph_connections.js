@@ -1,9 +1,12 @@
 Object.assign(NodeGraph.prototype, {
-    startConnection(node, port, type) {
+    startConnection(node, port, type, clientX, clientY) {
         this.isCreatingConnection = { node, port, type };
         this.draftLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
         this.draftLine.setAttribute("class", "connection-line draft");
         this.svgLayer.appendChild(this.draftLine);
+
+        // Show tooltip for the source port
+        this.showTooltip(clientX || 0, clientY || 0, port.type);
     },
 
     updateDraftConnection(clientX, clientY) {
@@ -20,6 +23,12 @@ Object.assign(NodeGraph.prototype, {
         const endY = (clientY - containerRect.top - this.panY) / this.zoomLevel;
 
         this.draftLine.setAttribute("d", this.calculatePath(startX, startY, endX, endY));
+
+        // Update tooltip position
+        if (this.tooltipEl) {
+            this.tooltipEl.style.left = (clientX + 10) + 'px';
+            this.tooltipEl.style.top = (clientY + 10) + 'px';
+        }
     },
 
     finishConnection(node, port, type) {
@@ -42,7 +51,9 @@ Object.assign(NodeGraph.prototype, {
             if (fromPort.type !== toPort.type) {
                 const canConnect = isAny(fromPort.type) || isAny(toPort.type) ||
                     (isAnyNotExec(fromPort.type) && !isExec(toPort.type)) ||
-                    (isAnyNotExec(toPort.type) && !isExec(fromPort.type));
+                    (isAnyNotExec(toPort.type) && !isExec(fromPort.type)) ||
+                    (fromPort.type.startsWith('map:') && toPort.type.startsWith('map:') && (fromPort.type.includes('any_not_exec') || toPort.type.includes('any_not_exec'))) ||
+                    (fromPort.type.startsWith('list:') && toPort.type.startsWith('list:') && (fromPort.type.includes('any_not_exec') || toPort.type.includes('any_not_exec')));
 
                 if (!canConnect) {
                     console.warn("Connection type mismatch:", fromPort.type, "vs", toPort.type);
@@ -62,6 +73,7 @@ Object.assign(NodeGraph.prototype, {
             this.draftLine = null;
         }
         this.isCreatingConnection = null;
+        this.hideTooltip();
     },
 
     addConnection(fromNode, fromPort, toNode, toPort, isRestore = false) {
@@ -79,7 +91,13 @@ Object.assign(NodeGraph.prototype, {
             toPort.type = fromPort.type;
             const portEl = document.getElementById(toPort.id);
             if (portEl) {
-                portEl.className = `port port-input port-type-${toPort.type}`;
+                if (window.typeDB) {
+                    const details = window.typeDB.getTypeDetails(toPort.type);
+                    portEl.style.color = details.color;
+                    portEl.style.borderColor = details.color;
+                } else {
+                    portEl.className = `port port-input port-type-${toPort.type}`;
+                }
             }
             if (toNode.type.includes('variable')) {
                 this.onVariableTypeChanged(toNode.params.name, toPort.type);
@@ -88,16 +106,161 @@ Object.assign(NodeGraph.prototype, {
             fromPort.type = toPort.type;
             const portEl = document.getElementById(fromPort.id);
             if (portEl) {
-                portEl.className = `port port-output port-type-${fromPort.type}`;
+                if (window.typeDB) {
+                    const details = window.typeDB.getTypeDetails(fromPort.type);
+                    portEl.style.color = details.color;
+                    portEl.style.borderColor = details.color;
+                } else {
+                    portEl.className = `port port-output port-type-${fromPort.type}`;
+                }
             }
         }
+
+        // Logic for List Node Type Updates
+        const updateListNode = (node, thisPort, otherPort) => {
+            let elType = null;
+            if (thisPort.key === 'list' && otherPort.type.startsWith('list:')) {
+                elType = otherPort.type.substring(5);
+            } else if (otherPort.type.startsWith('list:') && (thisPort.key === 'list' || node.type === 'list_create')) {
+                elType = otherPort.type.substring(5);
+            } else if (node.type.startsWith('list_') && (thisPort.key === 'value' || thisPort.id.includes('_in_')) && otherPort.type !== 'exec' && !otherPort.type.startsWith('list:')) {
+                elType = otherPort.type;
+            }
+
+            if (node.type.startsWith('list_') && elType && elType !== 'any_not_exec' && elType !== 'any') {
+                if (node.params.element_type !== elType) {
+                    node.params.element_type = elType;
+                    const details = window.typeDB.getTypeDetails(elType);
+                    let baseTitle = node.type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    node.title = baseTitle + " (" + details.name + ")";
+                    const listType = 'list:' + elType;
+                    if (node.type === 'list_create') {
+                        node.outputs[0].type = listType;
+                        node.inputs.forEach(i => { if (i.id.includes('_in_')) i.type = elType; });
+                    } else if (node.type === 'list_get') {
+                        node.inputs[0].type = listType;
+                        node.outputs[0].type = elType;
+                    } else if (node.type === 'list_set') {
+                        node.inputs[1].type = listType;
+                        node.inputs[3].type = elType;
+                        node.outputs[1].type = listType;
+                    } else if (node.type === 'list_add') {
+                        node.inputs[1].type = listType;
+                        node.inputs[2].type = elType;
+                        node.outputs[1].type = listType;
+                    } else if (node.type === 'list_remove_at') {
+                        node.inputs[1].type = listType;
+                        node.outputs[1].type = listType;
+                    }
+                    if (node.element) {
+                        const header = node.element.querySelector('.node-header');
+                        if (header) header.innerText = node.title;
+                    }
+                    this.refreshNodePorts(node);
+                }
+            }
+        };
+
+        const updateMapNode = (node, thisPort, otherPort) => {
+            if (!node.type.startsWith('map_')) return;
+            let keyType = node.params.key_type || 'string';
+            let valType = node.params.value_type || 'any_not_exec';
+            let changed = false;
+
+            const parseMap = (mt) => {
+                if (!mt || !mt.startsWith('map:')) return null;
+                const rest = mt.substring(4);
+                let k, v;
+                if (rest.startsWith('struct:')) {
+                    const parts = rest.split(':');
+                    k = parts[0] + ':' + parts[1];
+                    v = parts.slice(2).join(':') || 'any_not_exec';
+                } else {
+                    const idx = rest.indexOf(':');
+                    if (idx !== -1) {
+                        k = rest.substring(0, idx);
+                        v = rest.substring(idx + 1);
+                    } else {
+                        k = rest;
+                        v = 'any_not_exec';
+                    }
+                }
+                return { key: k, val: v };
+            };
+
+            if (thisPort.key === 'map' && otherPort.type.startsWith('map:')) {
+                const parsed = parseMap(otherPort.type);
+                if (parsed && (parsed.key !== keyType || parsed.val !== valType)) {
+                    keyType = parsed.key;
+                    valType = parsed.val;
+                    changed = true;
+                }
+            } else if (thisPort.key === 'key' && otherPort.type !== 'exec' && !otherPort.type.startsWith('map:')) {
+                if (keyType !== otherPort.type && otherPort.type !== 'any_not_exec') {
+                    keyType = otherPort.type;
+                    changed = true;
+                }
+            } else if (thisPort.key === 'value' && otherPort.type !== 'exec' && !otherPort.type.startsWith('map:')) {
+                if (valType !== otherPort.type && otherPort.type !== 'any_not_exec') {
+                    valType = otherPort.type;
+                    changed = true;
+                }
+            } else if (otherPort.type.startsWith('map:') && (thisPort.key === 'map' || node.type === 'map_create')) {
+                const parsed = parseMap(otherPort.type);
+                if (parsed && (parsed.key !== keyType || parsed.val !== valType)) {
+                    keyType = parsed.key;
+                    valType = parsed.val;
+                    changed = true;
+                }
+            }
+
+            if (changed && keyType && valType) {
+                node.params.key_type = keyType;
+                node.params.value_type = valType;
+                const newMapType = `map:${keyType}:${valType}`;
+                const details = window.typeDB.getTypeDetails(newMapType);
+                let baseTitle = node.type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                node.title = baseTitle + " (" + details.name.replace('Map of ', '') + ")";
+                if (node.type === 'map_create') {
+                    node.outputs[0].type = newMapType;
+                } else if (node.type === 'map_get') {
+                    node.inputs[0].type = newMapType;
+                    node.inputs[1].type = keyType;
+                    node.outputs[0].type = valType;
+                } else if (node.type === 'map_set') {
+                    node.inputs[1].type = newMapType;
+                    node.inputs[2].type = keyType;
+                    node.inputs[3].type = valType;
+                    node.outputs[1].type = newMapType;
+                } else if (node.type === 'map_remove') {
+                    node.inputs[1].type = newMapType;
+                    node.inputs[2].type = keyType;
+                    node.outputs[1].type = newMapType;
+                }
+                if (node.element) {
+                    const header = node.element.querySelector('.node-header');
+                    if (header) header.innerText = node.title;
+                }
+                this.refreshNodePorts(node);
+            }
+        };
+
+        updateMapNode(toNode, toPort, fromPort);
+        updateMapNode(fromNode, fromPort, toPort);
+        updateListNode(toNode, toPort, fromPort);
+        updateListNode(fromNode, fromPort, toPort);
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "connection-line");
 
         const style = getComputedStyle(document.documentElement);
         // Use the resolved type for color
-        const color = style.getPropertyValue(`--type-${fromPort.type}`).trim() || '#fff';
+        let color = '#fff';
+        if (window.typeDB) {
+            color = window.typeDB.getTypeDetails(fromPort.type).color;
+        } else {
+            color = style.getPropertyValue(`--type-${fromPort.type}`).trim() || '#fff';
+        }
         path.style.stroke = color;
         path.style.filter = `drop-shadow(0 0 8px ${color}66)`;
 
@@ -108,11 +271,20 @@ Object.assign(NodeGraph.prototype, {
         hitArea.setAttribute("pointer-events", "stroke");
         hitArea.style.cursor = "pointer";
 
-        hitArea.onmouseenter = () => {
+        hitArea.onmouseenter = (e) => {
             this.hoveredConnection = conn;
             path.style.strokeWidth = "5";
             path.style.opacity = "1";
             path.style.filter = `drop-shadow(0 0 12px ${color})`;
+            if (!this.isCreatingConnection) {
+                this.showTooltip(e.clientX, e.clientY, fromPort.type);
+            }
+        };
+        hitArea.onmousemove = (e) => {
+            if (this.tooltipEl && this.tooltipEl.classList.contains('active')) {
+                this.tooltipEl.style.left = (e.clientX + 10) + 'px';
+                this.tooltipEl.style.top = (e.clientY + 10) + 'px';
+            }
         };
         hitArea.onmouseleave = () => {
             if (this.hoveredConnection === conn) {
@@ -121,6 +293,7 @@ Object.assign(NodeGraph.prototype, {
                 path.style.opacity = "";
                 path.style.filter = `drop-shadow(0 0 8px ${color}66)`;
             }
+            this.hideTooltip();
         };
 
         hitArea.onmousedown = (e) => {
@@ -207,6 +380,44 @@ Object.assign(NodeGraph.prototype, {
         }
 
         this.connections = this.connections.filter(c => c !== conn);
+
+        // Reset List/Map nodes if no more specialized connections exist
+        const resetDynamicNode = (node) => {
+            if (!node || !node.type) return;
+            const isList = node.type.startsWith('list_');
+            const isMap = node.type.startsWith('map_');
+            if (!isList && !isMap) return;
+
+            // Check if ANY non-exec ports have remaining connections
+            const hasConnections = this.connections.some(c =>
+                (c.fromNode === node && c.fromPort.type !== 'exec') ||
+                (c.toNode === node && c.toPort.type !== 'exec')
+            );
+
+            if (!hasConnections) {
+                if (isList) {
+                    node.params.element_type = 'any_not_exec';
+                    // Re-run the update logic to reset ports and title
+                    const updateProto = NodeGraph.prototype.updateListNode || this.updateListNode;
+                    // We don't have updateListNode on prototype in the same way, but it's used in addConnection
+                    // Let's just manually trigger it by a fake connection or just re-run the logic
+                    // Actually, let's just use onNodeParamChanged if it's available or similar
+                    if (this.onNodeParamChanged) {
+                        this.onNodeParamChanged(node, 'element_type', 'any_not_exec');
+                    }
+                } else if (isMap) {
+                    node.params.key_type = 'string';
+                    node.params.value_type = 'any_not_exec';
+                    if (this.onNodeParamChanged) {
+                        this.onNodeParamChanged(node, 'key_type', 'string');
+                    }
+                }
+            }
+        };
+
+        resetDynamicNode(conn.toNode);
+        resetDynamicNode(conn.fromNode);
+
         if (this.hoveredConnection === conn) {
             this.hoveredConnection = null;
         }

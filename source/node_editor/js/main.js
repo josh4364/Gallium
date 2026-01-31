@@ -4,12 +4,23 @@ const graph = new NodeGraph({
 
 // Initialize Function System
 const typeDB = new TypeDatabase();
+const typeEditor = new TypeEditor(typeDB);
 const functionDB = new FunctionDatabase();
 const funcManager = new FunctionManager(graph, typeDB, functionDB);
 
 // Make globally available for UI
+window.typeDB = typeDB;
+window.typeEditor = typeEditor;
 window.funcManager = funcManager;
 window.graph = graph; // Make graph globally available too (for HTML onclick handlers)
+
+window.openTypePanel = () => {
+    document.getElementById('type-panel').classList.add('active');
+};
+
+window.closeTypePanel = () => {
+    document.getElementById('type-panel').classList.remove('active');
+};
 
 // Bridge for Parent (Index.html)
 window.importFunctionList = (list) => {

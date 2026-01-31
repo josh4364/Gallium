@@ -1,0 +1,645 @@
+{
+    "id": "func_tjsju6kq0",
+    "name": "List tests",
+    "description": "bunch of nodes to test list functionality works",
+    "tags": [
+        "list"
+    ],
+    "inputs": [],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_aqmsh8dma",
+            "type": "start",
+            "x": 329.6608942966741,
+            "y": 167.0281864436482,
+            "width": 300,
+            "height": 120,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_aqmsh8dma_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_rmj03xal0",
+            "type": "list_create",
+            "x": 814.2258074444309,
+            "y": 147.29241642688856,
+            "width": 492,
+            "height": 147,
+            "title": "Create List (Number)",
+            "params": {
+                "element_type": "number",
+                "num_elements": 1
+            },
+            "inputs": [
+                {
+                    "id": "node_rmj03xal0_count",
+                    "label": "num_elements",
+                    "type": "number",
+                    "key": "num_elements"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_rmj03xal0_out",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_hbv0u6gm4",
+            "type": "list_set",
+            "x": 964.2026632172201,
+            "y": 489.6759091648515,
+            "width": 300,
+            "height": 186,
+            "title": "List Set (Number)",
+            "params": {
+                "element_type": "number"
+            },
+            "inputs": [
+                {
+                    "id": "node_hbv0u6gm4_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_hbv0u6gm4_list",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                },
+                {
+                    "id": "node_hbv0u6gm4_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                },
+                {
+                    "id": "node_hbv0u6gm4_val",
+                    "label": "Value",
+                    "type": "number",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_hbv0u6gm4_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_hbv0u6gm4_out",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_39hgwo2t1",
+            "type": "list_get",
+            "x": 903.0473276212839,
+            "y": 945.8947127105356,
+            "width": 300,
+            "height": 120,
+            "title": "List Get (Number)",
+            "params": {
+                "element_type": "number"
+            },
+            "inputs": [
+                {
+                    "id": "node_39hgwo2t1_list",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                },
+                {
+                    "id": "node_39hgwo2t1_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_39hgwo2t1_val",
+                    "label": "Value",
+                    "type": "number",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_2gn11ln26",
+            "type": "log_message",
+            "x": 1484.8791904810212,
+            "y": 767.9326861263613,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_2gn11ln26_exec_in_ueom",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_2gn11ln26_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_2gn11ln26_exec_out_774g",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_a5a6fog3s",
+            "type": "log_message",
+            "x": 822.1999739634562,
+            "y": -67.32688744293564,
+            "width": 338,
+            "height": 155,
+            "title": "Log Message",
+            "params": {
+                "message": "List tests, making  a list of numbers and setting the first two elements"
+            },
+            "inputs": [
+                {
+                    "id": "node_a5a6fog3s_exec_in_ov6w",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_a5a6fog3s_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_a5a6fog3s_exec_out_u47o",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_k3pg1noyt",
+            "type": "set_variable",
+            "x": 1414.183622532119,
+            "y": 190.74862877191515,
+            "width": 346,
+            "height": 120,
+            "title": "Set Local Variable",
+            "params": {
+                "name": "the list",
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_k3pg1noyt_exec_in_qtyz",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_k3pg1noyt_value",
+                    "label": "Value",
+                    "type": "list:number",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_k3pg1noyt_exec_out_rz60",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_5td1kmb0i",
+            "type": "get_variable",
+            "x": 462.60660065935105,
+            "y": 409.6847302053669,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "the list"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_5td1kmb0i_value_oav8",
+                    "label": "Value",
+                    "type": "list:number"
+                }
+            ]
+        },
+        {
+            "id": "node_5m7q196px",
+            "type": "number",
+            "x": 462.60660065935105,
+            "y": 536.8878282449142,
+            "width": 300,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 0
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_5m7q196px__zc7z",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_l3a4vnh87",
+            "type": "number",
+            "x": 462.60660065935105,
+            "y": 671.4295665559739,
+            "width": 300,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 1000
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_l3a4vnh87__o2ef",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_1kwxk09s4",
+            "type": "string_format",
+            "x": 1310.2195520190273,
+            "y": 991.8835250786798,
+            "width": 300,
+            "height": 128,
+            "title": "String Format",
+            "params": {
+                "format": "List [0] = {}\nList [1] = {}",
+                "arg1": null,
+                "arg2": null
+            },
+            "inputs": [
+                {
+                    "id": "node_1kwxk09s4_in_arg1_sdh6",
+                    "label": "Arg 1",
+                    "type": "number",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_1kwxk09s4_in_arg2_w9oj",
+                    "label": "Arg 2",
+                    "type": "number",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_1kwxk09s4_result_9ea2",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_sfg3ndzja",
+            "type": "list_get",
+            "x": 901.7019102381731,
+            "y": 1084.8396351845029,
+            "width": 300,
+            "height": 120,
+            "title": "List Get (Number)",
+            "params": {
+                "element_type": "number"
+            },
+            "inputs": [
+                {
+                    "id": "node_sfg3ndzja_list",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                },
+                {
+                    "id": "node_sfg3ndzja_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_sfg3ndzja_val",
+                    "label": "Value",
+                    "type": "number",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_nj6zc2p89",
+            "type": "number",
+            "x": 485.8456281858068,
+            "y": 1111.7479828467146,
+            "width": 300,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 1
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_nj6zc2p89__lw3c",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_nz8dqnw9r",
+            "type": "list_add",
+            "x": 954.2954988506783,
+            "y": 719.1307283208042,
+            "width": 300,
+            "height": 147,
+            "title": "List Add (Number)",
+            "params": {
+                "element_type": "number"
+            },
+            "inputs": [
+                {
+                    "id": "node_nz8dqnw9r_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_nz8dqnw9r_list",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                },
+                {
+                    "id": "node_nz8dqnw9r_val",
+                    "label": "Value",
+                    "type": "number",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_nz8dqnw9r_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_nz8dqnw9r_out",
+                    "label": "List",
+                    "type": "list:number",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_ukl6ul1px",
+            "type": "number",
+            "x": 465.0528140831885,
+            "y": 809.6406250027899,
+            "width": 300,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 42
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_ukl6ul1px__cv03",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_higntbr1s",
+            "type": "to_string",
+            "x": 1822.860376756366,
+            "y": 1022.631481322601,
+            "width": 300,
+            "height": 120,
+            "title": "To String",
+            "params": {
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_higntbr1s_value",
+                    "label": "Value",
+                    "type": "list:number",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_higntbr1s_string_o36p",
+                    "label": "String",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_fn668n84u",
+            "type": "log_message",
+            "x": 2175.05698348284,
+            "y": 836.8269722621774,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_fn668n84u_exec_in_89y5",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_fn668n84u_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_fn668n84u_exec_out_m9o5",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_aqmsh8dma",
+            "fromPort": "node_aqmsh8dma_flow",
+            "toNode": "node_a5a6fog3s",
+            "toPort": "node_a5a6fog3s_exec_in_ov6w"
+        },
+        {
+            "fromNode": "node_a5a6fog3s",
+            "fromPort": "node_a5a6fog3s_exec_out_u47o",
+            "toNode": "node_k3pg1noyt",
+            "toPort": "node_k3pg1noyt_exec_in_qtyz"
+        },
+        {
+            "fromNode": "node_k3pg1noyt",
+            "fromPort": "node_k3pg1noyt_exec_out_rz60",
+            "toNode": "node_hbv0u6gm4",
+            "toPort": "node_hbv0u6gm4_exec_in"
+        },
+        {
+            "fromNode": "node_rmj03xal0",
+            "fromPort": "node_rmj03xal0_out",
+            "toNode": "node_k3pg1noyt",
+            "toPort": "node_k3pg1noyt_value"
+        },
+        {
+            "fromNode": "node_5td1kmb0i",
+            "fromPort": "node_5td1kmb0i_value_oav8",
+            "toNode": "node_hbv0u6gm4",
+            "toPort": "node_hbv0u6gm4_list"
+        },
+        {
+            "fromNode": "node_hbv0u6gm4",
+            "fromPort": "node_hbv0u6gm4_out",
+            "toNode": "node_39hgwo2t1",
+            "toPort": "node_39hgwo2t1_list"
+        },
+        {
+            "fromNode": "node_5m7q196px",
+            "fromPort": "node_5m7q196px__zc7z",
+            "toNode": "node_hbv0u6gm4",
+            "toPort": "node_hbv0u6gm4_index"
+        },
+        {
+            "fromNode": "node_l3a4vnh87",
+            "fromPort": "node_l3a4vnh87__o2ef",
+            "toNode": "node_hbv0u6gm4",
+            "toPort": "node_hbv0u6gm4_val"
+        },
+        {
+            "fromNode": "node_5m7q196px",
+            "fromPort": "node_5m7q196px__zc7z",
+            "toNode": "node_39hgwo2t1",
+            "toPort": "node_39hgwo2t1_index"
+        },
+        {
+            "fromNode": "node_39hgwo2t1",
+            "fromPort": "node_39hgwo2t1_val",
+            "toNode": "node_1kwxk09s4",
+            "toPort": "node_1kwxk09s4_in_arg1_sdh6"
+        },
+        {
+            "fromNode": "node_nj6zc2p89",
+            "fromPort": "node_nj6zc2p89__lw3c",
+            "toNode": "node_sfg3ndzja",
+            "toPort": "node_sfg3ndzja_index"
+        },
+        {
+            "fromNode": "node_sfg3ndzja",
+            "fromPort": "node_sfg3ndzja_val",
+            "toNode": "node_1kwxk09s4",
+            "toPort": "node_1kwxk09s4_in_arg2_w9oj"
+        },
+        {
+            "fromNode": "node_1kwxk09s4",
+            "fromPort": "node_1kwxk09s4_result_9ea2",
+            "toNode": "node_2gn11ln26",
+            "toPort": "node_2gn11ln26_message"
+        },
+        {
+            "fromNode": "node_hbv0u6gm4",
+            "fromPort": "node_hbv0u6gm4_exec_out",
+            "toNode": "node_nz8dqnw9r",
+            "toPort": "node_nz8dqnw9r_exec_in"
+        },
+        {
+            "fromNode": "node_hbv0u6gm4",
+            "fromPort": "node_hbv0u6gm4_out",
+            "toNode": "node_nz8dqnw9r",
+            "toPort": "node_nz8dqnw9r_list"
+        },
+        {
+            "fromNode": "node_nz8dqnw9r",
+            "fromPort": "node_nz8dqnw9r_exec_out",
+            "toNode": "node_2gn11ln26",
+            "toPort": "node_2gn11ln26_exec_in_ueom"
+        },
+        {
+            "fromNode": "node_nz8dqnw9r",
+            "fromPort": "node_nz8dqnw9r_out",
+            "toNode": "node_sfg3ndzja",
+            "toPort": "node_sfg3ndzja_list"
+        },
+        {
+            "fromNode": "node_ukl6ul1px",
+            "fromPort": "node_ukl6ul1px__cv03",
+            "toNode": "node_nz8dqnw9r",
+            "toPort": "node_nz8dqnw9r_val"
+        },
+        {
+            "fromNode": "node_higntbr1s",
+            "fromPort": "node_higntbr1s_string_o36p",
+            "toNode": "node_fn668n84u",
+            "toPort": "node_fn668n84u_message"
+        },
+        {
+            "fromNode": "node_nz8dqnw9r",
+            "fromPort": "node_nz8dqnw9r_out",
+            "toNode": "node_higntbr1s",
+            "toPort": "node_higntbr1s_value"
+        },
+        {
+            "fromNode": "node_2gn11ln26",
+            "fromPort": "node_2gn11ln26_exec_out_774g",
+            "toNode": "node_fn668n84u",
+            "toPort": "node_fn668n84u_exec_in_89y5"
+        }
+    ],
+    "view": {
+        "panX": -709.6252032340003,
+        "panY": -160.5096502780002,
+        "zoom": 0.7211880953676061
+    }
+}

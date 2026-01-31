@@ -142,6 +142,45 @@
         </div>
     </div>
 
+    <div id="type-panel">
+        <div class="panel-section">
+            <div class="panel-header">Type Database</div>
+            <div style="display: flex; gap: 4px; margin-bottom: 10px;">
+                <button class="tool-btn" style="flex: 1; font-size: 11px;" onclick="typeEditor.createNewStruct()">+ New
+                    Struct</button>
+            </div>
+            <div class="search-container" style="padding: 0; margin-bottom: 10px;">
+                <input type="text" id="type-search" placeholder="Search types..." class="panel-input"
+                    oninput="typeEditor.render()">
+            </div>
+            <div id="type-list-container" class="io-list" style="max-height: 200px; overflow-y: auto;">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <div id="struct-editor-section" class="panel-section"
+            style="display: none; border-top: 1px solid var(--node-border); padding-top: 15px;">
+            <div class="panel-header">Structure Editor</div>
+            <label class="panel-label">Struct Name</label>
+            <input type="text" id="struct-name-input" class="panel-input"
+                onchange="typeEditor.onStructNameChange(this.value)">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                <label class="panel-label" style="margin-bottom: 0;">Fields</label>
+                <button class="tool-btn" style="width: auto; height: 24px; padding: 0 8px; font-size: 10px;"
+                    onclick="typeEditor.addFieldToCurrent()">+ Add Field</button>
+            </div>
+            <div id="struct-fields-list" class="io-list" style="margin-top: 5px;">
+                <!-- Populated by JS -->
+            </div>
+
+            <div style="margin-top: 15px;">
+                <button class="tool-btn" style="width: 100%; font-size: 11px; color: var(--danger);"
+                    onclick="typeEditor.deleteCurrentStruct()">Delete Structure</button>
+            </div>
+        </div>
+    </div>
+
     <div id="context-menu">
         <div class="window-header" id="menu-header">
             <span>Add Node</span>
@@ -156,6 +195,8 @@
     </div>
 
     <script src="js/node_registry.js"></script>
+    <script src="js/type_system.js"></script>
+    <script src="js/type_editor.js"></script>
     <script src="js/function_system.js"></script>
     <script src="js/node_graph.js"></script>
     <script src="js/graph_canvas.js"></script>

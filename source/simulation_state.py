@@ -12,6 +12,7 @@ class SimulationState:
     def __init__(self, system_root=None):
         self.tick_count = 0
         self.events = []
+        self.on_event = None
         
         # Capture the system root (where Gallium was launched)
         self.system_root = Path(system_root).resolve() if system_root else Path.cwd()
@@ -27,8 +28,6 @@ class SimulationState:
         
         # Manifest State
         self._load_state_from_manifest()
-        
-        self.on_event = None
 
     def set_event_handler(self, handler):
         self.on_event = handler

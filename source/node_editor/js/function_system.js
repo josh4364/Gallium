@@ -1,23 +1,4 @@
-
-class TypeDatabase {
-    constructor() {
-        this.types = {
-            'exec': { color: '#ffffff', label: 'Exec' },
-            'string': { color: '#f25fbc', label: 'String' },
-            'number': { color: '#76ea59', label: 'Number' },
-            'boolean': { color: '#ef5350', label: 'Boolean' },
-            'any': { color: '#808080', label: 'Any' }
-        };
-    }
-
-    getType(typeName) {
-        return this.types[typeName.toLowerCase()] || this.types['any'];
-    }
-
-    getAllTypes() {
-        return Object.keys(this.types).filter(t => t !== 'exec'); // exec is special
-    }
-}
+// TypeDatabase is now in type_system.js
 
 class FunctionDatabase {
     constructor() {
@@ -463,11 +444,12 @@ class FunctionManager {
 
             const typeSelect = document.createElement('select');
             typeSelect.className = 'io-type';
-            this.typeDB.getAllTypes().forEach(t => {
+            this.typeDB.getAllTypeStrings().forEach(tStr => {
+                const details = this.typeDB.getTypeDetails(tStr);
                 const opt = document.createElement('option');
-                opt.value = t;
-                opt.text = t; // Capitalize?
-                if (t === item.type) opt.selected = true;
+                opt.value = tStr;
+                opt.text = details.name;
+                if (tStr === item.type) opt.selected = true;
                 typeSelect.appendChild(opt);
             });
             typeSelect.onchange = (e) => {

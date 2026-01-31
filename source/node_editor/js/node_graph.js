@@ -39,7 +39,34 @@ class NodeGraph {
         this.historyIndex = -1;
         this.isRestoring = false; // Flag to prevent triggering saves during restore
 
+        // Tooltip System
+        this.tooltipEl = document.createElement('div');
+        this.tooltipEl.className = 'port-tooltip';
+        document.body.appendChild(this.tooltipEl);
+
         // Initial state
         setTimeout(() => this.saveHistory('Initial State'), 100);
+    }
+
+    showTooltip(x, y, type) {
+        if (!this.tooltipEl) return;
+
+        let content = `<span class="port-tooltip-type">${type}</span>`;
+        if (window.typeDB) {
+            const details = window.typeDB.getTypeDetails(type);
+            content = `<span class="port-tooltip-type" style="color:${details.color}">${details.name}</span>`;
+        }
+
+        this.tooltipEl.innerHTML = content;
+        this.tooltipEl.classList.add('active');
+        this.tooltipEl.style.position = 'fixed';
+        this.tooltipEl.style.left = (x + 10) + 'px';
+        this.tooltipEl.style.top = (y + 10) + 'px';
+    }
+
+    hideTooltip() {
+        if (this.tooltipEl && !this.isCreatingConnection) {
+            this.tooltipEl.classList.remove('active');
+        }
     }
 }

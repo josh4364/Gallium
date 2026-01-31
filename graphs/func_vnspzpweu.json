@@ -2,15 +2,19 @@
     "id": "func_vnspzpweu",
     "name": "Nested call",
     "description": "nested call",
-    "tags": [],
+    "tags": [
+        "temp"
+    ],
     "inputs": [],
     "outputs": [],
     "nodes": [
         {
             "id": "node_ujruo9ubb",
             "type": "log_message",
-            "x": 185,
-            "y": 151,
+            "x": 455,
+            "y": 78,
+            "width": 338,
+            "height": 130,
             "title": "Log Message",
             "params": {
                 "message": "Nested Call"
@@ -41,6 +45,8 @@
             "type": "start",
             "x": 136,
             "y": 28,
+            "width": 240,
+            "height": 120,
             "title": "Start",
             "params": {},
             "inputs": [],
@@ -55,8 +61,10 @@
         {
             "id": "node_rn9ica7fx",
             "type": "function_return",
-            "x": 327,
-            "y": 278,
+            "x": 891,
+            "y": 190,
+            "width": 240,
+            "height": 120,
             "title": "Return",
             "params": {},
             "inputs": [
@@ -84,8 +92,8 @@
         }
     ],
     "view": {
-        "panX": 192,
-        "panY": 144,
+        "panX": 345,
+        "panY": 258,
         "zoom": 1
     }
 }
