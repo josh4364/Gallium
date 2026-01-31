@@ -90,7 +90,7 @@ Object.assign(NodeGraph.prototype, {
                 }
 
                 this.renderConnections();
-                this.updateMinimap();
+                this.renderMinimap();
             }
             if (this.isCreatingConnection) {
                 this.updateDraftConnection(e.clientX, e.clientY);
@@ -328,7 +328,7 @@ Object.assign(NodeGraph.prototype, {
         }
         const posEl = document.getElementById('view-pos');
         if (posEl) posEl.innerText = `${Math.round(this.panX)}, ${Math.round(this.panY)}`;
-        this.updateMinimap();
+        this.updateMinimapViewport();
     },
 
     initMinimapEvents() {
@@ -342,7 +342,8 @@ Object.assign(NodeGraph.prototype, {
         });
     },
 
-    updateMinimap() {
+    // Heavy update: Rebuilds DOM. Call only on structure changes (add/remove/move nodes).
+    renderMinimap() {
         if (!this.minimapContent) return;
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         if (this.nodes.length === 0) {
@@ -363,6 +364,9 @@ Object.assign(NodeGraph.prototype, {
         const mmHeight = 150;
         const scale = Math.min(mmWidth / width, mmHeight / height);
 
+        // Store bounds for viewport update
+        this.minimapBounds = { minX, minY, scale };
+
         this.minimapContent.innerHTML = '';
         this.nodes.forEach(n => {
             const rect = document.createElement('div');
@@ -380,21 +384,27 @@ Object.assign(NodeGraph.prototype, {
             this.minimapContent.appendChild(rect);
         });
 
+        this.updateMinimapViewport();
+    },
+
+    // Light update: Only moves viewport div. Call on pan/zoom.
+    updateMinimapViewport() {
+        if (!this.minimapViewport || !this.minimapBounds) return;
+
+        const { minX, minY, scale } = this.minimapBounds;
         const vpX = (-this.panX / this.zoomLevel - minX) * scale;
         const vpY = (-this.panY / this.zoomLevel - minY) * scale;
         const vpW = (window.innerWidth / this.zoomLevel) * scale;
         const vpH = (window.innerHeight / this.zoomLevel) * scale;
 
-        if (this.minimapViewport) {
-            this.minimapViewport.style.left = vpX + 'px';
-            this.minimapViewport.style.top = vpY + 'px';
-            this.minimapViewport.style.width = vpW + 'px';
-            this.minimapViewport.style.height = vpH + 'px';
-        }
+        this.minimapViewport.style.left = vpX + 'px';
+        this.minimapViewport.style.top = vpY + 'px';
+        this.minimapViewport.style.width = vpW + 'px';
+        this.minimapViewport.style.height = vpH + 'px';
     },
 
     render() {
         this.renderConnections();
-        this.updateMinimap();
+        this.renderMinimap();
     }
 });

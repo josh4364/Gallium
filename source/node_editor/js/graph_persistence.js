@@ -100,7 +100,7 @@ Object.assign(NodeGraph.prototype, {
             this.showNotification("Error restoring history");
         } finally {
             this.isRestoring = false;
-            this.updateMinimap();
+            this.renderMinimap();
         }
     },
 
@@ -260,7 +260,7 @@ Object.assign(NodeGraph.prototype, {
         this.hoveredConnection = null;
         this.history = [];
         this.historyIndex = -1;
-        this.updateMinimap();
+        this.renderMinimap();
 
         const countEl = document.getElementById('node-count');
         if (countEl) countEl.innerText = 0;
@@ -337,7 +337,7 @@ Object.assign(NodeGraph.prototype, {
             this.showNotification("Error loading graph data");
         } finally {
             this.isRestoring = false;
-            this.updateMinimap();
+            this.renderMinimap();
         }
     }
 });

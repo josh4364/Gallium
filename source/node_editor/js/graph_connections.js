@@ -283,6 +283,11 @@ Object.assign(NodeGraph.prototype, {
         path.style.stroke = color;
         path.style.filter = `drop-shadow(0 0 8px ${color}66)`;
 
+        const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrow.setAttribute("class", "connection-arrow");
+        arrow.setAttribute("d", "M -6 -4 L 4 0 L -6 4 Z");
+        arrow.style.fill = color;
+
         const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "path");
         hitArea.setAttribute("fill", "none");
         hitArea.setAttribute("stroke", "rgba(255, 255, 255, 0.01)");
@@ -321,9 +326,11 @@ Object.assign(NodeGraph.prototype, {
         };
 
         this.svgLayer.appendChild(path);
+        this.svgLayer.appendChild(arrow);
         this.svgLayer.appendChild(hitArea);
 
         conn.element = path;
+        conn.arrow = arrow;
         conn.hitArea = hitArea;
 
         this.connections.push(conn);
@@ -339,6 +346,9 @@ Object.assign(NodeGraph.prototype, {
     deleteConnection(conn, suppressHistory = false) {
         if (conn.element && conn.element.parentNode) {
             this.svgLayer.removeChild(conn.element);
+        }
+        if (conn.arrow && conn.arrow.parentNode) {
+            this.svgLayer.removeChild(conn.arrow);
         }
         if (conn.hitArea && conn.hitArea.parentNode) {
             this.svgLayer.removeChild(conn.hitArea);
@@ -544,6 +554,29 @@ Object.assign(NodeGraph.prototype, {
             conn.element.setAttribute("d", d);
             if (conn.hitArea) {
                 conn.hitArea.setAttribute("d", d);
+            }
+
+            // Update arrow
+            if (conn.arrow) {
+                try {
+                    const totalLength = conn.element.getTotalLength();
+                    if (totalLength > 0) {
+                        const point = conn.element.getPointAtLength(totalLength * 0.5);
+                        
+                        // Calculate angle
+                        const p1 = conn.element.getPointAtLength(Math.max(0, totalLength * 0.5 - 1));
+                        const p2 = conn.element.getPointAtLength(Math.min(totalLength, totalLength * 0.5 + 1));
+                    
+                        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+                        conn.arrow.setAttribute("transform", `translate(${point.x}, ${point.y}) rotate(${angle})`);
+                        // Ensure arrow is visible
+                        conn.arrow.style.display = '';
+                    } else {
+                         conn.arrow.style.display = 'none';
+                    }
+                } catch (e) {
+                   // Ignore errors if path is invalid
+                }
             }
         });
     }

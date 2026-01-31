@@ -675,7 +675,7 @@ Object.assign(NodeGraph.prototype, {
 
         this.nodes.push(node);
         this.createNodeElement(node);
-        this.updateMinimap();
+        this.renderMinimap();
         const countEl = document.getElementById('node-count');
         if (countEl) countEl.innerText = this.nodes.length;
 
@@ -771,7 +771,7 @@ Object.assign(NodeGraph.prototype, {
 
         const countEl = document.getElementById('node-count');
         if (countEl) countEl.innerText = this.nodes.length;
-        this.updateMinimap();
+        this.renderMinimap();
 
         if (!suppressHistory && !this.isRestoring) this.saveHistory('Deleted Node');
     },
