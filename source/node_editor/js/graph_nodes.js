@@ -756,6 +756,7 @@ Object.assign(NodeGraph.prototype, {
         this.connections = this.connections.filter(c => {
             if (c.fromNode === node || c.toNode === node) {
                 if (c.element && c.element.parentNode) this.svgLayer.removeChild(c.element);
+                if (c.arrow && c.arrow.parentNode) this.svgLayer.removeChild(c.arrow);
                 if (c.hitArea && c.hitArea.parentNode) this.svgLayer.removeChild(c.hitArea);
                 return false;
             }

@@ -56,6 +56,7 @@ Object.assign(NodeGraph.prototype, {
             });
             this.connections.forEach(c => {
                 if (c.element) c.element.remove();
+                if (c.arrow) c.arrow.remove();
                 if (c.hitArea) c.hitArea.remove();
             });
             this.nodes = [];
@@ -250,6 +251,7 @@ Object.assign(NodeGraph.prototype, {
         });
         this.connections.forEach(c => {
             if (c.element) c.element.remove();
+            if (c.arrow) c.arrow.remove();
             if (c.hitArea) c.hitArea.remove();
         });
 

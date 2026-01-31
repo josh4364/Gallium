@@ -27,15 +27,15 @@
         {
             "id": "node_8pehgtzwr",
             "type": "ai_eval",
-            "x": 1100.3217670858626,
-            "y": 707.1892933172783,
+            "x": 1101.358144706746,
+            "y": 700.971027591977,
             "width": 395,
             "height": 273,
             "title": "AI Eval",
             "params": {
                 "model_name": "gemini-3-flash-preview",
                 "system_prompt": "You are a helpful coding assistant.",
-                "prompt": "Test the tool \"Get current time\"\nAnd the tool \"caculate\" (math expressions)"
+                "prompt": "Test the tool \"custom current time\"\nAnd the tool \"caculate\" (math expressions)"
             },
             "inputs": [
                 {
@@ -161,7 +161,7 @@
             "height": 149,
             "title": "Create Tool",
             "params": {
-                "function_name": "get current time",
+                "function_name": "custom current time",
                 "description": "returns the current local time"
             },
             "inputs": [
@@ -294,8 +294,8 @@
         }
     ],
     "view": {
-        "panX": 134.23080587403751,
-        "panY": -347.4840808723843,
+        "panX": -440.7691941259625,
+        "panY": -408.4840808723843,
         "zoom": 0.9648992605103405
     }
 }

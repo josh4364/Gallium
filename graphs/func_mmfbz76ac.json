@@ -15,8 +15,8 @@
         {
             "id": "node_cmwhk6omi",
             "type": "start",
-            "x": 186.47264518154526,
-            "y": 173.46292575027468,
+            "x": 191.89336161124135,
+            "y": 190.80921832530217,
             "width": 300,
             "height": 120,
             "title": "Start",
@@ -33,8 +33,8 @@
         {
             "id": "node_eib5qrjx7",
             "type": "function_return",
-            "x": 668.9164074244968,
-            "y": 224.4176601894179,
+            "x": 1384.45097614438,
+            "y": 242.8480960503846,
             "width": 300,
             "height": 120,
             "title": "Return",
@@ -54,43 +54,125 @@
             "outputs": []
         },
         {
-            "id": "node_jbfr102nt",
-            "type": "string",
-            "x": 301.39183349110226,
-            "y": 338.25270521303565,
-            "width": 300,
-            "height": 126,
-            "title": "String Constant",
+            "id": "node_3lpakxjak",
+            "type": "run_process",
+            "x": 587.6056609790555,
+            "y": 204.90308104251196,
+            "width": 336,
+            "height": 188,
+            "title": "Run Process",
             "params": {
-                "value": "Its 5:00 somewhere"
+                "program_name": "date",
+                "arguments": [],
+                "timeout": 0
             },
-            "inputs": [],
+            "inputs": [
+                {
+                    "id": "node_3lpakxjak_exec_in_gn4i",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_3lpakxjak_program_name",
+                    "label": "Program",
+                    "type": "string",
+                    "key": "program_name"
+                },
+                {
+                    "id": "node_3lpakxjak_arguments",
+                    "label": "Arguments",
+                    "type": "list:string",
+                    "key": "arguments"
+                },
+                {
+                    "id": "node_3lpakxjak_timeout",
+                    "label": "Timeout",
+                    "type": "number",
+                    "key": "timeout"
+                }
+            ],
             "outputs": [
                 {
-                    "id": "node_jbfr102nt__h086",
-                    "label": "",
-                    "type": "string"
+                    "id": "node_3lpakxjak_exec_out_tcmm",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_3lpakxjak_output",
+                    "label": "Output",
+                    "type": "string",
+                    "key": "output"
+                }
+            ]
+        },
+        {
+            "id": "node_1h3egnsrb",
+            "type": "log_message",
+            "x": 1007.1691126375324,
+            "y": 166.9580660346394,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_1h3egnsrb_exec_in_v4kl",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_1h3egnsrb_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_1h3egnsrb_exec_out_k1xs",
+                    "label": "exec_out",
+                    "type": "exec"
                 }
             ]
         }
     ],
     "connections": [
         {
-            "fromNode": "node_jbfr102nt",
-            "fromPort": "node_jbfr102nt__h086",
+            "fromNode": "node_3lpakxjak",
+            "fromPort": "node_3lpakxjak_output",
             "toNode": "node_eib5qrjx7",
             "toPort": "node_eib5qrjx7_in_3am3s"
         },
         {
             "fromNode": "node_cmwhk6omi",
             "fromPort": "node_cmwhk6omi_flow",
+            "toNode": "node_3lpakxjak",
+            "toPort": "node_3lpakxjak_exec_in_gn4i"
+        },
+        {
+            "fromNode": "node_3lpakxjak",
+            "fromPort": "node_3lpakxjak_output",
+            "toNode": "node_1h3egnsrb",
+            "toPort": "node_1h3egnsrb_message"
+        },
+        {
+            "fromNode": "node_3lpakxjak",
+            "fromPort": "node_3lpakxjak_exec_out_tcmm",
+            "toNode": "node_1h3egnsrb",
+            "toPort": "node_1h3egnsrb_exec_in_v4kl"
+        },
+        {
+            "fromNode": "node_1h3egnsrb",
+            "fromPort": "node_1h3egnsrb_exec_out_k1xs",
             "toNode": "node_eib5qrjx7",
             "toPort": "node_eib5qrjx7_flow"
         }
     ],
     "view": {
-        "panX": 142,
-        "panY": 124,
+        "panX": -240,
+        "panY": 141,
         "zoom": 0.9223873015398314
     }
 }
