@@ -99,7 +99,7 @@
             "height": 464,
             "title": "String Format",
             "params": {
-                "format": "Generate a C hello world example output only the code without any ``` code block markers"
+                "format": "Generate a C hello world example \noutput only the code without any ``` code block markers"
             },
             "inputs": [],
             "outputs": [
@@ -107,50 +107,6 @@
                     "id": "node_73oxlpu3a_result_qo7e",
                     "label": "Result",
                     "type": "string"
-                }
-            ]
-        },
-        {
-            "id": "node_xi82jxnpx",
-            "type": "list_add",
-            "x": 1313.1173451272346,
-            "y": 362.7757125220196,
-            "width": 346,
-            "height": 167,
-            "title": "List Add (String)",
-            "params": {
-                "element_type": "string"
-            },
-            "inputs": [
-                {
-                    "id": "node_xi82jxnpx_exec_in",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_xi82jxnpx_list",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                },
-                {
-                    "id": "node_xi82jxnpx_val",
-                    "label": "Value",
-                    "type": "string",
-                    "key": "value"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_xi82jxnpx_exec_out",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_xi82jxnpx_out",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
                 }
             ]
         },
@@ -211,134 +167,6 @@
                     "key": "changed_files"
                 }
             ]
-        },
-        {
-            "id": "node_s4zgkyyhf",
-            "type": "list_get",
-            "x": 1318.2335613412517,
-            "y": 545.3667677139059,
-            "width": 346,
-            "height": 128,
-            "title": "List Get (String)",
-            "params": {
-                "element_type": "string"
-            },
-            "inputs": [
-                {
-                    "id": "node_s4zgkyyhf_list",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                },
-                {
-                    "id": "node_s4zgkyyhf_index",
-                    "label": "Index",
-                    "type": "number",
-                    "key": "index"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_s4zgkyyhf_val",
-                    "label": "Value",
-                    "type": "string",
-                    "key": "value"
-                }
-            ]
-        },
-        {
-            "id": "node_rewkdqd2b",
-            "type": "list_set",
-            "x": 1316.7030383317028,
-            "y": 688.8413820645836,
-            "width": 346,
-            "height": 206,
-            "title": "List Set (String)",
-            "params": {
-                "element_type": "string"
-            },
-            "inputs": [
-                {
-                    "id": "node_rewkdqd2b_exec_in",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_rewkdqd2b_list",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                },
-                {
-                    "id": "node_rewkdqd2b_index",
-                    "label": "Index",
-                    "type": "number",
-                    "key": "index"
-                },
-                {
-                    "id": "node_rewkdqd2b_val",
-                    "label": "Value",
-                    "type": "string",
-                    "key": "value"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_rewkdqd2b_exec_out",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_rewkdqd2b_out",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                }
-            ]
-        },
-        {
-            "id": "node_lrim7jz29",
-            "type": "list_remove_at",
-            "x": 1318.0493601973296,
-            "y": 906.9455242961412,
-            "width": 346,
-            "height": 167,
-            "title": "List Remove At (String)",
-            "params": {
-                "element_type": "string"
-            },
-            "inputs": [
-                {
-                    "id": "node_lrim7jz29_exec_in",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_lrim7jz29_list",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                },
-                {
-                    "id": "node_lrim7jz29_index",
-                    "label": "Index",
-                    "type": "number",
-                    "key": "index"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_lrim7jz29_exec_out",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_lrim7jz29_out",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                }
-            ]
         }
     ],
     "connections": [
@@ -355,30 +183,6 @@
             "toPort": "node_rshe5jyoo_exec_in_hnxi"
         },
         {
-            "fromNode": "node_d13390d8z",
-            "fromPort": "node_d13390d8z_changed_files",
-            "toNode": "node_xi82jxnpx",
-            "toPort": "node_xi82jxnpx_list"
-        },
-        {
-            "fromNode": "node_d13390d8z",
-            "fromPort": "node_d13390d8z_changed_files",
-            "toNode": "node_s4zgkyyhf",
-            "toPort": "node_s4zgkyyhf_list"
-        },
-        {
-            "fromNode": "node_d13390d8z",
-            "fromPort": "node_d13390d8z_changed_files",
-            "toNode": "node_rewkdqd2b",
-            "toPort": "node_rewkdqd2b_list"
-        },
-        {
-            "fromNode": "node_d13390d8z",
-            "fromPort": "node_d13390d8z_changed_files",
-            "toNode": "node_lrim7jz29",
-            "toPort": "node_lrim7jz29_list"
-        },
-        {
             "fromNode": "node_73oxlpu3a",
             "fromPort": "node_73oxlpu3a_result_qo7e",
             "toNode": "node_d13390d8z",
@@ -392,8 +196,8 @@
         }
     ],
     "view": {
-        "panX": 499.10543707270773,
-        "panY": 43.86448141166443,
-        "zoom": 0.6930032318105418
+        "panX": 328.6357855628871,
+        "panY": 14.78445566123139,
+        "zoom": 1.1793213184015272
     }
 }

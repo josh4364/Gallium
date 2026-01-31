@@ -81,6 +81,9 @@ def main():
         elif event["type"] == "warn":
              # Frontend doesn't explicit handle 'warn' type message, but we can prefix
              event["message"] = f"[WARN] {event['message']}"
+        elif event["type"] == "user_prompt":
+             server.broadcast(event)
+             return
         
         server.broadcast({
             "type": msg_type,
@@ -131,8 +134,17 @@ def main():
                     logging.info("Stepping simulation...")
                     new_state = sim_state.step()
                     server.broadcast({
-                        "type": "state_update",
                         "data": new_state
+                    })
+
+                # Handle Prompt Response
+                elif isinstance(msg, dict) and msg.get("type") == "prompt_response":
+                    choice = msg.get("choice")
+                    logging.info(f"Received prompt response: {choice}")
+                    sim_state.handle_prompt_response(choice)
+                    server.broadcast({
+                        "type": "state_update",
+                        "data": sim_state.get_state()
                     })
 
                 # Handle Auto Start

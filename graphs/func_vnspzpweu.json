@@ -11,8 +11,8 @@
         {
             "id": "node_ujruo9ubb",
             "type": "log_message",
-            "x": 455,
-            "y": 78,
+            "x": 483,
+            "y": 89,
             "width": 338,
             "height": 130,
             "title": "Log Message",
@@ -45,7 +45,7 @@
             "type": "start",
             "x": 136,
             "y": 28,
-            "width": 240,
+            "width": 300,
             "height": 120,
             "title": "Start",
             "params": {},
@@ -63,7 +63,7 @@
             "type": "function_return",
             "x": 891,
             "y": 190,
-            "width": 240,
+            "width": 300,
             "height": 120,
             "title": "Return",
             "params": {},
@@ -92,8 +92,8 @@
         }
     ],
     "view": {
-        "panX": 345,
-        "panY": 258,
+        "panX": 226,
+        "panY": 215,
         "zoom": 1
     }
 }

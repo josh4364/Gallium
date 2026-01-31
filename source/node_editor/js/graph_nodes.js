@@ -597,6 +597,14 @@ Object.assign(NodeGraph.prototype, {
                     { label: 'exec_out', type: 'exec', id: nodeId + '_exec_out' },
                     { label: 'List', type: (elType === 'any_not_exec' ? 'any_not_exec' : listType), key: 'list', id: nodeId + '_out' }
                 ];
+            } else if (type === 'list_make') {
+                nodeTitle = "Make List" + (elType === 'any_not_exec' ? "" : " (" + details.name + ")");
+                // Start with 1 input if clean, or preserve if restoring? 
+                // This block is for initial creation (or restore if inputs not provided, though addNode usually handles that)
+                inputs = [
+                    { label: 'Item 0', type: elType, key: 'in_0', id: nodeId + '_in_0' }
+                ];
+                outputs = [{ label: 'List', type: listType, key: 'list', id: nodeId + '_out' }];
             }
         } else if (type.startsWith('map_')) {
             const keyType = nodeParams.key_type || 'string';
@@ -826,6 +834,14 @@ Object.assign(NodeGraph.prototype, {
                 { label: 'exec_out', type: 'exec', id: nodeId + '_exec_out' },
                 { label: 'List', type: (elType === 'any_not_exec' ? 'any_not_exec' : listType), key: 'list', id: nodeId + '_out' }
             ];
+        } else if (type === 'list_make') {
+            nodeTitle = "Make List" + (elType === 'any_not_exec' ? "" : " (" + details.name + ")");
+            // Preserve existing inputs but update type
+            inputs = node.inputs.map(i => ({
+                ...i,
+                type: elType
+            }));
+            outputs = [{ label: 'List', type: (elType === 'any_not_exec' ? 'list:any_not_exec' : listType), key: 'list', id: nodeId + '_out' }];
         }
 
         node.title = nodeTitle;
@@ -1129,6 +1145,12 @@ Object.assign(NodeGraph.prototype, {
             });
             centerCol.insertBefore(valSelector, centerCol.firstChild);
             centerCol.insertBefore(keySelector, centerCol.firstChild);
+        } else if (node.type === 'create_tool') {
+            const funcSelector = this.createFunctionSelector('Target Function', node.params.function_name, (newFunc) => {
+                this.onNodeParamChanged(node, 'function_name', newFunc);
+                this.saveHistory('Changed Tool Function');
+            });
+            centerCol.insertBefore(funcSelector, centerCol.firstChild);
         }
 
         // Create Ports
@@ -1537,6 +1559,57 @@ Object.assign(NodeGraph.prototype, {
         };
 
         refresh();
+        return container;
+    },
+
+    createFunctionSelector(label, currentFunc, onChange) {
+        const container = document.createElement('div');
+        container.className = 'complex-type-selector'; // Reuse style
+        container.style.marginTop = '4px';
+        container.style.marginBottom = '8px';
+
+        const lbl = document.createElement('div');
+        lbl.innerText = label;
+        lbl.style.fontSize = '11px';
+        lbl.style.fontWeight = '600';
+        lbl.style.color = 'var(--text-secondary)';
+        lbl.style.marginBottom = '6px';
+        container.appendChild(lbl);
+
+        const select = document.createElement('select');
+        select.className = 'node-input inline-editor';
+        select.style.width = '100%';
+
+        // Populate options
+        // Populate options
+        if (window.funcManager && window.funcManager.functionDB) {
+            const funcs = window.funcManager.functionDB.getAllFunctions();
+
+            // Add empty option if current is empty or not found
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = "";
+            emptyOpt.textContent = "-- Select Function --";
+            select.appendChild(emptyOpt);
+
+            funcs.forEach(f => {
+                const opt = document.createElement('option');
+                // We use the function NAME as the value because create_tool needs a human-readable name
+                // for the tool ID, and the backend will need to resolve this name to the file ID.
+                opt.value = f.name || f.id;
+                opt.textContent = f.name || f.id;
+                if ((f.name && f.name === currentFunc) || f.id === currentFunc) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        select.onchange = (e) => {
+            onChange(e.target.value);
+        };
+
+        // Prevent event propagation so we can select without dragging node
+        select.onmousedown = (e) => e.stopPropagation();
+
+        container.appendChild(select);
         return container;
     },
 

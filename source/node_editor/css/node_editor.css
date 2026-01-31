@@ -561,13 +561,29 @@ html {
     top: 20px;
     left: 20px;
     display: flex;
-    gap: 10px;
-    padding: 10px;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
     background: var(--node-bg);
     border: 1px solid var(--node-border);
     border-radius: 4px;
     backdrop-filter: var(--glass-blur);
     z-index: 100;
+}
+
+#toolbar .tool-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+#toolbar .tool-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+#toolbar>div {
+    height: 16px !important;
 }
 
 .tool-btn {
@@ -803,12 +819,13 @@ html {
 /* Floating Info */
 #status-bar {
     position: absolute;
-    bottom: 20px;
+    bottom: 0;
     left: 20px;
-    padding: 8px 16px;
+    padding: 4px 16px;
     background: var(--node-bg);
     border: 1px solid var(--node-border);
-    border-radius: 8px;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
     font-size: 12px;
     color: var(--text-dim);
     display: flex;
@@ -1087,7 +1104,7 @@ body.func-panel-hidden #type-panel {
     overflow-y: auto;
     border-top: none !important;
     border-left: 1px solid var(--node-border);
-    padding-top: 0 !important;
+    padding-top: 20px !important;
 }
 
 /* Horizontal layout for Type Panel when active */

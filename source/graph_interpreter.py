@@ -15,6 +15,9 @@ class GraphInterpreter:
         self.output_cache = {} # nodeId -> outputId -> value
         self.call_stack = [] # Stack of parent states for recursion
         self.return_stack = [] # Stack of return values from function calls
+        self.is_suspended = False
+        self.suspended_node_id = None
+        self.suspended_prompt_data = None
 
     def safe_graph_eval(self, graph_data, expected_input_types, input_values):
         """
@@ -58,6 +61,13 @@ class GraphInterpreter:
         if not graph_data:
             return
 
+        # If we are starting a fresh execution, ensure cleared state.
+        # If we were suspended, a fresh execute() call implies an overwrite/restart logic, 
+        # so we clear suspension.
+        self.is_suspended = False
+        self.suspended_node_id = None
+        self.suspended_prompt_data = None
+
         self.nodes = {n['id']: n for n in graph_data.get('nodes', [])}
         self.connections = graph_data.get('connections', [])
         # Merge provided context with simulation state variables if any
@@ -98,6 +108,19 @@ class GraphInterpreter:
         if node_type == 'start' or node_type == 'function_input':
             # Just pass through
             return self.follow_flow(node, 'exec_out')
+        
+        elif node_type == 'prompt_user':
+            title = self.get_input_value(node, 'title')
+            message = self.get_input_value(node, 'message')
+            
+            self.is_suspended = True
+            self.suspended_node_id = node['id']
+            self.suspended_prompt_data = {'title': title, 'message': message}
+            
+            if self.sim_state:
+                self.sim_state.send_prompt_request(title, message)
+            
+            return "SUSPEND"
             
         elif node_type == 'log_message':
             msg = self.get_input_value(node, 'message')
@@ -141,7 +164,8 @@ class GraphInterpreter:
 
             # Execute sub-graph
             prev_stack_depth = len(self.return_stack)
-            self.execute_function(func_id, args)
+            res = self.execute_function(func_id, args, caller_node_id=node['id'])
+            if res == "SUSPEND": return "SUSPEND"
             
             # Extract results from return stack
             if len(self.return_stack) > prev_stack_depth:
@@ -212,9 +236,17 @@ class GraphInterpreter:
             model_name = self.get_input_value(node, 'model_name')
             system_prompt = self.get_input_value(node, 'system_prompt')
             prompt = self.get_input_value(node, 'prompt')
+            tools_input = self.get_input_value(node, 'tools')
 
             if self.sim_state:
                 self.sim_state._add_event(f"AI Eval: {prompt[:100]}...", "info")
+
+            # Prepare tools
+            executable_tools = []
+            if isinstance(tools_input, list):
+                for t in tools_input:
+                    if isinstance(t, dict) and 'id' in t:
+                        executable_tools.append(self._create_dynamic_tool(t))
 
             # Get before status
             before_files = set(self._get_git_changed_files())
@@ -224,7 +256,8 @@ class GraphInterpreter:
                 response = AI_Eval(
                     system_prompt=system_prompt,
                     user_prompt=prompt,
-                    model_name=model_name
+                    model_name=model_name,
+                    tools=executable_tools if executable_tools else None
                 )
             except Exception as e:
                 logger.error(f"AI_Eval failed: {e}")
@@ -232,14 +265,6 @@ class GraphInterpreter:
 
             # Get after status
             after_files = set(self._get_git_changed_files())
-            
-            # Detect files that became modified or were newly created
-            # Note: This won't detect if an already modified file was changed again,
-            # but it will detect files that are currently modified.
-            # Let's just return all currently modified files as 'changed_files' for simplicity,
-            # or the delta if we want to be more specific.
-            # User said "list of files that were changed by this llm call".
-            # The delta (after - before) is a good start.
             changed_files = list(after_files - before_files)
 
             # Store in output cache
@@ -274,6 +299,8 @@ class GraphInterpreter:
             if isinstance(map_obj, dict) and key in map_obj:
                 del map_obj[key]
             
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'map'), None)
             if out_port:
                 self.output_cache[node['id']][out_port['id']] = map_obj
             return self.follow_flow(node, 'exec_out')
@@ -289,11 +316,115 @@ class GraphInterpreter:
                 self.output_cache[node['id']][out_port['id']] = lst
             return self.follow_flow(node, 'exec_out')
 
+        elif node_type == 'run_process':
+            program_name = self.get_input_value(node, 'program_name')
+            arguments = self.get_input_value(node, 'arguments')
+            timeout = self.get_input_value(node, 'timeout')
+            
+            output_str = ""
+            
+            if program_name:
+                # Construct command string for shell execution to handle spaces/parsing intuitively
+                cmd = str(program_name)
+                
+                if isinstance(arguments, list):
+                     for arg in arguments:
+                         cmd += " " + str(arg)
+                elif arguments:
+                     cmd += " " + str(arguments)
+                
+                timeout_val = None
+                try:
+                    if timeout is not None:
+                        t = float(timeout)
+                        if t > 0: timeout_val = t
+                except:
+                    pass
+                
+                try:
+                    logger.info(f"Running subprocess: {cmd}")
+                    # Use shell=True to allow command string execution
+                    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout_val)
+                    output_str = result.stdout
+                except subprocess.TimeoutExpired:
+                     output_str = "Error: Timeout Expired"
+                     logger.warning(f"Process timeout: {cmd}")
+                except Exception as e:
+                     output_str = f"Error: {str(e)}"
+                     logger.error(f"Process error: {e}")
+            
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'output'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = output_str
+
+            return self.follow_flow(node, 'exec_out')
+
         else:
             # Fallback for unknown nodes with standard exec_out
             return self.follow_flow(node, 'exec_out')
 
-    def execute_function(self, function_id, args):
+    def resume(self, choice):
+        """
+        Resumes execution from a suspended state.
+        choice: Boolean (True=Yes, False=No)
+        """
+        if not self.is_suspended or not self.suspended_node_id:
+            logger.warning("Attempted to resume but interpreter is not suspended.")
+            return
+
+        logger.info(f"Resuming execution with choice: {choice}")
+        
+        # 1. Clear suspension flags
+        self.is_suspended = False
+        prompt_node = self.nodes.get(self.suspended_node_id)
+        self.suspended_node_id = None
+        self.suspended_prompt_data = None
+        
+        if not prompt_node:
+            logger.error("Suspended node not found in current graph context.")
+            return
+
+        # 2. Continue flow from the prompt node
+        port_label = 'exec_yes' if choice else 'exec_no'
+        res = self.follow_flow(prompt_node, port_label)
+        
+        if res == "SUSPEND": return
+
+        # 3. Unwind manually if needed (handle function returns up the stack)
+        while self.call_stack:
+             # We finished the current level's flow. Pop back to parent.
+             parent_frame = self.call_stack.pop()
+             caller_id = parent_frame.get('caller_id')
+             
+             # Restore parent state
+             self.nodes = parent_frame['nodes']
+             self.connections = parent_frame['connections']
+             self.output_cache = parent_frame['output_cache']
+             
+             if caller_id:
+                 caller_node = self.nodes.get(caller_id)
+                 if not caller_node: continue 
+                 
+                 # Handle return values (if any were pushed by child graph)
+                 if self.return_stack:
+                     results = self.return_stack.pop()
+                     if caller_node['id'] not in self.output_cache: 
+                         self.output_cache[caller_node['id']] = {}
+                     
+                     for output_port in caller_node.get('outputs', []):
+                        if output_port['type'] != 'exec':
+                            if output_port['label'] in results:
+                                self.output_cache[caller_node['id']][output_port['id']] = results[output_port['label']]
+                 
+                 # Continue parent flow
+                 res = self.follow_flow(caller_node, 'exec_out')
+                 if res == "SUSPEND": return
+             else:
+                 # Reached root?
+                 pass
+
+    def execute_function(self, function_id, args, caller_node_id=None):
         if not self.function_manager:
             raise Exception("No FunctionManager provided to interpreter")
             
@@ -306,7 +437,10 @@ class GraphInterpreter:
             'nodes': self.nodes,
             'connections': self.connections,
             'output_cache': self.output_cache,
-            'args': args
+            'connections': self.connections,
+            'output_cache': self.output_cache,
+            'args': args,
+            'caller_id': caller_node_id
         })
 
         # Set up new context
@@ -317,9 +451,10 @@ class GraphInterpreter:
         try:
             entry_node = self.find_entry_node()
             if entry_node:
-                self.execute_node(entry_node)
+                return self.execute_node(entry_node)
         finally:
-            self._restore_parent()
+            if not self.is_suspended:
+                self._restore_parent()
 
     def _restore_parent(self):
         if not self.call_stack: return
@@ -343,6 +478,8 @@ class GraphInterpreter:
                 res = self.execute_node(target_node)
                 if res == "STOP":
                     return "STOP"
+                if res == "SUSPEND":
+                    return "SUSPEND"
         return None
 
     def get_input_value(self, node, param_key):
@@ -486,6 +623,33 @@ class GraphInterpreter:
                 if 'key' in i:
                     val.append(self.get_input_value(node, i['key']))
 
+        elif nt == 'list_make':
+            val = []
+            inputs = node.get('inputs', [])
+            # Only consider inputs that result from connections
+            # We know the frontend handles adding dynamic inputs, but we only want the connected ones
+            # AND we want them in order of index.
+            
+            # Helper to check connection exists
+            def is_connected(port_id):
+                 return any(c['toNode'] == node['id'] and c['toPort'] == port_id for c in self.connections)
+
+            item_inputs = []
+            for inp in inputs:
+                if inp.get('key', '').startswith('in_'):
+                    if is_connected(inp['id']):
+                         try:
+                             idx = int(inp['key'].replace('in_', ''))
+                             item_inputs.append((idx, inp['key']))
+                         except:
+                             pass
+            
+            # Sort by index to maintain list order
+            item_inputs.sort(key=lambda x: x[0])
+            
+            for _, key in item_inputs:
+                val.append(self.get_input_value(node, key))
+
         elif nt == 'struct_make':
             val = {}
             for input_port in node.get('inputs', []):
@@ -537,7 +701,33 @@ class GraphInterpreter:
             input_val = self.get_input_value(node, 'value')
             val = self._value_to_string(input_val)
 
-        # Cache it
+        elif nt == 'create_tool':
+            func_name = self.get_input_value(node, 'function_name')
+            description = self.get_input_value(node, 'description')
+            
+            # Create tool definition
+            tool_def = {
+                'id': func_name, # The filename/ID
+                'name': func_name, # Ideally sanitized
+                'description': description,
+                'args': []
+            }
+            
+            # Inspect the target function to find arguments
+            if self.function_manager:
+                graph = self.function_manager.load_function(func_name)
+                if graph:
+                    # Find start node
+                    start_node = next((n for n in graph.get('nodes', []) if n.get('type') in ('start', 'function_input')), None)
+                    if start_node:
+                        for out_port in start_node.get('outputs', []):
+                            if out_port['type'] != 'exec':
+                                tool_def['args'].append({
+                                    'name': out_port['label'],
+                                    'type': out_port['type']
+                                })
+            val = tool_def
+
         if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
         self.output_cache[node['id']][port_id] = val
         return val
@@ -592,3 +782,75 @@ class GraphInterpreter:
                 return str(value)
             except:
                 return "<unknown>"
+
+    def _create_dynamic_tool(self, tool_def):
+        """
+        Creates a callable Python function that matches the tool definition.
+        This function when called will execute the graph interpreter for that tool.
+        """
+        func_id = tool_def['id']
+        # Sanitize name for Python validity
+        sanitized_name = "".join(c for c in tool_def['name'] if c.isalnum() or c == '_')
+        if not sanitized_name: sanitized_name = "unnamed_tool"
+        
+        args_parts = []
+        for arg in tool_def['args']:
+             py_type = self._map_type_to_python(arg['type'])
+             # We assume all args are required for now or default to None?
+             # Let's make them required to match graph inputs.
+             args_parts.append(f"{arg['name']}: {py_type}")
+        
+        args_str = ", ".join(args_parts)
+        description = tool_def.get('description', '')
+        
+        # Define the wrapper function
+        # We use locals() to capture arguments.
+        code = f"""
+def {sanitized_name}({args_str}):
+    '''{description}'''
+    return tool_runner('{func_id}', locals())
+"""
+        env = {'tool_runner': self._tool_runner}
+        try:
+             exec(code, env)
+             return env[sanitized_name]
+        except Exception as e:
+             logger.error(f"Failed to create dynamic tool {sanitized_name}: {e}")
+             return None
+
+    def _tool_runner(self, function_id, args):
+        """
+        Callback used by dynamic tools to execute the graph.
+        """
+        try:
+             logger.info(f"Executing Tool: {function_id} with args: {args}")
+             
+             # Execute the function graph
+             prev_stack_depth = len(self.return_stack)
+             self.execute_function(function_id, args)
+             
+             # Check for return value
+             if len(self.return_stack) > prev_stack_depth:
+                 result = self.return_stack.pop()
+                 # AI expects a string or simple JSON-compatible object
+                 # If result is a dict with multiple outputs, return it
+                 # If result has one 'result' key, maybe return that?
+                 # For now, return the full dict, or value_to_string specific parts?
+                 # Returning the dict is safest for structure.
+                 return result
+                 
+             return "Tool executed successfully (no return value)."
+             
+        except Exception as e:
+             logger.error(f"Error executing tool {function_id}: {e}")
+             return f"Error: {str(e)}"
+
+    def _map_type_to_python(self, graph_type):
+        """Maps graph types to Python types for type hinting."""
+        if not graph_type: return 'str'
+        gt = graph_type.lower()
+        if 'number' in gt: return 'float'
+        if 'boolean' in gt or 'bool' in gt: return 'bool'
+        if 'list' in gt: return 'list'
+        if 'map' in gt: return 'dict'
+        return 'str'

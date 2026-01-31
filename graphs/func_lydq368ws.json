@@ -1,0 +1,301 @@
+{
+    "id": "func_lydq368ws",
+    "name": "mcp tool graph test",
+    "description": "",
+    "tags": [],
+    "inputs": [],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_2ab9xwcpa",
+            "type": "start",
+            "x": 150.69201538247054,
+            "y": 668.8512696576594,
+            "width": 300,
+            "height": 120,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_2ab9xwcpa_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_8pehgtzwr",
+            "type": "ai_eval",
+            "x": 1100.3217670858626,
+            "y": 707.1892933172783,
+            "width": 395,
+            "height": 273,
+            "title": "AI Eval",
+            "params": {
+                "model_name": "gemini-3-flash-preview",
+                "system_prompt": "You are a helpful coding assistant.",
+                "prompt": "Test the tool \"Get current time\"\nAnd the tool \"caculate\" (math expressions)"
+            },
+            "inputs": [
+                {
+                    "id": "node_8pehgtzwr_exec_in_2flh",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_8pehgtzwr_model_name",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model_name"
+                },
+                {
+                    "id": "node_8pehgtzwr_system_prompt",
+                    "label": "System Prompt",
+                    "type": "string",
+                    "key": "system_prompt"
+                },
+                {
+                    "id": "node_8pehgtzwr_prompt",
+                    "label": "Prompt",
+                    "type": "string",
+                    "key": "prompt"
+                },
+                {
+                    "id": "node_8pehgtzwr_tools",
+                    "label": "Tools",
+                    "type": "list:tool",
+                    "key": "tools"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_8pehgtzwr_exec_out_v28e",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_8pehgtzwr_response",
+                    "label": "Response",
+                    "type": "string",
+                    "key": "response"
+                },
+                {
+                    "id": "node_8pehgtzwr_changed_files",
+                    "label": "Changed Files",
+                    "type": "list:string",
+                    "key": "changed_files"
+                }
+            ]
+        },
+        {
+            "id": "node_i1img0j9u",
+            "type": "log_message",
+            "x": 1582.2348050305009,
+            "y": 754.3377614019884,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_i1img0j9u_exec_in_uuno",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_i1img0j9u_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_i1img0j9u_exec_out_h3q3",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_oz4hs4mrj",
+            "type": "log_message",
+            "x": 617.6675328379891,
+            "y": 681.0679119379545,
+            "width": 338,
+            "height": 130,
+            "title": "Log Message",
+            "params": {
+                "message": "testing graph tools"
+            },
+            "inputs": [
+                {
+                    "id": "node_oz4hs4mrj_exec_in_l2sl",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_oz4hs4mrj_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_oz4hs4mrj_exec_out_fdvl",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_3vhcwsoo3",
+            "type": "create_tool",
+            "x": 22.164092048522193,
+            "y": 823.9536774102692,
+            "width": 537,
+            "height": 149,
+            "title": "Create Tool",
+            "params": {
+                "function_name": "get current time",
+                "description": "returns the current local time"
+            },
+            "inputs": [
+                {
+                    "id": "node_3vhcwsoo3_description",
+                    "label": "Description",
+                    "type": "string",
+                    "key": "description"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_3vhcwsoo3_tool_hk3g",
+                    "label": "Tool",
+                    "type": "tool"
+                }
+            ]
+        },
+        {
+            "id": "node_cu052fmdh",
+            "type": "list_make",
+            "x": 659.9333424601982,
+            "y": 892.8228221635703,
+            "width": 300,
+            "height": 120,
+            "title": "Make List (Tool)",
+            "params": {
+                "element_type": "tool"
+            },
+            "inputs": [
+                {
+                    "id": "node_cu052fmdh_in_0",
+                    "label": "Item 0",
+                    "type": "tool",
+                    "key": "in_0"
+                },
+                {
+                    "id": "node_cu052fmdh_in_1",
+                    "label": "Item 1",
+                    "type": "tool",
+                    "key": "in_1"
+                },
+                {
+                    "id": "node_cu052fmdh_in_2",
+                    "label": "Item 2",
+                    "type": "tool",
+                    "key": "in_2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_cu052fmdh_out",
+                    "label": "List",
+                    "type": "list:tool",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_ew7e3e6lo",
+            "type": "create_tool",
+            "x": 24.63386085858417,
+            "y": 1007.8607380816442,
+            "width": 537,
+            "height": 149,
+            "title": "Create Tool",
+            "params": {
+                "function_name": "caculate",
+                "description": "evaluate math expressions (qalc)"
+            },
+            "inputs": [
+                {
+                    "id": "node_ew7e3e6lo_description",
+                    "label": "Description",
+                    "type": "string",
+                    "key": "description"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_ew7e3e6lo_tool_3g39",
+                    "label": "Tool",
+                    "type": "tool"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_8pehgtzwr",
+            "fromPort": "node_8pehgtzwr_exec_out_v28e",
+            "toNode": "node_i1img0j9u",
+            "toPort": "node_i1img0j9u_exec_in_uuno"
+        },
+        {
+            "fromNode": "node_8pehgtzwr",
+            "fromPort": "node_8pehgtzwr_response",
+            "toNode": "node_i1img0j9u",
+            "toPort": "node_i1img0j9u_message"
+        },
+        {
+            "fromNode": "node_2ab9xwcpa",
+            "fromPort": "node_2ab9xwcpa_flow",
+            "toNode": "node_oz4hs4mrj",
+            "toPort": "node_oz4hs4mrj_exec_in_l2sl"
+        },
+        {
+            "fromNode": "node_3vhcwsoo3",
+            "fromPort": "node_3vhcwsoo3_tool_hk3g",
+            "toNode": "node_cu052fmdh",
+            "toPort": "node_cu052fmdh_in_0"
+        },
+        {
+            "fromNode": "node_cu052fmdh",
+            "fromPort": "node_cu052fmdh_out",
+            "toNode": "node_8pehgtzwr",
+            "toPort": "node_8pehgtzwr_tools"
+        },
+        {
+            "fromNode": "node_oz4hs4mrj",
+            "fromPort": "node_oz4hs4mrj_exec_out_fdvl",
+            "toNode": "node_8pehgtzwr",
+            "toPort": "node_8pehgtzwr_exec_in_2flh"
+        },
+        {
+            "fromNode": "node_ew7e3e6lo",
+            "fromPort": "node_ew7e3e6lo_tool_3g39",
+            "toNode": "node_cu052fmdh",
+            "toPort": "node_cu052fmdh_in_1"
+        }
+    ],
+    "view": {
+        "panX": 134.23080587403751,
+        "panY": -347.4840808723843,
+        "zoom": 0.9648992605103405
+    }
+}

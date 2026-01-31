@@ -1,0 +1,96 @@
+{
+    "id": "func_mmfbz76ac",
+    "name": "get current time",
+    "description": "mcp tool",
+    "tags": [],
+    "inputs": [],
+    "outputs": [
+        {
+            "id": "3am3s",
+            "name": "Message",
+            "type": "string"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "node_cmwhk6omi",
+            "type": "start",
+            "x": 186.47264518154526,
+            "y": 173.46292575027468,
+            "width": 300,
+            "height": 120,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_cmwhk6omi_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_eib5qrjx7",
+            "type": "function_return",
+            "x": 668.9164074244968,
+            "y": 224.4176601894179,
+            "width": 300,
+            "height": 120,
+            "title": "Return",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_eib5qrjx7_flow",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_eib5qrjx7_in_3am3s",
+                    "label": "Message",
+                    "type": "string"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "id": "node_jbfr102nt",
+            "type": "string",
+            "x": 301.39183349110226,
+            "y": 338.25270521303565,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "Its 5:00 somewhere"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_jbfr102nt__h086",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_jbfr102nt",
+            "fromPort": "node_jbfr102nt__h086",
+            "toNode": "node_eib5qrjx7",
+            "toPort": "node_eib5qrjx7_in_3am3s"
+        },
+        {
+            "fromNode": "node_cmwhk6omi",
+            "fromPort": "node_cmwhk6omi_flow",
+            "toNode": "node_eib5qrjx7",
+            "toPort": "node_eib5qrjx7_flow"
+        }
+    ],
+    "view": {
+        "panX": 142,
+        "panY": 124,
+        "zoom": 0.9223873015398314
+    }
+}

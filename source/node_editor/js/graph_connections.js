@@ -250,6 +250,25 @@ Object.assign(NodeGraph.prototype, {
         updateListNode(toNode, toPort, fromPort);
         updateListNode(fromNode, fromPort, toPort);
 
+        // Dynamic List Make: Add new pin if connecting to last one
+        if (toNode.type === 'list_make' && toPort.key && toPort.key.startsWith('in_')) {
+            const idx = parseInt(toPort.key.replace('in_', ''));
+            // Check if this is the last input
+            if (idx === toNode.inputs.length - 1) {
+                const newIdx = idx + 1;
+                const key = `in_${newIdx}`;
+                const elType = toNode.params.element_type || 'any_not_exec';
+
+                toNode.inputs.push({
+                    label: `Item ${newIdx}`,
+                    type: elType,
+                    key: key,
+                    id: `${toNode.id}_${key}`
+                });
+                this.refreshNodePorts(toNode);
+            }
+        }
+
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "connection-line");
 
@@ -417,6 +436,25 @@ Object.assign(NodeGraph.prototype, {
 
         resetDynamicNode(conn.toNode);
         resetDynamicNode(conn.fromNode);
+
+        // Prune List Make pins
+        if (conn.toNode.type === 'list_make') {
+            const node = conn.toNode;
+            let maxConnected = -1;
+            this.connections.forEach(c => {
+                if (c.toNode === node && c.toPort.key && c.toPort.key.startsWith('in_')) {
+                    const idx = parseInt(c.toPort.key.replace('in_', ''));
+                    if (idx > maxConnected) maxConnected = idx;
+                }
+            });
+            let targetSize = maxConnected + 2;
+            if (targetSize < 1) targetSize = 1;
+
+            if (node.inputs.length > targetSize) {
+                node.inputs = node.inputs.slice(0, targetSize);
+                this.refreshNodePorts(node);
+            }
+        }
 
         if (this.hoveredConnection === conn) {
             this.hoveredConnection = null;

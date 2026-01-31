@@ -7,6 +7,22 @@ const nodeRegistry = [
         outputs: [{ label: 'exec_out', type: 'exec' }] // Defaults
     },
     {
+        type: 'prompt_user',
+        name: 'Prompt User',
+        tags: ['UI', 'input', 'interactive', 'ask'],
+        color: '#673AB7',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Title', type: 'string', key: 'title' },
+            { label: 'Message', type: 'string', key: 'message' }
+        ],
+        outputs: [
+            { label: 'exec_yes', type: 'exec' },
+            { label: 'exec_no', type: 'exec' }
+        ],
+        params: { title: 'Question', message: 'Are you sure?' }
+    },
+    {
         type: 'function_return',
         name: 'Return',
         tags: ['Function', 'output', 'end'],
@@ -57,7 +73,8 @@ const nodeRegistry = [
             { label: 'exec_in', type: 'exec' },
             { label: 'Model', type: 'string', key: 'model_name' },
             { label: 'System Prompt', type: 'string', key: 'system_prompt' },
-            { label: 'Prompt', type: 'string', key: 'prompt' }
+            { label: 'Prompt', type: 'string', key: 'prompt' },
+            { label: 'Tools', type: 'list:tool', key: 'tools' }
         ],
         outputs: [
             { label: 'exec_out', type: 'exec' },
@@ -68,6 +85,22 @@ const nodeRegistry = [
             model_name: 'gemini-3-flash-preview',
             system_prompt: 'You are a helpful coding assistant.',
             prompt: ''
+        }
+    },
+    {
+        type: 'create_tool',
+        name: 'Create Tool',
+        tags: ['AI', 'tool', 'function'],
+        color: '#E91E63',
+        inputs: [
+            { label: 'Description', type: 'string', key: 'description' }
+        ],
+        outputs: [
+            { label: 'Tool', type: 'tool' }
+        ],
+        params: {
+            function_name: '',
+            description: ''
         }
     },
     {
@@ -240,5 +273,42 @@ const nodeRegistry = [
         ],
         outputs: [{ label: 'String', type: 'string' }],
         params: { value: null }
+    },
+    {
+        type: 'run_process',
+        name: 'Run Process',
+        tags: ['System', 'process', 'exec', 'command'],
+        color: '#FF9800',
+        resizable: true,
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Program', type: 'string', key: 'program_name' },
+            { label: 'Arguments', type: 'list:string', key: 'arguments' },
+            { label: 'Timeout', type: 'number', key: 'timeout' }
+        ],
+        outputs: [
+            { label: 'exec_out', type: 'exec' },
+            { label: 'Output', type: 'string', key: 'output' }
+        ],
+        params: {
+            program_name: '',
+            arguments: [],
+            timeout: 0
+        }
+    },
+    {
+        type: 'list_make',
+        name: 'Make List',
+        tags: ['List', 'create', 'make', 'array', 'new'],
+        color: '#4CAF50',
+        inputs: [
+            { label: 'Item 0', type: 'any_not_exec', key: 'in_0' }
+        ],
+        outputs: [
+            { label: 'List', type: 'list:any_not_exec', key: 'list' }
+        ],
+        params: {
+            element_type: 'any_not_exec'
+        }
     }
 ];

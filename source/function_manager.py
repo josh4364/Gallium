@@ -37,7 +37,7 @@ class FunctionManager:
     def get_function_list(self):
         """Returns a list of available functions."""
         functions = []
-        for file_path in self.graphs_dir.glob("*.json"):
+        for file_path in self.graphs_dir.glob("func_*.json"):
             try:
                 with open(file_path, 'r') as f:
                     data = json.load(f)
@@ -73,16 +73,35 @@ class FunctionManager:
             logger.error(f"Error saving function {function_id}: {e}")
             return False
 
-    def load_function(self, function_id):
-        """Loads a graph from disk."""
+    def load_function(self, function_identifier):
+        """
+        Loads a graph from disk.
+        function_identifier can be an ID (filename) or a Name.
+        """
         try:
-            safe_id = "".join([c for c in function_id if c.isalnum() or c in ('_', '-')])
+            # 1. Try treating it as an ID/Filename first
+            safe_id = "".join([c for c in function_identifier if c.isalnum() or c in ('_', '-')])
             file_path = self.graphs_dir / f"{safe_id}.json"
             if file_path.exists():
                 with open(file_path, 'r') as f:
                     return json.load(f)
+            
+            # 2. If not found, try searching by Name
+            # This is less efficient, but necessary if we use Names as identifiers for Tools
+            # We can iterate specifically for this, or check the cache if we had one.
+            # For now, we iterate over files as we do in get_function_list
+            logger.info(f"Function {function_identifier} not found by ID, searching by name...")
+            for file_path in self.graphs_dir.glob("func_*.json"):
+                try:
+                    with open(file_path, 'r') as f:
+                        data = json.load(f)
+                        if data.get("name") == function_identifier:
+                            return data
+                except:
+                    continue
+                    
         except Exception as e:
-            logger.error(f"Error loading function {function_id}: {e}")
+            logger.error(f"Error loading function {function_identifier}: {e}")
         return None
     def delete_function(self, function_id):
         """Deletes a graph from disk."""

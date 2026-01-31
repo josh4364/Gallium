@@ -108,7 +108,8 @@ class SimulationState:
             "tick": self.tick_count,
             "workflow_hooks": self.workflow_hooks,
             "workflow_memory": self.workflow_memory,
-            "latest_events": self.events[-10:] # Send last 10 events for efficiency
+            "latest_events": self.events[-10:], # Send last 10 events for efficiency
+            "pending_prompt": self.interpreter.suspended_prompt_data if self.interpreter.is_suspended else None
         }
 
     def update_workflow_hooks(self, on_start, on_tick):
@@ -137,6 +138,29 @@ class SimulationState:
                 self._add_event(f"Cleared hooks for deleted function: {function_id}", "info")
         
         return success
+    
+    def send_prompt_request(self, title, message):
+        self._add_event(f"User Prompt Triggered: {title}", "info")
+        # We need to broadcast this specific message type
+        # But set_event_handler usually handles logging events.
+        # We can repurpose it or add a specific handler.
+        # Ideally main.py hook handles general messages too?
+        # Let's rely on the event mechanism.
+        if self.on_event:
+            self.on_event({
+                "type": "user_prompt",
+                "title": title,
+                "message": message,
+                "timestamp": datetime.now().isoformat()
+            })
+
+    def handle_prompt_response(self, response_bool):
+        self._add_event(f"User Response: {'Yes' if response_bool else 'No'}", "info")
+        try:
+             self.interpreter.resume(response_bool)
+        except Exception as e:
+             logger.error(f"Error resuming from prompt: {e}")
+             self._add_event(f"Error Resuming: {e}", "error")
 
     def _load_state_from_manifest(self):
         try:

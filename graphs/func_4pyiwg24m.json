@@ -137,8 +137,8 @@
         {
             "id": "node_dpkn0g4e0",
             "type": "map_get",
-            "x": 1500.0553563951355,
-            "y": 1157.2250770012242,
+            "x": 1331.633562163927,
+            "y": 1117.5964195350575,
             "width": 300,
             "height": 120,
             "title": "Map Get (String -> String)",
@@ -166,51 +166,6 @@
                     "label": "Value",
                     "type": "string",
                     "key": "value"
-                }
-            ]
-        },
-        {
-            "id": "node_sp4warpvl",
-            "type": "map_remove",
-            "x": 1505.9180285199147,
-            "y": 964.2265584625756,
-            "width": 300,
-            "height": 147,
-            "title": "Map Remove (String -> String)",
-            "params": {
-                "key_type": "string",
-                "value_type": "string"
-            },
-            "inputs": [
-                {
-                    "id": "node_sp4warpvl_exec_in",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_sp4warpvl_map",
-                    "label": "Map",
-                    "type": "map:string:string",
-                    "key": "map"
-                },
-                {
-                    "id": "node_sp4warpvl_key",
-                    "label": "Key",
-                    "type": "string",
-                    "key": "key"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_sp4warpvl_exec_out",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_sp4warpvl_out",
-                    "label": "Map",
-                    "type": "map:string:string",
-                    "key": "map"
                 }
             ]
         },
@@ -289,8 +244,8 @@
         {
             "id": "node_8319jifnb",
             "type": "log_message",
-            "x": 1506.3552996452436,
-            "y": 622.717809580769,
+            "x": 1592.2173908219381,
+            "y": 568.7788035851532,
             "width": 300,
             "height": 128,
             "title": "Log Message",
@@ -321,8 +276,8 @@
         {
             "id": "node_7uo61nf67",
             "type": "string_format",
-            "x": 1505.0434862692573,
-            "y": 763.0818408113195,
+            "x": 1239.7516404540859,
+            "y": 659.6070129829953,
             "width": 300,
             "height": 128,
             "title": "String Format",
@@ -356,8 +311,8 @@
         {
             "id": "node_2ow5nw2we",
             "type": "log_message",
-            "x": 2062.140687953503,
-            "y": 968.2849513411668,
+            "x": 2081.955016686586,
+            "y": 911.0435572233705,
             "width": 300,
             "height": 128,
             "title": "Log Message",
@@ -388,13 +343,13 @@
         {
             "id": "node_s4r1wutpy",
             "type": "string_format",
-            "x": 2064.351011980261,
-            "y": 1113.3039624419562,
+            "x": 1691.181154173858,
+            "y": 1093.4896337088726,
             "width": 300,
             "height": 128,
             "title": "String Format",
             "params": {
-                "format": "After remove (This should throw an error)\nMap {} = {}",
+                "format": "After remove\nMap {} = \"{}\"",
                 "arg1": null,
                 "arg2": null
             },
@@ -455,8 +410,8 @@
         {
             "id": "node_5cr7tykq5",
             "type": "to_string",
-            "x": 1948.7451798946997,
-            "y": 826.3294989004596,
+            "x": 1590.9864666584729,
+            "y": 741.568203764492,
             "width": 300,
             "height": 120,
             "title": "To String",
@@ -476,6 +431,51 @@
                     "id": "node_5cr7tykq5_string_k5do",
                     "label": "String",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_3dz5gg89c",
+            "type": "map_remove",
+            "x": 1568.387123942351,
+            "y": 899.9342261636606,
+            "width": 300,
+            "height": 147,
+            "title": "Map Remove (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_3dz5gg89c_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_3dz5gg89c_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_3dz5gg89c_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_3dz5gg89c_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_3dz5gg89c_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
                 }
             ]
         }
@@ -520,12 +520,6 @@
         {
             "fromNode": "node_4cyjvnk4c",
             "fromPort": "node_4cyjvnk4c__06sy",
-            "toNode": "node_sp4warpvl",
-            "toPort": "node_sp4warpvl_key"
-        },
-        {
-            "fromNode": "node_4cyjvnk4c",
-            "fromPort": "node_4cyjvnk4c__06sy",
             "toNode": "node_dpkn0g4e0",
             "toPort": "node_dpkn0g4e0_key"
         },
@@ -566,28 +560,10 @@
             "toPort": "node_s4r1wutpy_in_arg1_rdmq"
         },
         {
-            "fromNode": "node_4cfoscq4s",
-            "fromPort": "node_4cfoscq4s_out",
-            "toNode": "node_sp4warpvl",
-            "toPort": "node_sp4warpvl_map"
-        },
-        {
-            "fromNode": "node_sp4warpvl",
-            "fromPort": "node_sp4warpvl_out",
-            "toNode": "node_dpkn0g4e0",
-            "toPort": "node_dpkn0g4e0_map"
-        },
-        {
             "fromNode": "node_dpkn0g4e0",
             "fromPort": "node_dpkn0g4e0_val",
             "toNode": "node_s4r1wutpy",
             "toPort": "node_s4r1wutpy_in_arg2_6kcu"
-        },
-        {
-            "fromNode": "node_sp4warpvl",
-            "fromPort": "node_sp4warpvl_exec_out",
-            "toNode": "node_2ow5nw2we",
-            "toPort": "node_2ow5nw2we_exec_in_zjmz"
         },
         {
             "fromNode": "node_s4r1wutpy",
@@ -608,21 +584,45 @@
             "toPort": "node_2urz1vr6b_exec_in_u4hm"
         },
         {
-            "fromNode": "node_2urz1vr6b",
-            "fromPort": "node_2urz1vr6b_exec_out_cee7",
-            "toNode": "node_sp4warpvl",
-            "toPort": "node_sp4warpvl_exec_in"
-        },
-        {
             "fromNode": "node_4cfoscq4s",
             "fromPort": "node_4cfoscq4s_out",
             "toNode": "node_5cr7tykq5",
             "toPort": "node_5cr7tykq5_value"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_dpkn0g4e0",
+            "toPort": "node_dpkn0g4e0_map"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_3dz5gg89c",
+            "toPort": "node_3dz5gg89c_map"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_3dz5gg89c",
+            "toPort": "node_3dz5gg89c_key"
+        },
+        {
+            "fromNode": "node_2urz1vr6b",
+            "fromPort": "node_2urz1vr6b_exec_out_cee7",
+            "toNode": "node_3dz5gg89c",
+            "toPort": "node_3dz5gg89c_exec_in"
+        },
+        {
+            "fromNode": "node_3dz5gg89c",
+            "fromPort": "node_3dz5gg89c_exec_out",
+            "toNode": "node_2ow5nw2we",
+            "toPort": "node_2ow5nw2we_exec_in_zjmz"
         }
     ],
     "view": {
-        "panX": -581.0566523420098,
-        "panY": -237.98602463682982,
-        "zoom": 0.68251953414139
+        "panX": -827.7754042672159,
+        "panY": -310.53039879162066,
+        "zoom": 0.9084334999421902
     }
 }
