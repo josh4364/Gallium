@@ -1,6 +1,9 @@
 import logging
 import subprocess
 from source.ai_system import AI_Eval
+from source.blackboard import Blackboard
+from source.schemas import Event
+import json
 
 logger = logging.getLogger("GraphInterpreter")
 
@@ -12,6 +15,7 @@ class GraphInterpreter:
         self.sim_state = simulation_state
         self.function_manager = function_manager
         self.struct_manager = struct_manager
+        self.blackboard = Blackboard()
         self.output_cache = {} # nodeId -> outputId -> value
         self.call_stack = [] # Stack of parent states for recursion
         self.return_stack = [] # Stack of return values from function calls
@@ -35,12 +39,20 @@ class GraphInterpreter:
         
         # UI/System
         self.node_handlers['prompt_user'] = self._handle_prompt_user
+        self.node_handlers['ui_yield'] = self._handle_ui_yield
         self.node_handlers['log_message'] = self._handle_log_message
         self.node_handlers['run_process'] = self._handle_run_process
+        self.node_handlers['write_file'] = self._handle_write_file
         self.node_handlers['ai_eval'] = self._handle_ai_eval
 
         # Variables
         self.node_handlers['set_variable'] = self._handle_set_variable
+
+        # Tier 1 / State Engine Nodes
+        self.node_handlers['global_context_read'] = self._handle_global_context_read
+        self.node_handlers['global_context_write'] = self._handle_global_context_write
+        self.node_handlers['json_iterator'] = self._handle_json_iterator
+        self.node_handlers['event_emit'] = self._handle_event_emit
         
         # Collections (Lists/Maps) - Side-effect nodes (Set/Modify)
         # Note: 'list_create', 'list_make' etc are purely value nodes handled in evaluate_output
@@ -152,11 +164,25 @@ class GraphInterpreter:
         
         self.is_suspended = True
         self.suspended_node_id = node['id']
-        self.suspended_prompt_data = {'title': title, 'message': message}
+        self.suspended_prompt_data = {'title': title, 'message': message} # Keep for state tracking
         
         if self.sim_state:
-            self.sim_state.send_prompt_request(title, message)
+            # Use specific BinaryChoice type for backward compat or clear definition
+            self.sim_state.send_ui_yield("BinaryChoice", {'title': title, 'message': message})
         
+        return "SUSPEND"
+
+    def _handle_ui_yield(self, node):
+        ui_type = self.get_input_value(node, 'ui_type')
+        payload = self.get_input_value(node, 'payload')
+        
+        self.is_suspended = True
+        self.suspended_node_id = node['id']
+        self.suspended_prompt_data = {'ui_type': ui_type, 'payload': payload}
+        
+        if self.sim_state:
+            self.sim_state.send_ui_yield(ui_type, payload)
+            
         return "SUSPEND"
 
     def _handle_log_message(self, node):
@@ -373,7 +399,103 @@ class GraphInterpreter:
                  logger.error(f"Process error: {e}")
         
         self._update_output_cache(node, 'output', output_str)
+        if 'returncode' in locals() and 'result' in locals():
+             self._update_output_cache(node, 'exit_code', result.returncode)
+        elif 'result' in locals():
+             self._update_output_cache(node, 'exit_code', result.returncode)
+        else:
+             self._update_output_cache(node, 'exit_code', -1)
+             
         return self.follow_flow(node, 'exec_out')
+
+    def _handle_write_file(self, node):
+        path = self.get_input_value(node, 'path')
+        content = self.get_input_value(node, 'content')
+        
+        try:
+            from source.tools import write_to_file
+            # Call the tool function (it handles directory creation etc)
+            write_to_file(path, content, overwrite=True)
+            msg = f"Successfully wrote to {path}"
+            logger.info(msg)
+            self._update_output_cache(node, 'result', msg)
+        except Exception as e:
+            err = f"Failed to write file: {e}"
+            logger.error(err)
+            self._update_output_cache(node, 'result', err)
+            
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_global_context_read(self, node):
+        key = self.get_input_value(node, 'key')
+        val = self.blackboard.get_value(key)
+        
+        # If looking for specific spec parts (optional logic, but basic key-value is foundation)
+        if key == "SmartSpec" and self.blackboard.get_spec():
+             val = self.blackboard.get_spec().dict()
+
+        self._update_output_cache(node, 'value', val)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_global_context_write(self, node):
+        key = self.get_input_value(node, 'key')
+        val = self.get_input_value(node, 'value')
+        
+        self.blackboard.set_value(key, val)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_event_emit(self, node):
+        event_name = self.get_input_value(node, 'event_name')
+        payload = self.get_input_value(node, 'payload') or {}
+        
+        event = Event(name=event_name, payload=payload, source=f"node_{node['id']}")
+        logger.info(f"EMITTING EVENT: {event}")
+        
+        if self.sim_state:
+            # Send full event object to SimulationState/Orchestrator
+            self.sim_state.trigger_event(event)
+            # Log for UI
+            self.sim_state._add_event(f"Event Emitted: {event_name}", "info")
+            
+        # Stop execution so the Orchestrator can decide what to do next
+        return "STOP"
+
+    def _handle_json_iterator(self, node):
+        """
+        Iterates over a list. 
+        Required Inputs: 'list' (List[Any])
+        Outputs: 'item', 'index', 'is_done' (bool)
+        Flows: 'exec_loop', 'exec_done'
+        
+        Note: This node is re-entrant. It keeps track of index in the local context 
+        OR we can design it to just pop one item if the list is modified. 
+        Standard iterator pattern:
+        """
+        collection = self.get_input_value(node, 'list')
+        if not isinstance(collection, list):
+            collection = []
+
+        # We need to store the current index for this specific node ID in the current execution context.
+        # However, `self.context` is global to the function call.
+        # We can try to use a unique key in context.
+        iter_key = f"__iter_{node['id']}_index"
+        current_index = self.context.get(iter_key, 0)
+        
+        if current_index < len(collection):
+            item = collection[current_index]
+            
+            # Update outputs
+            self._update_output_cache(node, 'item', item)
+            self._update_output_cache(node, 'index', current_index)
+            
+            # Increment for next time
+            self.context[iter_key] = current_index + 1
+            
+            return self.follow_flow(node, 'exec_loop')
+        else:
+            # Reset index in case we loop back to this node entirely later
+            self.context[iter_key] = 0
+            return self.follow_flow(node, 'exec_done')
 
     def _update_output_cache(self, node, port_key, value):
         if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
@@ -383,16 +505,16 @@ class GraphInterpreter:
 
     # --- Core Logic Methods ---
 
-    def resume(self, choice):
+    def resume(self, payload):
         """
         Resumes execution from a suspended state.
-        choice: Boolean (True=Yes, False=No)
+        payload: Data returned from the UI
         """
         if not self.is_suspended or not self.suspended_node_id:
             logger.warning("Attempted to resume but interpreter is not suspended.")
             return
 
-        logger.info(f"Resuming execution with choice: {choice}")
+        logger.info(f"Resuming execution with payload: {payload}")
         
         # 1. Clear suspension flags
         self.is_suspended = False
@@ -404,9 +526,18 @@ class GraphInterpreter:
             logger.error("Suspended node not found in current graph context.")
             return
 
-        # 2. Continue flow from the prompt node
-        port_label = 'exec_yes' if choice else 'exec_no'
-        res = self.follow_flow(prompt_node, port_label)
+        # 2. Continue flow based on node type
+        res = None
+        if prompt_node['type'] == 'prompt_user':
+            # Expect boolean payload
+            choice = bool(payload)
+            port_label = 'exec_yes' if choice else 'exec_no'
+            res = self.follow_flow(prompt_node, port_label)
+            
+        elif prompt_node['type'] == 'ui_yield':
+            # Generic yield
+            self._update_output_cache(prompt_node, 'result', payload)
+            res = self.follow_flow(prompt_node, 'exec_out')
         
         if res == "SUSPEND": return
 
@@ -744,6 +875,28 @@ class GraphInterpreter:
                                     'type': out_port['type']
                                 })
             val = tool_def
+
+        elif nt == 'json_parse':
+            json_str = self.get_input_value(node, 'json')
+            try:
+                if isinstance(json_str, str):
+                    # Clean up code blocks if LLM outputs markdown
+                    if json_str.strip().startswith("```"):
+                         lines = json_str.strip().splitlines()
+                         # Remove first line if it starts with ```
+                         if lines and lines[0].startswith("```"):
+                             lines = lines[1:]
+                         # Remove last line if it starts with ```
+                         if lines and lines[-1].startswith("```"):
+                             lines = lines[:-1]
+                         json_str = "\n".join(lines)
+                         
+                    val = json.loads(json_str)
+                else:
+                    val = {}
+            except Exception as e:
+                logger.warning(f"Failed to parse JSON: {e}")
+                val = {}
 
         if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
         self.output_cache[node['id']][port_id] = val

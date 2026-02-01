@@ -56,6 +56,16 @@ def handle_message(msg, server, sim_state, current_auto_mode):
             "data": sim_state.get_state()
         })
 
+    # Handle UI Resume
+    elif msg_type == "ui_resume":
+        payload = msg.get("payload")
+        logging.info(f"Received UI resume: {payload}")
+        sim_state.handle_ui_resume(payload)
+        server.broadcast({
+            "type": "state_update",
+            "data": sim_state.get_state()
+        })
+
     # Handle Auto Start
     elif msg_type == "start_auto":
         logging.info("Auto-run started")
@@ -209,5 +219,31 @@ def handle_message(msg, server, sim_state, current_auto_mode):
             })
         except Exception as e:
             logging.error(f"Error updating workflow hooks: {e}")
+
+    # Handle Orchestrator Roles Update
+    elif msg_type == "update_orchestrator_roles":
+        try:
+            new_state = sim_state.update_orchestrator_roles(
+                msg.get("triage"),
+                msg.get("planner"),
+                msg.get("implementer")
+            )
+            logging.info(f"Updated orchestrator roles: {sim_state.workflow_hooks}")
+            server.broadcast({
+                "type": "state_update",
+                "data": new_state
+            })
+        except Exception as e:
+            logging.error(f"Error updating orchestrator roles: {e}")
+
+    # Handle User Chat Message
+    elif msg_type == "user_message":
+        message = msg.get("message")
+        if message:
+            sim_state.handle_user_message(message)
+            server.broadcast({
+                "type": "state_update",
+                "data": sim_state.get_state()
+            })
 
     return current_auto_mode

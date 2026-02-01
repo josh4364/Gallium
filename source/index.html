@@ -188,6 +188,12 @@
             flex-direction: column;
             gap: 24px;
             flex-shrink: 0;
+            overflow-y: auto;
+            max-height: 100%;
+            min-height: 0;
+            padding-right: 8px;
+            padding-bottom: 24px;
+            box-sizing: border-box;
         }
 
         .card {
@@ -452,7 +458,183 @@
             gap: 12px;
             margin-top: 8px;
         }
+
+        /* --- Pipeline View --- */
+        #pipeline-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 24px;
+            box-sizing: border-box;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        #pipeline-view.active {
+            display: flex;
+        }
+
+        .pipeline-visualizer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-panel);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px 40px;
+            position: relative;
+        }
+
+        /* Connecting Line */
+        .pipeline-visualizer::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 60px;
+            right: 60px;
+            height: 2px;
+            background: var(--border-color);
+            z-index: 0;
+            transform: translateY(-50%);
+        }
+
+        .pipeline-step {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+
+        .pipeline-step.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .pipeline-step.completed {
+            opacity: 1;
+            color: var(--success);
+        }
+
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-app);
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .pipeline-step.active .step-circle {
+            border-color: var(--accent-primary);
+            background: rgba(187, 134, 252, 0.1);
+            color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(187, 134, 252, 0.3);
+        }
+
+        .pipeline-step.completed .step-circle {
+            border-color: var(--success);
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+        }
+
+        .step-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .spec-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            min-height: 0;
+        }
+
+        .spec-editor-card {
+            background: var(--bg-panel);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .spec-textarea {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border: none;
+            color: #e0e0e0;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 16px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .task-list {
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .task-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .task-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .task-status.pending {
+            background: var(--warning);
+        }
+
+        .task-status.doing {
+            background: var(--accent-primary);
+            box-shadow: 0 0 8px var(--accent-primary);
+        }
+
+        .task-status.done {
+            background: var(--success);
+        }
+
+        .task-status.failed {
+            background: var(--danger);
+        }
+
+        .task-title {
+            font-weight: 500;
+            font-size: 13px;
+            flex: 1;
+        }
     </style>
+
 </head>
 
 <body>
@@ -462,6 +644,7 @@
 
         <nav class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('main')">Main View</button>
+            <button class="tab-btn" onclick="switchTab('pipeline')">Pipeline</button>
             <button class="tab-btn" onclick="switchTab('editor')">Function Editor</button>
         </nav>
 
@@ -569,6 +752,66 @@
                     </div>
                 </div>
 
+                <!-- Orchestrator Roles -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Agent Roles
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label" style="display:flex; justify-content:space-between;">
+                                Triage / Router
+                                <span
+                                    style="text-transform:none; font-family:var(--font-mono); font-size:10px; opacity:0.7;">[prompt:
+                                    String]</span>
+                            </label>
+                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; line-height:1.3;">
+                                Receives user prompt. Should output an INTENT_ event (e.g. INTENT_NEW_FEATURE).
+                            </div>
+                            <select class="select-input" id="func-triage-select">
+                                <option value="" selected>None</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="display:flex; justify-content:space-between;">
+                                Planner
+                                <span
+                                    style="text-transform:none; font-family:var(--font-mono); font-size:10px; opacity:0.7;">[intent:
+                                    String]</span>
+                            </label>
+                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; line-height:1.3;">
+                                Generates a SmartSpec from intent. Should emit SPEC_APPROVED when finalized.
+                            </div>
+                            <select class="select-input" id="func-planner-select">
+                                <option value="" selected>None</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" style="display:flex; justify-content:space-between;">
+                                Implementer
+                                <span
+                                    style="text-transform:none; font-family:var(--font-mono); font-size:10px; opacity:0.7;">[spec:
+                                    Object]</span>
+                            </label>
+                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; line-height:1.3;">
+                                Executes spec tasks. Should emit ALL_DONE on success or TASK_FAILED on error.
+                            </div>
+                            <select class="select-input" id="func-implementer-select">
+                                <option value="" selected>None</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Event Stream -->
@@ -591,21 +834,111 @@
 
         </div>
 
-        <!-- Tab 2: Editor View -->
-        <div id="editor-view" class="view-content">
-            <iframe id="node-editor-frame" src="node_editor/node_editor.html"></iframe>
+    </div>
+
+    <!-- Tab 2: Pipeline View -->
+    <div id="pipeline-view" class="view-content">
+        <!-- Top: Visualizer -->
+        <div class="pipeline-visualizer">
+            <div class="pipeline-step active" id="step-IDLE">
+                <div class="step-circle">1</div>
+                <div class="step-label">Idle</div>
+            </div>
+            <div class="pipeline-step" id="step-PLANNING">
+                <div class="step-circle">2</div>
+                <div class="step-label">Planning</div>
+            </div>
+            <div class="pipeline-step" id="step-IMPLEMENTATION">
+                <div class="step-circle">3</div>
+                <div class="step-label">Execution</div>
+            </div>
+            <div class="pipeline-step" id="step-VERIFICATION">
+                <div class="step-circle">4</div>
+                <div class="step-label">Verify</div>
+            </div>
+            <div class="pipeline-step" id="step-DEBUGGING">
+                <div class="step-circle">5</div>
+                <div class="step-label">Debug</div>
+            </div>
         </div>
+
+        <!-- Chat Interface -->
+        <div class="card" id="chat-interface" style="flex-shrink: 0;">
+            <div class="card-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                System Interaction
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div id="chat-history"
+                    style="height: 120px; overflow-y: auto; padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                    <div class="log-entry"><span class="log-time">System</span><span class="log-content">Ready for
+                            instructions.</span></div>
+                </div>
+                <div style="display: flex; padding: 12px; gap: 8px;">
+                    <input type="text" id="chat-input" class="select-input" style="flex: 1;"
+                        placeholder="Type your instruction... (e.g., 'Add a dark mode toggle')"
+                        onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="btn btn-primary" onclick="sendChatMessage()"
+                        style="width: auto; padding: 0 24px;">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Area -->
+        <div class="spec-container">
+            <!-- Col 1: JSON Spec Editor -->
+            <div class="spec-editor-card">
+                <div class="card-header">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Smart Spec (JSON)
+                    <div style="flex:1"></div>
+                    <!-- <button class="btn btn-primary" onclick="saveSpecManual()" style="padding:4px 8px; font-size:11px; width:auto;">Save Changes</button> -->
+                </div>
+                <textarea id="smart-spec-editor" class="spec-textarea" placeholder="// No spec loaded..."></textarea>
+            </div>
+
+            <!-- Col 2: Task Board -->
+            <div class="spec-editor-card">
+                <div class="card-header">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 11 12 14 22 4"></polyline>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    Live Task Queue
+                </div>
+                <div class="task-list" id="pipeline-task-list">
+                    <div style="color:var(--text-muted); text-align:center; margin-top:20px; font-size:13px;">No active
+                        tasks</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Editor View -->
+    <div id="editor-view" class="view-content">
+        <iframe id="node-editor-frame" src="node_editor/node_editor.html"></iframe>
+    </div>
 
     </div>
 
-    <!-- Prompt Modal -->
-    <div id="prompt-modal">
-        <div class="modal-content">
-            <div class="modal-title" id="prompt-title">User Action Required</div>
-            <div class="modal-message" id="prompt-message">Please confirm your choice.</div>
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="submitPrompt(true)">Yes</button>
-                <button class="btn btn-secondary" onclick="submitPrompt(false)">No</button>
+    <!-- Generic UI Yield Modal -->
+    <div id="ui-yield-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(2px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="modal-content" style="width: 600px; max-width: 90%;">
+            <div class="modal-title" id="ui-modal-title">Action Required</div>
+            <div id="ui-content-area" style="display:flex; flex-direction:column; gap:16px; margin: 16px 0;">
+                <!-- Dynamic Content -->
+            </div>
+            <div class="modal-actions" id="ui-modal-actions">
+                <!-- dynamic actions -->
             </div>
         </div>
     </div>
@@ -621,6 +954,8 @@
             document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
             if (tabName === 'main') {
                 document.getElementById('main-view').classList.add('active');
+            } else if (tabName === 'pipeline') {
+                document.getElementById('pipeline-view').classList.add('active');
             } else {
                 document.getElementById('editor-view').classList.add('active');
             }
@@ -767,6 +1102,9 @@
         function populateFunctionDropdowns(funcs) {
             const startSelect = document.getElementById('func-start-select');
             const tickSelect = document.getElementById('func-tick-select');
+            const triageSelect = document.getElementById('func-triage-select');
+            const plannerSelect = document.getElementById('func-planner-select');
+            const implementerSelect = document.getElementById('func-implementer-select');
 
             const populate = (select, currentVal) => {
                 // Keep "None" logic
@@ -782,6 +1120,9 @@
 
             populate(startSelect, startSelect.value);
             populate(tickSelect, tickSelect.value);
+            populate(triageSelect, triageSelect.value);
+            populate(plannerSelect, plannerSelect.value);
+            populate(implementerSelect, implementerSelect.value);
         }
 
         // Dropdown Event Listeners
@@ -792,20 +1133,100 @@
             sendAction('update_workflow_hooks', { on_tick: e.target.value });
         });
 
-        // Prompt Logic
-        function showPrompt(title, message) {
-            const modal = document.getElementById('prompt-modal');
-            const titleEl = document.getElementById('prompt-title');
-            const msgEl = document.getElementById('prompt-message');
+        // Orchestrator Role Listeners
+        const updateRoles = () => {
+            sendAction('update_orchestrator_roles', {
+                triage: document.getElementById('func-triage-select').value,
+                planner: document.getElementById('func-planner-select').value,
+                implementer: document.getElementById('func-implementer-select').value
+            });
+        };
+        document.getElementById('func-triage-select').addEventListener('change', updateRoles);
+        document.getElementById('func-planner-select').addEventListener('change', updateRoles);
+        document.getElementById('func-implementer-select').addEventListener('change', updateRoles);
 
-            titleEl.textContent = title;
-            msgEl.textContent = message;
+
+
+        // Prompt Logic
+        // UI Yield Logic
+        function showUiYield(type, payload) {
+            const modal = document.getElementById('ui-yield-modal');
+            const content = document.getElementById('ui-content-area');
+            const actions = document.getElementById('ui-modal-actions');
+            const title = document.getElementById('ui-modal-title');
+
+            content.innerHTML = '';
+            actions.innerHTML = '';
             modal.style.display = 'flex';
+
+            if (type === 'BinaryChoice') {
+                title.textContent = payload.title || "Confirm";
+                content.innerHTML = `<div class="modal-message" style="color:var(--text-secondary); line-height:1.5;">${payload.message || "Please confirm."}</div>`;
+                actions.innerHTML = `
+                    <button class="btn btn-primary" onclick="submitUiResume(true)">Yes</button>
+                    <button class="btn btn-secondary" onclick="submitUiResume(false)">No</button>
+                `;
+            }
+            else if (type === 'SpecEditor') {
+                title.textContent = "Review Specification";
+                const jsonStr = JSON.stringify(payload.spec || payload, null, 2);
+                content.innerHTML = `
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Edit the JSON spec below:</div>
+                    <textarea id="spec-editor-text" style="width:100%; height:300px; background:#111; color:#eee; border:1px solid #333; font-family:var(--font-mono); padding:12px; border-radius:4px; resize:vertical;">${jsonStr}</textarea>
+                `;
+                actions.innerHTML = `
+                    <button class="btn btn-primary" onclick="submitSpecEditor()">Approve & Save</button>
+                    <button class="btn btn-secondary" onclick="submitUiResume(null)">Cancel</button>
+                `;
+            }
+            else if (type === 'DiffView') {
+                title.textContent = "Review Changes";
+                const original = payload.original || "";
+                const modified = payload.modified || "";
+
+                content.innerHTML = `
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; height:300px; width:100%;">
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="color:var(--danger); font-size:11px; margin-bottom:4px;">ORIGINAL</span>
+                            <textarea readonly style="flex:1; background:rgba(50,0,0,0.3); color:#ffcccc; border:1px solid rgba(255,0,0,0.2); font-family:var(--font-mono); padding:8px; resize:none;">${original}</textarea>
+                        </div>
+                        <div style="display:flex; flex-direction:column;">
+                             <span style="color:var(--success); font-size:11px; margin-bottom:4px;">PROPOSED</span>
+                             <textarea readonly style="flex:1; background:rgba(0,50,0,0.3); color:#ccffcc; border:1px solid rgba(0,255,0,0.2); font-family:var(--font-mono); padding:8px; resize:none;">${modified}</textarea>
+                        </div>
+                    </div>
+                `;
+                actions.innerHTML = `
+                    <button class="btn btn-primary" onclick="submitUiResume('modified')">Accept Change</button>
+                    <button class="btn btn-secondary" onclick="submitUiResume('original')">Reject (Keep Original)</button>
+                `;
+            }
+            else {
+                // Fallback / Generic JSON view
+                title.textContent = "System Yield: " + type;
+                content.innerHTML = `<pre style="background:#111; padding:10px; overflow:auto; max-height:300px;">${JSON.stringify(payload, null, 2)}</pre>`;
+                actions.innerHTML = `<button class="btn btn-primary" onclick="submitUiResume(true)">Resume</button>`;
+            }
         }
 
-        window.submitPrompt = function (choice) {
-            document.getElementById('prompt-modal').style.display = 'none';
-            sendAction('prompt_response', { choice: choice });
+        window.submitUiResume = function (data) {
+            document.getElementById('ui-yield-modal').style.display = 'none';
+            sendAction('ui_resume', { payload: data });
+        }
+
+        window.submitSpecEditor = function () {
+            try {
+                const text = document.getElementById('spec-editor-text').value;
+                const json = JSON.parse(text);
+                submitUiResume(json);
+            } catch (e) {
+                alert("Invalid JSON: " + e.message);
+            }
+        }
+
+        // Backward compatibility for generic calls if any
+        window.showPrompt = function (title, message) {
+            showUiYield("BinaryChoice", { title, message });
         }
 
         // Initialize
@@ -819,24 +1240,49 @@
         function handleMessage(msg) {
             // Handle server messages
             if (msg.type === 'state_update') {
+
+                // Pipeline Updates
+                if (msg.data.orchestrator_state) {
+                    updatePipelineVisualizer(msg.data.orchestrator_state);
+                }
+                if (msg.data.workflow_memory && msg.data.workflow_memory.smart_spec) {
+                    updateSmartSpec(msg.data.workflow_memory.smart_spec);
+                }
+
                 // Update hooks state
                 if (msg.data.workflow_hooks) {
                     const hooks = msg.data.workflow_hooks;
                     const startSel = document.getElementById('func-start-select');
                     const tickSel = document.getElementById('func-tick-select');
 
+                    const triageSel = document.getElementById('func-triage-select');
+                    const plannerSel = document.getElementById('func-planner-select');
+                    const implSel = document.getElementById('func-implementer-select');
+
                     // Only update if not already set (avoid overwriting user interaction? or sync?)
                     // Best to proper sync. Check if value exists in options first?
                     if (hooks.on_start && startSel.value !== hooks.on_start) startSel.value = hooks.on_start;
                     if (hooks.on_tick && tickSel.value !== hooks.on_tick) tickSel.value = hooks.on_tick;
+
+                    if (hooks.triage && triageSel.value !== hooks.triage) triageSel.value = hooks.triage;
+                    if (hooks.planner && plannerSel.value !== hooks.planner) plannerSel.value = hooks.planner;
+                    if (hooks.implementer && implSel.value !== hooks.implementer) implSel.value = hooks.implementer;
                 }
 
                 // Pending Prompt Check (Reconnection)
                 if (msg.data.pending_prompt) {
-                    showPrompt(msg.data.pending_prompt.title, msg.data.pending_prompt.message);
+                    const p = msg.data.pending_prompt;
+                    if (p.ui_type) {
+                        showUiYield(p.ui_type, p.payload);
+                    } else {
+                        // Fallback for old style logic
+                        showUiYield("BinaryChoice", p);
+                    }
                 }
+            } else if (msg.type === 'ui_yield') {
+                showUiYield(msg.ui_type, msg.payload);
             } else if (msg.type === 'user_prompt') {
-                showPrompt(msg.title, msg.message);
+                showUiYield("BinaryChoice", { title: msg.title, message: msg.message });
             } else if (msg.type === 'function_list') {
                 populateFunctionDropdowns(msg.functions);
 
@@ -911,6 +1357,101 @@
                     addLog("Server", `Failed to delete struct ${msg.id}.`, "error");
                 }
             }
+        }
+
+        function updatePipelineVisualizer(stateName) {
+            console.log("Updating Pipeline Visualizer to:", stateName);
+            // States: IDLE, PLANNING, IMPLEMENTATION, VERIFICATION, DEBUGGING
+            const steps = ['IDLE', 'PLANNING', 'IMPLEMENTATION', 'VERIFICATION', 'DEBUGGING'];
+
+            // Reset all
+            steps.forEach(s => {
+                const el = document.getElementById('step-' + s);
+                if (el) {
+                    el.classList.remove('active');
+                    el.classList.remove('completed');
+                }
+            });
+
+            // Activate current
+            const currentEl = document.getElementById('step-' + stateName);
+            if (currentEl) currentEl.classList.add('active');
+
+            // Mark previous as completed (naive approach)
+            const idx = steps.indexOf(stateName);
+            if (idx > 0) {
+                for (let i = 0; i < idx; i++) {
+                    const prevEl = document.getElementById('step-' + steps[i]);
+                    if (prevEl) prevEl.classList.add('completed');
+                }
+            }
+        }
+
+        function updateSmartSpec(specData) {
+            const editor = document.getElementById('smart-spec-editor');
+            const taskList = document.getElementById('pipeline-task-list');
+
+            if (!specData) return;
+
+            // Update JSON Editor
+            // Only update if not focused (to allow editing) or if significantly different?
+            // Ideally we need a two-way binding or 'last received' check.
+            // For now, simple update.
+            if (document.activeElement !== editor) {
+                editor.value = JSON.stringify(specData, null, 2);
+            }
+
+            // Update Task List
+            taskList.innerHTML = '';
+            if (specData.tasks && Array.isArray(specData.tasks)) {
+                specData.tasks.forEach(task => {
+                    const item = document.createElement('div');
+                    item.className = 'task-item';
+
+                    let statusClass = 'pending';
+                    if (task.status === 'doing') statusClass = 'doing';
+                    if (task.status === 'done') statusClass = 'done';
+                    if (task.status === 'failed') statusClass = 'failed';
+
+                    item.innerHTML = `
+                            <div class="task-status ${statusClass}"></div>
+                            <div class="task-title">${task.title || 'Untitled Task'}</div>
+                            <div style="font-size:11px; color:var(--text-muted);">${task.status || 'pending'}</div>
+                       `;
+                    taskList.appendChild(item);
+                });
+            } else {
+                taskList.innerHTML = '<div style="color:var(--text-muted); text-align:center; margin-top:20px; font-size:13px;">No tasks available</div>';
+            }
+        }
+
+        // --- Chat Logic ---
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            // Add to local UI immediately
+            addChatLog("You", msg, "user");
+
+            // Send to backend
+            sendAction('user_message', { message: msg });
+            input.value = '';
+        }
+
+        function addChatLog(source, text, type) {
+            const container = document.getElementById('chat-history');
+            const row = document.createElement('div');
+            row.className = 'log-entry';
+
+            // Styling based on type
+            let color = "var(--text-secondary)";
+            if (type === 'user') color = "var(--accent-primary)";
+            if (type === 'system') color = "var(--success)";
+
+            row.innerHTML = `<span class="log-time" style="color:${color}; font-weight:600;">${source}:</span> <span class="log-content" style="color:var(--text-primary);">${text}</span>`;
+            container.appendChild(row);
+            container.scrollTop = container.scrollHeight;
         }
     </script>
 </body>

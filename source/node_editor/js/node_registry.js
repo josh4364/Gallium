@@ -23,6 +23,22 @@ const nodeRegistry = [
         params: { title: 'Question', message: 'Are you sure?' }
     },
     {
+        type: 'ui_yield',
+        name: 'UI Yield',
+        tags: ['UI', 'system', 'wait', 'user'],
+        color: '#673AB7',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'UI Type', type: 'string', key: 'ui_type' },
+            { label: 'Payload', type: 'any_not_exec', key: 'payload' }
+        ],
+        outputs: [
+            { label: 'exec_out', type: 'exec' },
+            { label: 'Result', type: 'any_not_exec', key: 'result' }
+        ],
+        params: { ui_type: 'BinaryChoice', payload: {} }
+    },
+    {
         type: 'function_return',
         name: 'Return',
         tags: ['Function', 'output', 'end'],
@@ -310,5 +326,62 @@ const nodeRegistry = [
         params: {
             element_type: 'any_not_exec'
         }
+    },
+    {
+        type: 'global_context_read',
+        name: 'Context Read',
+        tags: ['State', 'global', 'read', 'memory', 'blackboard'],
+        color: '#009688',
+        inputs: [
+            { label: 'Key', type: 'string', key: 'key' }
+        ],
+        outputs: [
+            { label: 'Value', type: 'any_not_exec', key: 'value' },
+            { label: 'exec_out', type: 'exec' } // Optional flow passthrough
+        ],
+        params: { key: '' }
+    },
+    {
+        type: 'global_context_write',
+        name: 'Context Write',
+        tags: ['State', 'global', 'write', 'memory', 'blackboard'],
+        color: '#009688',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Key', type: 'string', key: 'key' },
+            { label: 'Value', type: 'any_not_exec', key: 'value' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
+        params: { key: '', value: null }
+    },
+    {
+        type: 'json_iterator',
+        name: 'Iterator',
+        tags: ['State', 'loop', 'foreach', 'json', 'list'],
+        color: '#FFC107',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'List', type: 'list:any_not_exec', key: 'list' }
+        ],
+        outputs: [
+            { label: 'Loop', type: 'exec', key: 'exec_loop' },
+            { label: 'Done', type: 'exec', key: 'exec_done' },
+            { label: 'Item', type: 'any_not_exec', key: 'item' },
+            { label: 'Index', type: 'number', key: 'index' }
+        ],
+        params: { list: [] }
+    },
+    {
+        type: 'event_emit',
+        name: 'Emit Event',
+        tags: ['State', 'event', 'signal', 'trigger'],
+        color: '#FF5722',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Event Name', type: 'string', key: 'event_name' },
+            { label: 'Payload', type: 'any_not_exec', key: 'payload' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
+        params: { event_name: '', payload: {} }
     }
 ];

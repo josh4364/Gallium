@@ -5,7 +5,11 @@ from datetime import datetime
 from pathlib import Path
 from source.graph_interpreter import GraphInterpreter
 from source.function_manager import FunctionManager
+from source.graph_interpreter import GraphInterpreter
+from source.function_manager import FunctionManager
 from source.struct_manager import StructManager
+from source.orchestrator import Orchestrator
+from source.schemas import Event
 
 logger = logging.getLogger("SimulationState")
 
@@ -24,10 +28,16 @@ class SimulationState:
         self.interpreter = GraphInterpreter(self, self.func_manager, self.struct_manager)
         self.workflow_hooks = {
             "on_start": None,
-            "on_tick": None
+            "on_tick": None,
+            "triage": "func_triage", # Default
+            "planner": "func_planner", # Default
+            "implementer": "func_implementer" # Default
         }
         self.goal = ""
         self.workflow_memory = {}
+        self.orchestrator = Orchestrator(self)
+        self.pending_graph_id = None
+        self.pending_graph_context = None
         
         # Manifest State
         self._load_state_from_manifest()
@@ -61,6 +71,39 @@ class SimulationState:
             
         return event
 
+    def trigger_event(self, event):
+        """Pass internal events to Orchestrator."""
+        self.orchestrator.handle_event(event)
+        self.check_pending_execution()
+
+    def run_graph_by_id(self, graph_id, context=None):
+        """Queues a graph for execution."""
+        self.pending_graph_id = graph_id
+        self.pending_graph_context = context
+
+    def check_pending_execution(self):
+        """Runs any queued graphs (and chains them)."""
+        loop_guard = 0
+        while self.pending_graph_id and loop_guard < 10:
+            gid = self.pending_graph_id
+            ctx = self.pending_graph_context
+            self.pending_graph_id = None
+            self.pending_graph_context = None
+            
+            graph = self.func_manager.load_function(gid)
+            if graph:
+                self._add_event(f"Orchestrator running graph: {gid}", "info")
+                try:
+                    self.interpreter.execute(graph, context=ctx)
+                except Exception as e:
+                    logger.error(f"Error executing orchestrated graph {gid}: {e}")
+                    self._add_event(f"Orchestrator Graph Error ({gid}): {e}", "error")
+            else:
+                 self._add_event(f"Orchestrator could not load graph: {gid}", "error")
+            
+            loop_guard += 1
+
+
     def start_simulation(self):
         """Runs the On Start graph."""
         self.tick_count = 0 # Reset tick on start
@@ -85,6 +128,9 @@ class SimulationState:
         else:
              self._add_event("No On Start graph assigned.", "info")
         
+        self.orchestrator.start()
+        self.check_pending_execution()
+        
         return self.get_state()
 
     def step(self):
@@ -101,6 +147,9 @@ class SimulationState:
                 logger.error(f"Error executing On Tick graph: {e}")
                 self._add_event(f"Tick Graph Error: {e}", "error")
         
+                self._add_event(f"Tick Graph Error: {e}", "error")
+        
+        self.check_pending_execution()
         return self.get_state()
 
     def get_state(self):
@@ -111,7 +160,8 @@ class SimulationState:
             "workflow_hooks": self.workflow_hooks,
             "workflow_memory": self.workflow_memory,
             "latest_events": self.events[-10:], # Send last 10 events for efficiency
-            "pending_prompt": self.interpreter.suspended_prompt_data if self.interpreter.is_suspended else None
+            "pending_prompt": self.interpreter.suspended_prompt_data if self.interpreter.is_suspended else None,
+            "orchestrator_state": self.orchestrator.current_state
         }
 
     def update_workflow_hooks(self, on_start, on_tick):
@@ -122,18 +172,25 @@ class SimulationState:
         self._save_manifest()
         return self.get_state()
 
+    def update_orchestrator_roles(self, triage, planner, implementer):
+        if triage is not None: self.workflow_hooks["triage"] = triage
+        if planner is not None: self.workflow_hooks["planner"] = planner
+        if implementer is not None: self.workflow_hooks["implementer"] = implementer
+        self._save_manifest()
+        return self.get_state()
+
     def delete_function(self, function_id):
         """Deletes a function and clears any hooks using it."""
         success = self.func_manager.delete_function(function_id)
         if success:
             # Clear hooks if they used this function
             hooks_changed = False
-            if self.workflow_hooks.get("on_start") == function_id:
-                self.workflow_hooks["on_start"] = None
-                hooks_changed = True
-            if self.workflow_hooks.get("on_tick") == function_id:
-                self.workflow_hooks["on_tick"] = None
-                hooks_changed = True
+            for key in ["on_start", "on_tick", "triage", "planner", "implementer"]:
+                if self.workflow_hooks.get(key) == function_id:
+                     # For core roles, reverting to default might be safer than None, but None indicates missing.
+                     # Let's set to None and warn safely later.
+                     self.workflow_hooks[key] = None
+                     hooks_changed = True
             
             if hooks_changed:
                 self._save_manifest()
@@ -141,28 +198,51 @@ class SimulationState:
         
         return success
     
-    def send_prompt_request(self, title, message):
-        self._add_event(f"User Prompt Triggered: {title}", "info")
-        # We need to broadcast this specific message type
-        # But set_event_handler usually handles logging events.
-        # We can repurpose it or add a specific handler.
-        # Ideally main.py hook handles general messages too?
-        # Let's rely on the event mechanism.
+    def send_ui_yield(self, ui_type, payload):
+        """
+        Pauses execution and requests UI interaction from the client.
+        """
+        self._add_event(f"UI Yield Triggered: {ui_type}", "info")
         if self.on_event:
             self.on_event({
-                "type": "user_prompt",
-                "title": title,
-                "message": message,
+                "type": "ui_yield",
+                "ui_type": ui_type,
+                "payload": payload,
                 "timestamp": datetime.now().isoformat()
             })
 
-    def handle_prompt_response(self, response_bool):
-        self._add_event(f"User Response: {'Yes' if response_bool else 'No'}", "info")
+    def handle_ui_resume(self, payload):
+        """
+        Resumes execution with data from the UI.
+        """
+        self._add_event("UI Resumed", "info")
         try:
-             self.interpreter.resume(response_bool)
+             self.interpreter.resume(payload)
         except Exception as e:
-             logger.error(f"Error resuming from prompt: {e}")
+             logger.error(f"Error resuming from UI yield: {e}")
              self._add_event(f"Error Resuming: {e}", "error")
+        # Resume might have triggered more events/graphs
+        self.check_pending_execution()
+
+    def handle_user_message(self, message):
+        """Handle incoming chat message from user."""
+        self._add_event(f"User: {message}", "user_message")
+        
+        # Store in Blackboard for Triage graph
+        self.workflow_memory["latest_user_message"] = message
+        
+        event = Event(name="USER_MESSAGE", payload={"message": message}, source="user_client")
+        self.orchestrator.handle_event(event)
+        self.check_pending_execution()
+
+    # Deprecated / Alias for backward compatibility if needed, 
+    # but we will update call sites.
+    def send_prompt_request(self, title, message):
+        self.send_ui_yield("BinaryChoice", {"title": title, "message": message})
+
+    def handle_prompt_response(self, response_bool):
+        # The prompt_user node expects a boolean
+        self.handle_ui_resume(response_bool)
 
     def _load_state_from_manifest(self):
         try:
@@ -172,6 +252,11 @@ class SimulationState:
                     data = json.load(f)
                     self.workflow_hooks["on_start"] = data.get("hook_on_start")
                     self.workflow_hooks["on_tick"] = data.get("hook_on_tick")
+                    # Load Orchestrator Roles
+                    if "triage" in data: self.workflow_hooks["triage"] = data["triage"]
+                    if "planner" in data: self.workflow_hooks["planner"] = data["planner"]
+                    if "implementer" in data: self.workflow_hooks["implementer"] = data["implementer"]
+                    
                     self.goal = data.get("goal", "")
                     self._add_event("Loaded State from Manifest.", "info")
         except Exception as e:
@@ -192,8 +277,12 @@ class SimulationState:
                     except: pass
             
             manifest_data.update({
-                "hook_on_start": self.workflow_hooks["on_start"],
-                "hook_on_tick": self.workflow_hooks["on_tick"]
+                "hook_on_start": self.workflow_hooks.get("on_start"),
+                "hook_on_tick": self.workflow_hooks.get("on_tick"),
+                "triage": self.workflow_hooks.get("triage"),
+                "planner": self.workflow_hooks.get("planner"),
+                "implementer": self.workflow_hooks.get("implementer"),
+                "goal": self.goal
             })
 
             with open(manifest_path, 'w') as f:

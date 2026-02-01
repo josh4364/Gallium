@@ -89,6 +89,9 @@ def main():
         elif event["type"] == "user_prompt":
              server.broadcast(event)
              return
+        elif event["type"] == "ui_yield":
+             server.broadcast(event)
+             return
         
         server.broadcast({
             "type": msg_type,

@@ -1451,6 +1451,8 @@ Object.assign(NodeGraph.prototype, {
         };
 
         const renderSelector = (targetType, onUpdate) => {
+            if (!targetType) targetType = 'any_not_exec';  // Default safety fallback
+
             const row = document.createElement('div');
             row.style.display = 'flex';
             row.style.flexDirection = 'column';

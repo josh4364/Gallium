@@ -131,6 +131,58 @@ To build this, you need to add these specific nodes to your Gallium Engine:
 
 
 4. **`Global Context R/W`**:
-* **Action:** specific nodes to Read/Write to the "Blackboard" (the memory shared between the Planner graph and the Implementer graph).
+   * **Action:** specific nodes to Read/Write to the "Blackboard" (the memory shared between the Planner graph and the Implementer graph).
+
+---
+
+#### **5. Step-by-Step Implementation Plan**
+
+This roadmap breaks down the development of the Gallium State Engine into manageable phases, ensuring that dependencies are met before building higher-level logic.
+
+**Phase 1: Foundation & Primitives (DONE)**
+*   **Step 1.1: Define Data Schemas**
+    *   Create the Python/Pydantic definitions for the `Smart Spec` (Project, Goal, Constraints, Tasks).
+    *   Define the `Event` structure (Name, Payload, Source).
+    *   Implement the `Blackboard` (Global Context) storage mechanism in the backend.
+*   **Step 1.2: Core Node Implementation**
+    *   Implement `Global Context Read` and `Global Context Write` nodes.
+    *   Implement `JSON Iterator` node for looping through task lists.
+    *   Implement `Event Emitter` node to allow graphs to signal the Orchestrator.
+
+**Phase 2: The UI Bridge (DONE)**
+*   **Step 2.1: WebSocket Protocol Update**
+    *   Update the backend-frontend communication to support "Yield" states (pausing VM, waiting for client input).
+    *   Define the message format for `UI_YIELD` and `UI_RESUME`.
+*   **Step 2.2: Implement `UI Yield` Node**
+    *   Create the node that halts execution and sends the payload to the client.
+    *   Handle the resumption logic when the client response is received.
+*   **Step 2.3: Frontend Components**
+    *   Build the "Spec Editor" validation UI.
+    *   Build the "Diff/Comparison" view for A/B testing implementations.
+
+**Phase 3: The Triage & Planning Graphs (DONE)**
+*   **Step 3.1: Build the Triage Graph**
+    *   Create `triage.graph` using standard nodes.
+    *   Implement the logic to classify user intent (Feature vs. Bug vs. Question).
+*   **Step 3.2: Build the Planning Graph**
+    *   Create `planner.graph`.
+    *   Connect the `LLM Generator` to the `UI Yield` node for Spec review.
+    *   Ensure the approved Spec is written to the Blackboard.
+
+**Phase 4: The Orchestrator (FSM)**
+*   **Step 4.1: State Machine Logic**
+    *   Implement the main Python loop that listens for `Events` from the graphs.
+    *   Define the transitions: `IDLE` -> `PLANNING` -> `IMPLEMENTATION` -> `VERIFICATION`.
+*   **Step 4.2: Graph Loading & switching**
+    *   Implement the logic to dynamically load and "spin up" the correct graph (Tier 2) based on the current Tier 1 state.
+
+**Phase 5: The Implementation Loop**
+*   **Step 5.1: Build the Coder Graph**
+    *   Create `implementer.graph` that iterates through the Blackboard's task list.
+    *   Use the new `JSON Iterator` to process one task at a time.
+*   **Step 5.2: Verification & Feedback**
+    *   Add the "Verification Node" logic to run tests.
+    *   Implement the loop-back mechanism to retry failed tasks.
+
 
 

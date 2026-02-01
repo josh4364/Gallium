@@ -1,0 +1,207 @@
+{
+    "id": "func_triage",
+    "name": "func_triage",
+    "description": "",
+    "tags": [],
+    "inputs": [
+        {
+            "id": "79el2",
+            "name": "prompt",
+            "type": "string"
+        }
+    ],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_e24149f9",
+            "type": "start",
+            "x": -110.5826151658001,
+            "y": -46.61816129538632,
+            "width": 300,
+            "height": 150,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_e24149f9_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "79el2",
+                    "label": "prompt",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_f1d3a85a",
+            "type": "run_process",
+            "x": 283.99666840450385,
+            "y": -54.20716429696084,
+            "width": 367,
+            "height": 230,
+            "title": "Run Process",
+            "params": {
+                "program_name": "find",
+                "arguments": [
+                    ".",
+                    "-maxdepth",
+                    "2",
+                    "-not",
+                    "-path",
+                    "'*/.*'"
+                ],
+                "timeout": 5
+            },
+            "inputs": [
+                {
+                    "id": "node_f1d3a85a_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_f1d3a85a_in_program_name",
+                    "label": "program_name",
+                    "type": "string",
+                    "key": "program_name"
+                },
+                {
+                    "id": "node_f1d3a85a_in_arguments",
+                    "label": "arguments",
+                    "type": "list:string",
+                    "key": "arguments"
+                },
+                {
+                    "id": "node_f1d3a85a_in_timeout",
+                    "label": "timeout",
+                    "type": "number",
+                    "key": "timeout"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_f1d3a85a_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_f1d3a85a_out_output",
+                    "label": "Output",
+                    "type": "string",
+                    "key": "output"
+                }
+            ]
+        },
+        {
+            "id": "node_95b0e023",
+            "type": "string_format",
+            "x": 369.64398799370196,
+            "y": 258.8025551343098,
+            "width": 456,
+            "height": 242,
+            "title": "String Format",
+            "params": {
+                "format": "User Message:\n{}\n\nWorkspace Summary:\n{}"
+            },
+            "inputs": [
+                {
+                    "id": "node_95b0e023_in_arg_1",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_95b0e023_in_arg_2",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_95b0e023_out_result",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_45773f7d",
+            "type": "ai_eval",
+            "x": 836.8608717219333,
+            "y": -68.30102701417066,
+            "width": 688,
+            "height": 274,
+            "title": "AI Eval",
+            "params": {
+                "model_name": "gemini-3-flash-preview",
+                "system_prompt": "You are a Request Classifier. Analyze the user request and workspace summary.\nClassify the intent into one of these categories: NEW_FEATURE, BUG_FIX, QUESTION.\nOutput ONLY the category name."
+            },
+            "inputs": [
+                {
+                    "id": "node_45773f7d_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_45773f7d_in_prompt",
+                    "label": "prompt",
+                    "type": "string",
+                    "key": "prompt"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_45773f7d_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_45773f7d_out_response",
+                    "label": "response",
+                    "type": "string",
+                    "key": "response"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_e24149f9",
+            "fromPort": "node_e24149f9_flow",
+            "toNode": "node_f1d3a85a",
+            "toPort": "node_f1d3a85a_in_exec_in"
+        },
+        {
+            "fromNode": "node_f1d3a85a",
+            "fromPort": "node_f1d3a85a_out_exec_out",
+            "toNode": "node_45773f7d",
+            "toPort": "node_45773f7d_in_exec_in"
+        },
+        {
+            "fromNode": "node_95b0e023",
+            "fromPort": "node_95b0e023_out_result",
+            "toNode": "node_45773f7d",
+            "toPort": "node_45773f7d_in_prompt"
+        },
+        {
+            "fromNode": "node_f1d3a85a",
+            "fromPort": "node_f1d3a85a_out_output",
+            "toNode": "node_95b0e023",
+            "toPort": "node_95b0e023_in_arg_2"
+        },
+        {
+            "fromNode": "node_e24149f9",
+            "fromPort": "79el2",
+            "toNode": "node_95b0e023",
+            "toPort": "node_95b0e023_in_arg_1"
+        }
+    ],
+    "view": {
+        "panX": 552,
+        "panY": 225,
+        "zoom": 0.9223873015398314
+    }
+}

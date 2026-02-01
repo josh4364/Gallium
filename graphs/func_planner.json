@@ -1,0 +1,339 @@
+{
+    "id": "func_planner",
+    "name": "func_planner",
+    "description": "",
+    "tags": [],
+    "inputs": [],
+    "outputs": [],
+    "nodes": [
+        {
+            "id": "node_2b67438d",
+            "type": "start",
+            "x": -171.29463917839627,
+            "y": -21.682865718784335,
+            "width": 300,
+            "height": 150,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_2b67438d_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_6368b36f",
+            "type": "global_context_read",
+            "x": 224.10996998425483,
+            "y": 2.1682865718784337,
+            "width": 300,
+            "height": 150,
+            "title": "Context Read",
+            "params": {
+                "key": "UserMessage"
+            },
+            "inputs": [
+                {
+                    "id": "node_6368b36f_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_6368b36f_in_key",
+                    "label": "key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_6368b36f_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_6368b36f_out_value",
+                    "label": "value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_fc7d951b",
+            "type": "global_context_read",
+            "x": 610.8414328593922,
+            "y": -9.757289573452951,
+            "width": 300,
+            "height": 150,
+            "title": "Context Read",
+            "params": {
+                "key": "WorkspaceSummary"
+            },
+            "inputs": [
+                {
+                    "id": "node_fc7d951b_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_fc7d951b_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_fc7d951b_out_value",
+                    "label": "value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_e800c96c",
+            "type": "string_format",
+            "x": 479.66009526074686,
+            "y": 242.5404058452215,
+            "width": 709,
+            "height": 246,
+            "title": "String Format",
+            "params": {
+                "format": "Generate a JSON Spec for the following request:\n{}\n\nWorkspace Context:\n{}"
+            },
+            "inputs": [
+                {
+                    "id": "node_e800c96c_in_arg_1",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_e800c96c_in_arg_2",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_e800c96c_out_result",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_8b547ddb",
+            "type": "ai_eval",
+            "x": 1015.178006003149,
+            "y": -8.673146287513735,
+            "width": 326,
+            "height": 217,
+            "title": "AI Eval",
+            "params": {
+                "model_name": "gemini-3-flash-preview",
+                "system_prompt": "You are a Senior Architect. Generate a \"SmartSpec\" JSON object for the user request.\\nSchema:\\n{\\n  \"project_id\": \"str\",\\n  \"goal\": \"str\",\\n  \"constraints\": [\"str\"],\\n  \"tasks\": [\\n    { \"id\": \"t1\", \"title\": \"str\", \"status\": \"pending\", \"file_paths\": [\"str\"] }\\n  ]\\n}\\nReturn ONLY valid JSON."
+            },
+            "inputs": [
+                {
+                    "id": "node_8b547ddb_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_8b547ddb_in_prompt",
+                    "label": "prompt",
+                    "type": "string",
+                    "key": "prompt"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_8b547ddb_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_8b547ddb_out_response",
+                    "label": "response",
+                    "type": "string",
+                    "key": "response"
+                }
+            ]
+        },
+        {
+            "id": "node_6f332186",
+            "type": "ui_yield",
+            "x": 1421.6828657187843,
+            "y": -6.5048597156353,
+            "width": 300,
+            "height": 150,
+            "title": "UI Yield",
+            "params": {
+                "ui_type": "SpecEditor"
+            },
+            "inputs": [
+                {
+                    "id": "node_6f332186_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_6f332186_in_payload",
+                    "label": "payload",
+                    "type": "any",
+                    "key": "payload"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_6f332186_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_6f332186_out_result",
+                    "label": "result",
+                    "type": "any",
+                    "key": "result"
+                }
+            ]
+        },
+        {
+            "id": "node_fa3d1202",
+            "type": "global_context_write",
+            "x": 1800,
+            "y": 0,
+            "width": 300,
+            "height": 150,
+            "title": "Context Write",
+            "params": {
+                "key": "SmartSpec"
+            },
+            "inputs": [
+                {
+                    "id": "node_fa3d1202_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_fa3d1202_in_value",
+                    "label": "value",
+                    "type": "any",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_fa3d1202_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_31247482",
+            "type": "event_emit",
+            "x": 2200,
+            "y": 0,
+            "width": 300,
+            "height": 150,
+            "title": "Emit Event",
+            "params": {
+                "event_name": "SPEC_APPROVED"
+            },
+            "inputs": [
+                {
+                    "id": "node_31247482_in_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_31247482_out_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_6368b36f",
+            "fromPort": "node_6368b36f_out_exec_out",
+            "toNode": "node_fc7d951b",
+            "toPort": "node_fc7d951b_in_exec_in"
+        },
+        {
+            "fromNode": "node_6368b36f",
+            "fromPort": "node_6368b36f_out_value",
+            "toNode": "node_e800c96c",
+            "toPort": "node_e800c96c_in_arg_1"
+        },
+        {
+            "fromNode": "node_fc7d951b",
+            "fromPort": "node_fc7d951b_out_value",
+            "toNode": "node_e800c96c",
+            "toPort": "node_e800c96c_in_arg_2"
+        },
+        {
+            "fromNode": "node_fc7d951b",
+            "fromPort": "node_fc7d951b_out_exec_out",
+            "toNode": "node_8b547ddb",
+            "toPort": "node_8b547ddb_in_exec_in"
+        },
+        {
+            "fromNode": "node_e800c96c",
+            "fromPort": "node_e800c96c_out_result",
+            "toNode": "node_8b547ddb",
+            "toPort": "node_8b547ddb_in_prompt"
+        },
+        {
+            "fromNode": "node_8b547ddb",
+            "fromPort": "node_8b547ddb_out_exec_out",
+            "toNode": "node_6f332186",
+            "toPort": "node_6f332186_in_exec_in"
+        },
+        {
+            "fromNode": "node_6f332186",
+            "fromPort": "node_6f332186_out_exec_out",
+            "toNode": "node_fa3d1202",
+            "toPort": "node_fa3d1202_in_exec_in"
+        },
+        {
+            "fromNode": "node_fa3d1202",
+            "fromPort": "node_fa3d1202_out_exec_out",
+            "toNode": "node_31247482",
+            "toPort": "node_31247482_in_exec_in"
+        },
+        {
+            "fromNode": "node_2b67438d",
+            "fromPort": "node_2b67438d_flow",
+            "toNode": "node_6368b36f",
+            "toPort": "node_6368b36f_in_exec_in"
+        },
+        {
+            "fromNode": "node_6f332186",
+            "fromPort": "node_6f332186_out_result",
+            "toNode": "node_fa3d1202",
+            "toPort": "node_fa3d1202_in_value"
+        },
+        {
+            "fromNode": "node_8b547ddb",
+            "fromPort": "node_8b547ddb_out_response",
+            "toNode": "node_6f332186",
+            "toPort": "node_6f332186_in_payload"
+        }
+    ],
+    "view": {
+        "panX": -47,
+        "panY": 203,
+        "zoom": 0.9223873015398314
+    }
+}
