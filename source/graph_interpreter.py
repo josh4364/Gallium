@@ -18,6 +18,40 @@ class GraphInterpreter:
         self.is_suspended = False
         self.suspended_node_id = None
         self.suspended_prompt_data = None
+        
+        # Initialize Handlers
+        self.node_handlers = {}
+        self._init_node_handlers()
+
+    def _init_node_handlers(self):
+        """Registers all node handlers."""
+        # Flow Control
+        self.node_handlers['start'] = self._handle_flow_passthrough
+        self.node_handlers['function_input'] = self._handle_flow_passthrough
+        self.node_handlers['function_return'] = self._handle_function_return
+        self.node_handlers['function_call'] = self._handle_function_call
+        self.node_handlers['condition'] = self._handle_condition
+        self.node_handlers['action'] = self._handle_action
+        
+        # UI/System
+        self.node_handlers['prompt_user'] = self._handle_prompt_user
+        self.node_handlers['log_message'] = self._handle_log_message
+        self.node_handlers['run_process'] = self._handle_run_process
+        self.node_handlers['ai_eval'] = self._handle_ai_eval
+
+        # Variables
+        self.node_handlers['set_variable'] = self._handle_set_variable
+        
+        # Collections (Lists/Maps) - Side-effect nodes (Set/Modify)
+        # Note: 'list_create', 'list_make' etc are purely value nodes handled in evaluate_output
+        # But 'list_set', 'list_add' modify the list reference and flow.
+        self.node_handlers['list_set'] = self._handle_list_set
+        self.node_handlers['list_add'] = self._handle_list_add
+        self.node_handlers['list_remove_at'] = self._handle_list_remove_at
+        self.node_handlers['list_clear'] = self._handle_list_clear
+        
+        self.node_handlers['map_set'] = self._handle_map_set
+        self.node_handlers['map_remove'] = self._handle_map_remove
 
     def safe_graph_eval(self, graph_data, expected_input_types, input_values):
         """
@@ -62,8 +96,6 @@ class GraphInterpreter:
             return
 
         # If we are starting a fresh execution, ensure cleared state.
-        # If we were suspended, a fresh execute() call implies an overwrite/restart logic, 
-        # so we clear suspension.
         self.is_suspended = False
         self.suspended_node_id = None
         self.suspended_prompt_data = None
@@ -92,8 +124,6 @@ class GraphInterpreter:
                 self.sim_state._add_event(f"Graph Error: {e}", "error")
 
     def find_entry_node(self):
-        # Prefer function_input, but fallback to any node if it's a simple graph?
-        # Actually for flow execution we need a starting point.
         for node in self.nodes.values():
             if node['type'] in ('start', 'function_input', 'entry'):
                 return node
@@ -103,267 +133,255 @@ class GraphInterpreter:
         if not node: return None
 
         node_type = node['type']
+        handler = self.node_handlers.get(node_type)
         
-        # --- Execution Flow Nodes ---
-        if node_type == 'start' or node_type == 'function_input':
-            # Just pass through
-            return self.follow_flow(node, 'exec_out')
-        
-        elif node_type == 'prompt_user':
-            title = self.get_input_value(node, 'title')
-            message = self.get_input_value(node, 'message')
-            
-            self.is_suspended = True
-            self.suspended_node_id = node['id']
-            self.suspended_prompt_data = {'title': title, 'message': message}
-            
-            if self.sim_state:
-                self.sim_state.send_prompt_request(title, message)
-            
-            return "SUSPEND"
-            
-        elif node_type == 'log_message':
-            msg = self.get_input_value(node, 'message')
-            if self.sim_state:
-                self.sim_state._add_event(f"{msg}", "info")
-            else:
-                print(f"GRAPH LOG: {msg}")
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'set_variable':
-            name = node.get('params', {}).get('name') or self.get_input_value(node, 'name')
-            val = self.get_input_value(node, 'value')
-            if name:
-                self.context[name] = val
-                logger.debug(f"Set Local Variable {name} = {val}")
-            return self.follow_flow(node, 'exec_out')
-            
-        elif node_type == 'function_return':
-            # Gather all data inputs as return values
-            returns = {}
-            for input_port in node.get('inputs', []):
-                if input_port['type'] != 'exec':
-                    val = self.get_input_value(node, input_port.get('key') or input_port['label'])
-                    returns[input_port['label']] = val
-            
-            self.return_stack.append(returns)
-            return "STOP" # Signal to cease execution of this graph context
-            
-        elif node_type == 'function_call':
-            func_id = node.get('params', {}).get('functionId')
-            if not func_id:
-                raise Exception(f"Function Call node {node['id']} missing functionId")
-
-            # Gather arguments
-            args = {}
-            for input_port in node.get('inputs', []):
-                if input_port['type'] != 'exec':
-                    # Check if port is connected or has default value
-                    val = self.get_input_value(node, input_port.get('key') or input_port['label'])
-                    args[input_port['label']] = val
-
-            # Execute sub-graph
-            prev_stack_depth = len(self.return_stack)
-            res = self.execute_function(func_id, args, caller_node_id=node['id'])
-            if res == "SUSPEND": return "SUSPEND"
-            
-            # Extract results from return stack
-            if len(self.return_stack) > prev_stack_depth:
-                results = self.return_stack.pop()
-                # Cache results for this node's output ports
-                if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-                for output_port in node.get('outputs', []):
-                    if output_port['type'] != 'exec':
-                        label = output_port['label']
-                        if label in results:
-                            self.output_cache[node['id']][output_port['id']] = results[label]
-
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'condition': # Branch
-            condition = self.get_input_value(node, 'condition')
-            if bool(condition):
-                return self.follow_flow(node, 'exec_true')
-            else:
-                return self.follow_flow(node, 'exec_false')
-                
-        elif node_type == 'action': # Generic action
-            msg = self.get_input_value(node, 'message')
-            if self.sim_state:
-                self.sim_state._add_event(f"Action: {msg}", "info")
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'list_set':
-            lst = self.get_input_value(node, 'list')
-            idx = int(self.get_input_value(node, 'index') or 0)
-            val = self.get_input_value(node, 'value')
-            if isinstance(lst, list) and 0 <= idx < len(lst):
-                lst[idx] = val
-            elif isinstance(lst, list) and idx == len(lst):
-                lst.append(val)
-                
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = lst
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'list_add':
-            lst = self.get_input_value(node, 'list')
-            val = self.get_input_value(node, 'value')
-            if isinstance(lst, list):
-                lst.append(val)
-            
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = lst
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'list_remove_at':
-            lst = self.get_input_value(node, 'list')
-            idx = int(self.get_input_value(node, 'index') or 0)
-            if isinstance(lst, list) and 0 <= idx < len(lst):
-                lst.pop(idx)
-            
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = lst
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'ai_eval':
-            model_name = self.get_input_value(node, 'model_name')
-            system_prompt = self.get_input_value(node, 'system_prompt')
-            prompt = self.get_input_value(node, 'prompt')
-            tools_input = self.get_input_value(node, 'tools')
-
-            if self.sim_state:
-                self.sim_state._add_event(f"AI Eval: {prompt[:100]}...", "info")
-
-            # Prepare tools
-            executable_tools = []
-            if isinstance(tools_input, list):
-                for t in tools_input:
-                    if isinstance(t, dict) and 'id' in t:
-                        executable_tools.append(self._create_dynamic_tool(t))
-
-            # Get before status
-            before_files = set(self._get_git_changed_files())
-
-            # Call AI (blocks)
-            try:
-                response = AI_Eval(
-                    system_prompt=system_prompt,
-                    user_prompt=prompt,
-                    model_name=model_name,
-                    tools=executable_tools if executable_tools else None,
-                    dynamic_tools=tools_input if isinstance(tools_input, list) else None
-                )
-            except Exception as e:
-                logger.error(f"AI_Eval failed: {e}")
-                response = f"Error: {str(e)}"
-
-            # Get after status
-            after_files = set(self._get_git_changed_files())
-            changed_files = list(after_files - before_files)
-
-            # Store in output cache
-            if node['id'] not in self.output_cache: 
-                self.output_cache[node['id']] = {}
-                
-            for output_port in node.get('outputs', []):
-                key = output_port.get('key')
-                if key == 'response':
-                    self.output_cache[node['id']][output_port['id']] = response
-                elif key == 'changed_files':
-                    self.output_cache[node['id']][output_port['id']] = changed_files
-
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'map_set':
-            map_obj = self.get_input_value(node, 'map')
-            key = self.get_input_value(node, 'key')
-            val = self.get_input_value(node, 'value')
-            if isinstance(map_obj, dict):
-                map_obj[key] = val
-            
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'map'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = map_obj
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'map_remove':
-            map_obj = self.get_input_value(node, 'map')
-            key = self.get_input_value(node, 'key')
-            if isinstance(map_obj, dict) and key in map_obj:
-                del map_obj[key]
-            
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'map'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = map_obj
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'list_clear':
-            lst = self.get_input_value(node, 'list')
-            if isinstance(lst, list):
-                lst.clear()
-            
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'list'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = lst
-            return self.follow_flow(node, 'exec_out')
-
-        elif node_type == 'run_process':
-            program_name = self.get_input_value(node, 'program_name')
-            arguments = self.get_input_value(node, 'arguments')
-            timeout = self.get_input_value(node, 'timeout')
-            
-            output_str = ""
-            
-            if program_name:
-                # Construct command string for shell execution to handle spaces/parsing intuitively
-                cmd = str(program_name)
-                
-                if isinstance(arguments, list):
-                     for arg in arguments:
-                         cmd += " " + str(arg)
-                elif arguments:
-                     cmd += " " + str(arguments)
-                
-                timeout_val = None
-                try:
-                    if timeout is not None:
-                        t = float(timeout)
-                        if t > 0: timeout_val = t
-                except:
-                    pass
-                
-                try:
-                    logger.info(f"Running subprocess: {cmd}")
-                    # Use shell=True to allow command string execution
-                    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout_val)
-                    output_str = result.stdout
-                except subprocess.TimeoutExpired:
-                     output_str = "Error: Timeout Expired"
-                     logger.warning(f"Process timeout: {cmd}")
-                except Exception as e:
-                     output_str = f"Error: {str(e)}"
-                     logger.error(f"Process error: {e}")
-            
-            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
-            out_port = next((p for p in node.get('outputs', []) if p.get('key') == 'output'), None)
-            if out_port:
-                self.output_cache[node['id']][out_port['id']] = output_str
-
-            return self.follow_flow(node, 'exec_out')
-
+        if handler:
+            return handler(node)
         else:
             # Fallback for unknown nodes with standard exec_out
             return self.follow_flow(node, 'exec_out')
+
+    # --- Node Handlers ---
+
+    def _handle_flow_passthrough(self, node):
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_prompt_user(self, node):
+        title = self.get_input_value(node, 'title')
+        message = self.get_input_value(node, 'message')
+        
+        self.is_suspended = True
+        self.suspended_node_id = node['id']
+        self.suspended_prompt_data = {'title': title, 'message': message}
+        
+        if self.sim_state:
+            self.sim_state.send_prompt_request(title, message)
+        
+        return "SUSPEND"
+
+    def _handle_log_message(self, node):
+        msg = self.get_input_value(node, 'message')
+        if self.sim_state:
+            self.sim_state._add_event(f"{msg}", "info")
+        else:
+            print(f"GRAPH LOG: {msg}")
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_set_variable(self, node):
+        name = node.get('params', {}).get('name') or self.get_input_value(node, 'name')
+        val = self.get_input_value(node, 'value')
+        if name:
+            self.context[name] = val
+            logger.debug(f"Set Local Variable {name} = {val}")
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_function_return(self, node):
+        # Gather all data inputs as return values
+        returns = {}
+        for input_port in node.get('inputs', []):
+            if input_port['type'] != 'exec':
+                val = self.get_input_value(node, input_port.get('key') or input_port['label'])
+                returns[input_port['label']] = val
+        
+        self.return_stack.append(returns)
+        return "STOP" # Signal to cease execution of this graph context
+
+    def _handle_function_call(self, node):
+        func_id = node.get('params', {}).get('functionId')
+        if not func_id:
+            raise Exception(f"Function Call node {node['id']} missing functionId")
+
+        # Gather arguments
+        args = {}
+        for input_port in node.get('inputs', []):
+            if input_port['type'] != 'exec':
+                # Check if port is connected or has default value
+                val = self.get_input_value(node, input_port.get('key') or input_port['label'])
+                args[input_port['label']] = val
+
+        # Execute sub-graph
+        prev_stack_depth = len(self.return_stack)
+        res = self.execute_function(func_id, args, caller_node_id=node['id'])
+        if res == "SUSPEND": return "SUSPEND"
+        
+        # Extract results from return stack
+        if len(self.return_stack) > prev_stack_depth:
+            results = self.return_stack.pop()
+            # Cache results for this node's output ports
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            for output_port in node.get('outputs', []):
+                if output_port['type'] != 'exec':
+                    label = output_port['label']
+                    if label in results:
+                        self.output_cache[node['id']][output_port['id']] = results[label]
+
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_condition(self, node):
+        condition = self.get_input_value(node, 'condition')
+        if bool(condition):
+            return self.follow_flow(node, 'exec_true')
+        else:
+            return self.follow_flow(node, 'exec_false')
+
+    def _handle_action(self, node):
+        msg = self.get_input_value(node, 'message')
+        if self.sim_state:
+            self.sim_state._add_event(f"Action: {msg}", "info")
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_list_set(self, node):
+        lst = self.get_input_value(node, 'list')
+        idx = int(self.get_input_value(node, 'index') or 0)
+        val = self.get_input_value(node, 'value')
+        if isinstance(lst, list) and 0 <= idx < len(lst):
+            lst[idx] = val
+        elif isinstance(lst, list) and idx == len(lst):
+            lst.append(val)
+            
+        self._update_output_cache(node, 'list', lst)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_list_add(self, node):
+        lst = self.get_input_value(node, 'list')
+        val = self.get_input_value(node, 'value')
+        if isinstance(lst, list):
+            lst.append(val)
+        
+        self._update_output_cache(node, 'list', lst)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_list_remove_at(self, node):
+        lst = self.get_input_value(node, 'list')
+        idx = int(self.get_input_value(node, 'index') or 0)
+        if isinstance(lst, list) and 0 <= idx < len(lst):
+            lst.pop(idx)
+        
+        self._update_output_cache(node, 'list', lst)
+        return self.follow_flow(node, 'exec_out')
+    
+    def _handle_list_clear(self, node):
+        lst = self.get_input_value(node, 'list')
+        if isinstance(lst, list):
+            lst.clear()
+        
+        self._update_output_cache(node, 'list', lst)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_ai_eval(self, node):
+        model_name = self.get_input_value(node, 'model_name')
+        system_prompt = self.get_input_value(node, 'system_prompt')
+        prompt = self.get_input_value(node, 'prompt')
+        tools_input = self.get_input_value(node, 'tools')
+
+        if self.sim_state:
+            self.sim_state._add_event(f"AI Eval: {prompt[:100]}...", "info")
+
+        # Prepare tools
+        executable_tools = []
+        if isinstance(tools_input, list):
+            for t in tools_input:
+                if isinstance(t, dict) and 'id' in t:
+                    executable_tools.append(self._create_dynamic_tool(t))
+
+        # Get before status
+        before_files = set(self._get_git_changed_files())
+
+        # Call AI (blocks)
+        try:
+            response = AI_Eval(
+                system_prompt=system_prompt,
+                user_prompt=prompt,
+                model_name=model_name,
+                tools=executable_tools if executable_tools else None,
+                dynamic_tools=tools_input if isinstance(tools_input, list) else None
+            )
+        except Exception as e:
+            logger.error(f"AI_Eval failed: {e}")
+            response = f"Error: {str(e)}"
+
+        # Get after status
+        after_files = set(self._get_git_changed_files())
+        changed_files = list(after_files - before_files)
+
+        # Store in output cache
+        if node['id'] not in self.output_cache: 
+            self.output_cache[node['id']] = {}
+            
+        for output_port in node.get('outputs', []):
+            key = output_port.get('key')
+            if key == 'response':
+                self.output_cache[node['id']][output_port['id']] = response
+            elif key == 'changed_files':
+                self.output_cache[node['id']][output_port['id']] = changed_files
+
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_map_set(self, node):
+        map_obj = self.get_input_value(node, 'map')
+        key = self.get_input_value(node, 'key')
+        val = self.get_input_value(node, 'value')
+        if isinstance(map_obj, dict):
+            map_obj[key] = val
+        
+        self._update_output_cache(node, 'map', map_obj)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_map_remove(self, node):
+        map_obj = self.get_input_value(node, 'map')
+        key = self.get_input_value(node, 'key')
+        if isinstance(map_obj, dict) and key in map_obj:
+            del map_obj[key]
+        
+        self._update_output_cache(node, 'map', map_obj)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_run_process(self, node):
+        program_name = self.get_input_value(node, 'program_name')
+        arguments = self.get_input_value(node, 'arguments')
+        timeout = self.get_input_value(node, 'timeout')
+        
+        output_str = ""
+        
+        if program_name:
+            # Construct command string
+            cmd = str(program_name)
+            
+            if isinstance(arguments, list):
+                 for arg in arguments:
+                     cmd += " " + str(arg)
+            elif arguments:
+                 cmd += " " + str(arguments)
+            
+            timeout_val = None
+            try:
+                if timeout is not None:
+                    t = float(timeout)
+                    if t > 0: timeout_val = t
+            except:
+                pass
+            
+            try:
+                logger.info(f"Running subprocess: {cmd}")
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout_val)
+                output_str = result.stdout
+            except subprocess.TimeoutExpired:
+                 output_str = "Error: Timeout Expired"
+                 logger.warning(f"Process timeout: {cmd}")
+            except Exception as e:
+                 output_str = f"Error: {str(e)}"
+                 logger.error(f"Process error: {e}")
+        
+        self._update_output_cache(node, 'output', output_str)
+        return self.follow_flow(node, 'exec_out')
+
+    def _update_output_cache(self, node, port_key, value):
+        if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+        out_port = next((p for p in node.get('outputs', []) if p.get('key') == port_key), None)
+        if out_port:
+            self.output_cache[node['id']][out_port['id']] = value
+
+    # --- Core Logic Methods ---
 
     def resume(self, choice):
         """
@@ -438,9 +456,7 @@ class GraphInterpreter:
             'nodes': self.nodes,
             'connections': self.connections,
             'output_cache': self.output_cache,
-            'connections': self.connections,
-            'output_cache': self.output_cache,
-            'args': args,
+            'args': args, # Was missing? Added back
             'caller_id': caller_node_id
         })
 
