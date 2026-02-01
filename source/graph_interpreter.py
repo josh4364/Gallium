@@ -257,7 +257,8 @@ class GraphInterpreter:
                     system_prompt=system_prompt,
                     user_prompt=prompt,
                     model_name=model_name,
-                    tools=executable_tools if executable_tools else None
+                    tools=executable_tools if executable_tools else None,
+                    dynamic_tools=tools_input if isinstance(tools_input, list) else None
                 )
             except Exception as e:
                 logger.error(f"AI_Eval failed: {e}")
@@ -790,7 +791,9 @@ class GraphInterpreter:
         """
         func_id = tool_def['id']
         # Sanitize name for Python validity
-        sanitized_name = "".join(c for c in tool_def['name'] if c.isalnum() or c == '_')
+        name = tool_def['name']
+        sanitized_name = name.replace(" ", "_").replace("-", "_")
+        sanitized_name = "".join(c for c in sanitized_name if c.isalnum() or c == '_')
         if not sanitized_name: sanitized_name = "unnamed_tool"
         
         args_parts = []

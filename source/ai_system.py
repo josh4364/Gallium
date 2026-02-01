@@ -43,7 +43,8 @@ def AI_Eval(
     tools: list = None,
     model_name: str = "gemini-3-flash-preview",
     use_fallback: bool = False,
-    response_mime_type: str = None
+    response_mime_type: str = None,
+    dynamic_tools: list = None
 ):
     """
     Evaluates the prompt using the configured backend (API or CLI Fallback).
@@ -68,7 +69,7 @@ def AI_Eval(
             full_prompt += f"--- {k} ---\n{v}\n"
 
     if use_fallback:
-        return _eval_with_cli(system_prompt, full_prompt, tools, response_mime_type)
+        return _eval_with_cli(system_prompt, full_prompt, tools, response_mime_type, dynamic_tools)
     
     return _eval_with_api(system_prompt, full_prompt, tools, model_name, response_mime_type)
 
@@ -162,7 +163,7 @@ def _eval_with_api(system_prompt, full_prompt, tools, model_name, response_mime_
                 # Try fallback for other errors too? Maybe not.
                 raise e
 
-def _eval_with_cli(system_prompt, full_prompt, tools=None, response_mime_type=None):
+def _eval_with_cli(system_prompt, full_prompt, tools=None, response_mime_type=None, dynamic_tools=None):
     """
     Attempts to use the gemini-cli via nix shell.
     Uses source.fallback module configuration.
@@ -182,9 +183,22 @@ def _eval_with_cli(system_prompt, full_prompt, tools=None, response_mime_type=No
             
     # Ensure MCP is configured so the CLI has tools
     try:
-        fallback.ensure_mcp_configured(allowed_tools=allowed_tool_names, cwd=os.getcwd())
+        dynamic_tools_path = None
+        if dynamic_tools:
+            import tempfile
+            # We create a temporary file that will last just long enough for the CLI call?
+            # Actually ensure_mcp_configured re-registers the server, so the server needs access to it.
+            # Maybe we should put it in a persistent-ish temp location or gallium/.temp
+            temp_dir = os.path.join(os.getcwd(), "gallium", ".temp")
+            os.makedirs(temp_dir, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', dir=temp_dir, delete=False) as f:
+                json.dump(dynamic_tools, f)
+                dynamic_tools_path = f.name
+                logger.info(f"Created temporary dynamic tools file: {dynamic_tools_path}")
+                
+        fallback.ensure_mcp_configured(allowed_tools=allowed_tool_names, cwd=os.getcwd(), dynamic_tools_path=dynamic_tools_path)
     except Exception as e:
-        logger.warning(f"Failed to ensure MCP configured: {e}")
+        logger.error(f"Failed to ensure MCP configured: {e}", exc_info=True)
 
     # Combining system prompt and user prompt
     combined_prompt = f"SYSTEM INSTRUCTION:\n{system_prompt}\n\nUSER PROMPT:\n{full_prompt}"
@@ -195,6 +209,9 @@ def _eval_with_cli(system_prompt, full_prompt, tools=None, response_mime_type=No
     
     # Construct full argument list
     cmd_args = cmd_base + ["--yolo", "--model", "gemini-3-flash-preview"]
+    
+    # Explicitly allow our bridge server
+    cmd_args += ["--allowed-mcp-server-names", fallback.MCP_SERVER_NAME]
     
     if response_mime_type == "application/json":
         cmd_args += ["--output-format", "json"]
@@ -221,3 +238,9 @@ def _eval_with_cli(system_prompt, full_prompt, tools=None, response_mime_type=No
         return result.stdout.strip()
     except Exception as e:
         return f"ERROR: CLI Fallback execution error: {e}"
+    finally:
+        if 'dynamic_tools_path' in locals() and dynamic_tools_path and os.path.exists(dynamic_tools_path):
+            try:
+                os.remove(dynamic_tools_path)
+            except:
+                pass

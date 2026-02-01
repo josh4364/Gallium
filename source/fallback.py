@@ -8,12 +8,13 @@ GEMINI_CLI_CMD = "nix shell github:NixOS/nixpkgs/nixos-unstable#gemini-cli --com
 BRIDGE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), "mcp_bridge.py"))
 MCP_SERVER_NAME = "gallium-bridge"
 
-def ensure_mcp_configured(allowed_tools=None, cwd=None):
+def ensure_mcp_configured(allowed_tools=None, cwd=None, dynamic_tools_path=None):
     """
     Ensure the MCP bridge is registered with gemini-cli.
     Args:
         allowed_tools: List of tool names to whitelist.
         cwd: The working directory for the bridge to use as sandbox root.
+        dynamic_tools_path: Path to a JSON file containing dynamic tool definitions.
     """
     
     # Construct arguments for the bridge script
@@ -26,6 +27,9 @@ def ensure_mcp_configured(allowed_tools=None, cwd=None):
     if allowed_tools:
         tools_str = ",".join(allowed_tools)
         script_args += f" --tools {tools_str}"
+        
+    if dynamic_tools_path:
+        script_args += f" --dynamic-tools {dynamic_tools_path}"
         
     full_server_cmd = f"{python_exe} {script_args}"
     

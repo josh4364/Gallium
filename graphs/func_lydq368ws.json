@@ -35,7 +35,7 @@
             "params": {
                 "model_name": "gemini-3-flash-preview",
                 "system_prompt": "You are a helpful coding assistant.",
-                "prompt": "Test the tool \"custom current time\"\nAnd the tool \"caculate\" (math expressions)"
+                "prompt": "Test the tool \"custom current time\"\nAnd the tool \"caculate\" (math expressions)\nIf the tools are not visible STOP and reply with the list of tools you have"
             },
             "inputs": [
                 {
@@ -161,7 +161,7 @@
             "height": 149,
             "title": "Create Tool",
             "params": {
-                "function_name": "custom current time",
+                "function_name": "get current time",
                 "description": "returns the current local time"
             },
             "inputs": [
@@ -183,8 +183,8 @@
         {
             "id": "node_cu052fmdh",
             "type": "list_make",
-            "x": 659.9333424601982,
-            "y": 892.8228221635703,
+            "x": 662.0060977019654,
+            "y": 903.1865983724058,
             "width": 300,
             "height": 120,
             "title": "Make List (Tool)",
@@ -269,10 +269,10 @@
             "toPort": "node_oz4hs4mrj_exec_in_l2sl"
         },
         {
-            "fromNode": "node_3vhcwsoo3",
-            "fromPort": "node_3vhcwsoo3_tool_hk3g",
-            "toNode": "node_cu052fmdh",
-            "toPort": "node_cu052fmdh_in_0"
+            "fromNode": "node_oz4hs4mrj",
+            "fromPort": "node_oz4hs4mrj_exec_out_fdvl",
+            "toNode": "node_8pehgtzwr",
+            "toPort": "node_8pehgtzwr_exec_in_2flh"
         },
         {
             "fromNode": "node_cu052fmdh",
@@ -281,10 +281,10 @@
             "toPort": "node_8pehgtzwr_tools"
         },
         {
-            "fromNode": "node_oz4hs4mrj",
-            "fromPort": "node_oz4hs4mrj_exec_out_fdvl",
-            "toNode": "node_8pehgtzwr",
-            "toPort": "node_8pehgtzwr_exec_in_2flh"
+            "fromNode": "node_3vhcwsoo3",
+            "fromPort": "node_3vhcwsoo3_tool_hk3g",
+            "toNode": "node_cu052fmdh",
+            "toPort": "node_cu052fmdh_in_0"
         },
         {
             "fromNode": "node_ew7e3e6lo",
@@ -294,8 +294,8 @@
         }
     ],
     "view": {
-        "panX": -440.7691941259625,
-        "panY": -408.4840808723843,
+        "panX": -594.7691941259625,
+        "panY": -487.4840808723843,
         "zoom": 0.9648992605103405
     }
 }

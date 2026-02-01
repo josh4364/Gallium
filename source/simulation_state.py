@@ -26,6 +26,7 @@ class SimulationState:
             "on_start": None,
             "on_tick": None
         }
+        self.goal = ""
         self.workflow_memory = {}
         
         # Manifest State
@@ -106,6 +107,7 @@ class SimulationState:
         """Returns the current state of the simulation for the client."""
         return {
             "tick": self.tick_count,
+            "goal": self.goal,
             "workflow_hooks": self.workflow_hooks,
             "workflow_memory": self.workflow_memory,
             "latest_events": self.events[-10:], # Send last 10 events for efficiency
@@ -170,6 +172,7 @@ class SimulationState:
                     data = json.load(f)
                     self.workflow_hooks["on_start"] = data.get("hook_on_start")
                     self.workflow_hooks["on_tick"] = data.get("hook_on_tick")
+                    self.goal = data.get("goal", "")
                     self._add_event("Loaded State from Manifest.", "info")
         except Exception as e:
             logger.warning(f"Failed to load manifest: {e}")
