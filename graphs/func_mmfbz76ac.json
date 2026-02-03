@@ -1,10 +1,10 @@
 {
     "nodes": [
         {
-            "id": "node_u4c1yacsh",
+            "id": "node_zach6dkma",
             "type": "start",
-            "x": 72,
-            "y": 85,
+            "x": 92,
+            "y": 52,
             "width": 300,
             "height": 120,
             "title": "Start",
@@ -12,34 +12,29 @@
             "inputs": [],
             "outputs": [
                 {
-                    "id": "node_u4c1yacsh_flow",
+                    "id": "node_zach6dkma_flow",
                     "label": "exec_out",
                     "type": "exec"
-                },
-                {
-                    "id": "node_u4c1yacsh_out_1ivd5",
-                    "label": "New Input",
-                    "type": "string"
                 }
             ]
         },
         {
-            "id": "node_j2ur2ke5x",
+            "id": "node_f6vvmbrha",
             "type": "function_return",
-            "x": 832,
-            "y": 90,
+            "x": 654,
+            "y": 55,
             "width": 300,
             "height": 120,
             "title": "Return",
             "params": {},
             "inputs": [
                 {
-                    "id": "node_j2ur2ke5x_flow",
+                    "id": "node_f6vvmbrha_flow",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_j2ur2ke5x_in_tay7c",
+                    "id": "node_f6vvmbrha_in_uq1p3",
                     "label": "New Output",
                     "type": "string"
                 }
@@ -47,10 +42,10 @@
             "outputs": []
         },
         {
-            "id": "node_16denacru",
+            "id": "node_08j5plbgf",
             "type": "run_process",
-            "x": 444,
-            "y": 81,
+            "x": 306,
+            "y": 211,
             "width": 336,
             "height": 188,
             "title": "Run Process",
@@ -61,24 +56,24 @@
             },
             "inputs": [
                 {
-                    "id": "node_16denacru_exec_in_hz06",
+                    "id": "node_08j5plbgf_exec_in_78iq",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_16denacru_program_name",
+                    "id": "node_08j5plbgf_program_name",
                     "label": "Program",
                     "type": "string",
                     "key": "program_name"
                 },
                 {
-                    "id": "node_16denacru_arguments",
+                    "id": "node_08j5plbgf_arguments",
                     "label": "Arguments",
                     "type": "list:string",
                     "key": "arguments"
                 },
                 {
-                    "id": "node_16denacru_timeout",
+                    "id": "node_08j5plbgf_timeout",
                     "label": "Timeout",
                     "type": "number",
                     "key": "timeout"
@@ -86,12 +81,12 @@
             ],
             "outputs": [
                 {
-                    "id": "node_16denacru_exec_out_wkg2",
+                    "id": "node_08j5plbgf_exec_out_i3sp",
                     "label": "exec_out",
                     "type": "exec"
                 },
                 {
-                    "id": "node_16denacru_output",
+                    "id": "node_08j5plbgf_output",
                     "label": "Output",
                     "type": "string",
                     "key": "output"
@@ -101,22 +96,22 @@
     ],
     "connections": [
         {
-            "fromNode": "node_16denacru",
-            "fromPort": "node_16denacru_output",
-            "toNode": "node_j2ur2ke5x",
-            "toPort": "node_j2ur2ke5x_in_tay7c"
+            "fromNode": "node_zach6dkma",
+            "fromPort": "node_zach6dkma_flow",
+            "toNode": "node_08j5plbgf",
+            "toPort": "node_08j5plbgf_exec_in_78iq"
         },
         {
-            "fromNode": "node_16denacru",
-            "fromPort": "node_16denacru_exec_out_wkg2",
-            "toNode": "node_j2ur2ke5x",
-            "toPort": "node_j2ur2ke5x_flow"
+            "fromNode": "node_08j5plbgf",
+            "fromPort": "node_08j5plbgf_exec_out_i3sp",
+            "toNode": "node_f6vvmbrha",
+            "toPort": "node_f6vvmbrha_flow"
         },
         {
-            "fromNode": "node_u4c1yacsh",
-            "fromPort": "node_u4c1yacsh_flow",
-            "toNode": "node_16denacru",
-            "toPort": "node_16denacru_exec_in_hz06"
+            "fromNode": "node_08j5plbgf",
+            "fromPort": "node_08j5plbgf_output",
+            "toNode": "node_f6vvmbrha",
+            "toPort": "node_f6vvmbrha_in_uq1p3"
         }
     ],
     "types": {
@@ -148,22 +143,16 @@
         ]
     },
     "view": {
-        "panX": 273.35999999999996,
-        "panY": 256.21000000000004,
-        "zoom": 0.81
+        "panX": 233,
+        "panY": 211,
+        "zoom": 1
     },
     "name": "get current time",
     "description": "",
-    "inputs": [
-        {
-            "id": "1ivd5",
-            "name": "New Input",
-            "type": "string"
-        }
-    ],
+    "inputs": [],
     "outputs": [
         {
-            "id": "tay7c",
+            "id": "uq1p3",
             "name": "New Output",
             "type": "string"
         }

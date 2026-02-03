@@ -83,10 +83,6 @@ Object.assign(NodeGraph.prototype, {
                 const fromNode = this.nodes.find(n => n.id === c.fromNode);
                 const toNode = this.nodes.find(n => n.id === c.toNode);
                 if (fromNode && toNode) {
-                    const fromPort = fromNode.outputs.find(p => p.id === c.fromPort) || this.nodesLayer.querySelector(`#${c.fromPort}`); // Search fallback? IDs should match if saved correctly.
-                    const toPort = toNode.inputs.find(p => p.id === c.toPort);
-
-                    // Simple check
                     const realFromPort = fromNode.outputs.find(p => p.id === c.fromPort);
                     const realToPort = toNode.inputs.find(p => p.id === c.toPort);
 
@@ -108,68 +104,24 @@ Object.assign(NodeGraph.prototype, {
     async saveToFile() {
         if (window.funcManager && window.funcManager.functionDB) {
             await window.funcManager.saveCurrentFunction();
-
-            const currentFuncId = window.funcManager.currentFunctionId;
-            const currentFunc = window.funcManager.functionDB.getFunction(currentFuncId);
-
-            if (currentFunc) {
-                // Prepare Payload for Server
-                // We want to unpack 'data' string into the object so the server has a clean JSON
-                let graphData = {};
-                try {
-                    graphData = JSON.parse(currentFunc.data);
-                } catch (e) {
-                    console.error("Error parsing graph data", e);
-                }
-
-                const payload = {
-                    id: currentFunc.id,
-                    name: currentFunc.name,
-                    description: currentFunc.description,
-                    tags: currentFunc.tags,
-                    inputs: currentFunc.inputs,
-                    outputs: currentFunc.outputs,
-                    nodes: graphData.nodes || [],
-                    connections: graphData.connections || [],
-                    view: graphData.view
-                };
-
-                // Send to Server via Parent
-                if (window.parent && window.parent.saveFunctionToServer) {
-                    window.parent.saveFunctionToServer(currentFunc.id, payload);
-                    this.showNotification("Saving to Server...");
-                    return;
-                }
-            }
-
-            // Fallback: Download full DB if no server connection or legacy
-            const json = window.funcManager.functionDB.dump();
-            this.downloadFile(json, 'project_state.json');
-        } else {
-            // Single graph mode
-            const json = await this.serialize();
-            // Try server save for single graph? 
-            if (window.parent && window.parent.saveFunctionToServer) {
-                const data = JSON.parse(json);
-                // Assign a temp ID
-                window.parent.saveFunctionToServer("graph_" + Date.now(), data);
-                this.showNotification("Saving to Server...");
-                return;
-            }
-            this.downloadFile(json, 'graph_state.graph');
+            this.showNotification("Saved to Server");
+            return;
         }
+
+        // Single graph mode (original behavior)
+        const json = await this.serialize();
+        // Try server save for single graph? 
+        if (window.parent && window.parent.saveFunctionToServer) {
+            const data = JSON.parse(json);
+            // Assign a temp ID
+            window.parent.saveFunctionToServer("graph_" + Date.now(), data);
+            this.showNotification("Saving to Server...");
+            return;
+        }
+        this.downloadFile(json, 'graph_state.graph');
     },
 
     downloadFile(content, filename) {
-        const stream = new Blob([content]).stream();
-        const compressedReadableStream = stream.pipeThrough(new CompressionStream("gzip"));
-        // For simple download we might not need compression if saving to disk? 
-        // But original code did compress. Let's keep it simple for now and just text download if it's fallback.
-        // Actually original used gzip.
-        // Let's just do plain text for fallback to be safe/inspectable, or stick to compress.
-        // Re-implementing original compression logic for download:
-
-        // ... (truncated reuse of compress helper)
         this.compress(content).then(compressed => {
             const b64 = compressed.split(',')[1];
             const blob = new Blob([b64], { type: 'text/plain' });

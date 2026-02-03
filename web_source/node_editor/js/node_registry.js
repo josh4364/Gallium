@@ -458,5 +458,54 @@ const nodeRegistry = [
             { label: 'Role', type: 'string', key: 'role' }
         ],
         outputs: [{ label: 'Provider', type: 'string' }]
+    },
+    {
+        type: 'context_any_pending_messages',
+        name: 'Any Pending Messages',
+        tags: ['Context', 'Message', 'User', 'Check'],
+        color: '#009688',
+        inputs: [
+            { label: 'Context', type: 'context', key: 'ctx' }
+        ],
+        outputs: [
+            { label: 'Result', type: 'boolean', key: 'result' }
+        ]
+    },
+    {
+        type: 'context_get_new_messages',
+        name: 'Get New Messages',
+        tags: ['Context', 'Message', 'User', 'Get'],
+        color: '#009688',
+        inputs: [
+            { label: 'Context', type: 'context', key: 'ctx' }
+        ],
+        outputs: [
+            { label: 'Messages', type: 'list:string', key: 'messages' }
+        ]
+    },
+    {
+        type: 'context_get_all_messages',
+        name: 'Get All Messages',
+        tags: ['Context', 'Message', 'Get'],
+        color: '#009688',
+        inputs: [
+            { label: 'Context', type: 'context', key: 'ctx' }
+        ],
+        outputs: [
+            { label: 'Messages', type: 'list:string', key: 'messages' }
+        ]
+    },
+    {
+        type: 'context_send_message',
+        name: 'Send Thread Message',
+        tags: ['Context', 'Message', 'Assistant', 'Send'],
+        color: '#009688',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Context', type: 'context', key: 'ctx' },
+            { label: 'Message', type: 'string', key: 'message' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
+        params: { message: '' }
     }
 ];

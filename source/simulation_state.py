@@ -1,6 +1,7 @@
 
 import logging
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 from source.graph_interpreter import GraphInterpreter
@@ -28,16 +29,18 @@ class SimulationState:
         self.interpreter = GraphInterpreter(self, self.func_manager, self.struct_manager)
         self.workflow_hooks = {
             "on_start": None,
-            "on_tick": None,
-            "triage": "func_triage", # Default
-            "planner": "func_planner", # Default
-            "implementer": "func_implementer" # Default
+            "on_tick": None
         }
         self.goal = ""
         self.workflow_memory = {}
         self.orchestrator = Orchestrator(self)
         self.pending_graph_id = None
         self.pending_graph_context = None
+        
+        # Workflow Engine State
+        self.threads = {} # thread_id -> WorkflowInstance dict
+        self.active_thread_id = None
+        self.auto_run = False
         
         # Manifest State
         self._load_state_from_manifest()
@@ -105,28 +108,11 @@ class SimulationState:
 
 
     def start_simulation(self):
-        """Runs the On Start graph."""
+        """Initializes the simulation state."""
         self.tick_count = 0 # Reset tick on start
-        self.events = [] # Optional: Clear events on restart? User didn't specify, but often Start means new session.
-                         # Actually logging results from On Start to stream suggests keeping them. 
-                         # But clearing old events is usually good. I'll NOT clear execution memory but I will reset tick.
         self._add_event("Simulation Started", "info")
         
         self.workflow_memory = {} # Reset memory on start
-        
-        if self.workflow_hooks.get("on_start"):
-            try:
-                graph = self.func_manager.load_function(self.workflow_hooks["on_start"])
-                if graph:
-                    self._add_event(f"Executing On Start Graph: {self.workflow_hooks['on_start']}", "info")
-                    self.interpreter.execute(graph, context={"tick": self.tick_count})
-                else:
-                    self._add_event(f"On Start Graph not found: {self.workflow_hooks['on_start']}", "warn")
-            except Exception as e:
-                logger.error(f"Error executing On Start graph: {e}")
-                self._add_event(f"Start Graph Error: {e}", "error")
-        else:
-             self._add_event("No On Start graph assigned.", "info")
         
         self.orchestrator.start()
         self.check_pending_execution()
@@ -134,22 +120,14 @@ class SimulationState:
         return self.get_state()
 
     def step(self):
-        """Advances the simulation by one tick (On Tick graph)."""
+        """Advances the simulation by one tick."""
         self.tick_count += 1
         
-        if self.workflow_hooks.get("on_tick"):
-            try:
-                graph = self.func_manager.load_function(self.workflow_hooks["on_tick"])
-                if graph:
-                    # Pass tick number to the first input, ensuring it's a number
-                    self.interpreter.safe_graph_eval(graph, ['number'], [self.tick_count])
-            except Exception as e:
-                logger.error(f"Error executing On Tick graph: {e}")
-                self._add_event(f"Tick Graph Error: {e}", "error")
-        
-                self._add_event(f"Tick Graph Error: {e}", "error")
-        
         self.check_pending_execution()
+        
+        # Evaluate dynamic workflow instances
+        self._evaluate_workflow_instances()
+        
         return self.get_state()
 
     def get_state(self):
@@ -161,7 +139,10 @@ class SimulationState:
             "workflow_memory": self.workflow_memory,
             "latest_events": self.events[-10:], # Send last 10 events for efficiency
             "pending_prompt": self.interpreter.suspended_prompt_data if self.interpreter.is_suspended else None,
-            "orchestrator_state": self.orchestrator.current_state
+            "orchestrator_state": self.orchestrator.current_state,
+            "threads": self.threads,
+            "active_thread_id": self.active_thread_id,
+            "auto_run": self.auto_run
         }
 
     def update_workflow_hooks(self, on_start, on_tick):
@@ -228,12 +209,198 @@ class SimulationState:
         """Handle incoming chat message from user."""
         self._add_event(f"User: {message}", "user_message")
         
-        # Store in Blackboard for Triage graph
-        self.workflow_memory["latest_user_message"] = message
+        # If there is an active thread, add to its memory
+        if self.active_thread_id and self.active_thread_id in self.threads:
+            instance = self.threads[self.active_thread_id]
+            instance["memory"]["latest_user_message"] = message
+            
+            # Formally track messages
+            if "messages" not in instance:
+                instance["messages"] = []
+            instance["messages"].append({"role": "user", "content": message, "responded": False})
+            
+            self._add_event(f"Added message to thread {self.active_thread_id} memory", "info")
+        else:
+            # Fallback to global
+            self.workflow_memory["latest_user_message"] = message
         
-        event = Event(name="USER_MESSAGE", payload={"message": message}, source="user_client")
-        self.orchestrator.handle_event(event)
         self.check_pending_execution()
+
+    def handle_start_goal(self, prompt, workflow_id):
+        """Initializes a new workflow instance from a user goal/prompt."""
+        self._add_event(f"Starting Goal with workflow {workflow_id}: {prompt}", "info")
+        
+        # Load workflow
+        workflow = self.func_manager.load_workflow(workflow_id)
+        if not workflow:
+            self._add_event(f"Failed to load workflow: {workflow_id}", "error")
+            return None
+            
+        # Create instance
+        thread_id = f"thread_{int(time.time())}"
+        instance = {
+            "id": thread_id,
+            "workflow_id": workflow_id,
+            "agent_id": workflow.get("router_agent"),
+            "current_state_id": None, # Will be set on first eval
+            "memory": {
+                "goal": prompt,
+                "latest_user_message": prompt,
+                "_thread_id": thread_id
+            },
+            "messages": [
+                {"role": "user", "content": prompt, "responded": False}
+            ],
+            "tick_count": 0,
+            "state_tick": 0,
+            "status": "active"
+        }
+        
+        self.threads[thread_id] = instance
+        self.active_thread_id = thread_id
+        
+        # Immediate evaluation to enter start state
+        self._evaluate_workflow_instances()
+        
+        return self.get_state()
+
+    def delete_thread(self, thread_id):
+        """Removes a thread from history."""
+        if thread_id in self.threads:
+            del self.threads[thread_id]
+            if self.active_thread_id == thread_id:
+                self.active_thread_id = next(iter(self.threads)) if self.threads else None
+            self._add_event(f"Deleted thread {thread_id}", "info")
+            return True
+        return False
+
+    def _evaluate_workflow_instances(self):
+        """Ticks all active workflow instances."""
+        for tid, instance in self.threads.items():
+            if instance.get("status") == "active":
+                self._evaluate_instance(instance)
+
+    def _evaluate_instance(self, instance):
+        """Evaluates one step of a workflow instance (the Agent FSM)."""
+        agent_id = instance.get("agent_id")
+        if not agent_id:
+            return
+            
+        agent_data = self.func_manager.load_agent(agent_id)
+        if not agent_data:
+            self._add_event(f"Failed to load agent {agent_id} for thread {instance['id']}", "error")
+            instance["status"] = "error"
+            return
+
+        # 1. Handle Initial State Transition
+        if not instance.get("current_state_id"):
+            start_state = next((s for s in agent_data.get("states", []) if s.get("isStart")), None)
+            if start_state:
+                instance["current_state_id"] = start_state["id"]
+                instance["state_tick"] = 0
+                state_name = start_state.get('name', 'Start')
+                if "messages" not in instance: instance["messages"] = []
+                instance["messages"].append({"role": "system", "content": f"Entered state: {state_name}"})
+                self._add_event(f"Thread {instance['id']} entered start state: {state_name}", "info")
+            else:
+                self._add_event(f"Agent {agent_id} has no start state", "error")
+                instance["status"] = "error"
+                return
+
+        # 2. Get Current State
+        current_state_id = instance["current_state_id"]
+        current_state = next((s for s in agent_data.get("states", []) if s["id"] == current_state_id), None)
+        if not current_state:
+            self._add_event(f"Thread {instance['id']} current state {current_state_id} not found", "error")
+            instance["status"] = "error"
+            return
+
+        # 3. Check Transitions FIRST (to allow for immediate state changes based on inputs)
+        # OR should we tick first? User said: "agent state nodes `tick` the function ... and tick number as second arg"
+        # Usually we tick the current state, THEN check if it's time to move.
+        
+        # 3.1 Execute Function for current state
+        func_id = current_state.get("function_id")
+        if func_id:
+            try:
+                graph = self.func_manager.load_function(func_id)
+                if graph:
+                    # Tick graph with (context, tick) as promised
+                    # Set the current thread context in the interpreter for node resolution fallback
+                    self.interpreter.thread_context = instance["id"]
+                    self.interpreter.safe_graph_eval(graph, ['map', 'number'], [instance["memory"], instance["state_tick"]])
+                    self.interpreter.thread_context = None # Clear after
+                else:
+                    logger.warning(f"Function {func_id} not found for state {current_state_id}")
+            except Exception as e:
+                logger.error(f"Error ticking function {func_id} in state {current_state_id}: {e}")
+                self._add_event(f"State Function Error ({func_id}): {e}", "error")
+
+        # 3.2 Check for Transitions
+        transitions = [t for t in agent_data.get("transitions", []) if t["from"] == current_state_id]
+        for trans in transitions:
+            if self._evaluate_conditions(trans.get("conditions", []), instance["memory"]):
+                # Transition!
+                instance["current_state_id"] = trans["to"]
+                instance["state_tick"] = 0
+                
+                target_state = next((s for s in agent_data.get("states", []) if s["id"] == trans["to"]), None)
+                state_name = target_state.get('name', trans["to"]) if target_state else trans["to"]
+                if "messages" not in instance: instance["messages"] = []
+                instance["messages"].append({"role": "system", "content": f"Transitioned to: {state_name}"})
+                
+                self._add_event(f"Thread {instance['id']} transitioned to {state_name}", "info")
+                return # Only one transition per tick
+
+        # 4. Increment Ticks
+        instance["tick_count"] += 1
+        instance["state_tick"] += 1
+
+    def _evaluate_conditions(self, conditions, memory):
+        """Checks if all conditions in a transition are met."""
+        if not conditions:
+            # If no conditions, it's an automatic transition? 
+            # Usually yes, or maybe after one tick. 
+            # In Agent Editor, unconditional transitions might be allowed.
+            return True
+            
+        for cond in conditions:
+            key = cond.get("key")
+            op = cond.get("op", "==").strip()
+            val = cond.get("value")
+            
+            mem_val = memory.get(key)
+            
+            # Simple evaluation
+            if op == "==":
+                if str(mem_val) != str(val): return False
+            elif op == "!=":
+                if str(mem_val) == str(val): return False
+            elif op == ">":
+                try:
+                    if not float(mem_val) > float(val): return False
+                except: return False
+            elif op == "<":
+                try:
+                    if not float(mem_val) < float(val): return False
+                except: return False
+            elif op == ">=":
+                try:
+                    if not float(mem_val) >= float(val): return False
+                except: return False
+            elif op == "<=":
+                try:
+                    if not float(mem_val) <= float(val): return False
+                except: return False
+            elif op == "exists":
+                if mem_val is None: return False
+            elif op == "not exists":
+                if mem_val is not None: return False
+            else:
+                logger.warning(f"Unknown comparison operator: {op}")
+                return False
+                
+        return True
 
     # Deprecated / Alias for backward compatibility if needed, 
     # but we will update call sites.

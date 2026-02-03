@@ -117,16 +117,15 @@ def main():
             msgs = server.get_messages()
             for msg in msgs:
                 # Use the extracted handler
-                # It returns the new auto_mode state (or same)
-                auto_mode = handle_message(msg, server, sim_state, auto_mode)
+                handle_message(msg, server, sim_state)
 
-            if auto_mode:
+            if sim_state.auto_run:
                 new_state = sim_state.step()
                 server.broadcast({
                     "type": "state_update",
                     "data": new_state
                 })
-                time.sleep(0.01)
+                time.sleep(1.0)
             else:
                 time.sleep(0.1)
             

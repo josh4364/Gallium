@@ -51,7 +51,6 @@ class FunctionDatabase {
     load(jsonString) {
         try {
             const data = JSON.parse(jsonString);
-            // Validate?
             this.functions = data;
             return true;
         } catch (e) {
@@ -66,9 +65,10 @@ class FunctionManager {
         this.graph = graph;
         this.typeDB = typeDB;
         this.functionDB = functionDB;
-        this.agentDB = agentDB || new FunctionDatabase(); // Optional for now
+        this.agentDB = agentDB || new FunctionDatabase();
         this.mode = 'function'; // 'function' or 'agent'
         this.currentFunctionId = null;
+        this.loadingFunctions = new Set(); // Track IDs currently fetching from server
 
         // Initialize with functions by default
         this.loadFirstAvailable();
@@ -83,6 +83,7 @@ class FunctionManager {
         if (this.mode === mode) return;
         this.mode = mode;
         this.currentFunctionId = null;
+        this.loadingFunctions.clear();
         console.log("Switched to mode:", mode);
         this.updateSelector();
         this.loadFirstAvailable();
@@ -93,7 +94,6 @@ class FunctionManager {
         if (items.length > 0) {
             this.loadFunction(items[0].id);
         } else {
-            // Create default?
             this.graph.clear();
             this.updateSelector();
         }
@@ -122,7 +122,6 @@ class FunctionManager {
         const selector = document.getElementById('function-selector');
         if (selector) {
             selector.onchange = (e) => {
-                this.saveCurrentFunction();
                 this.loadFunction(e.target.value);
             };
         }
@@ -150,11 +149,9 @@ class FunctionManager {
         const newFunc = this.curDB.createFunction(name, '', prefix);
 
         // Switch to the new one
-        this.currentFunctionId = newFunc.id;
-        this.updateSelector();
         await this.loadFunction(newFunc.id);
 
-        // Save the new stub to server immediately so it's not purged on refresh
+        // Save the new stub to server immediately
         await this.saveCurrentFunction();
     }
 
@@ -197,20 +194,40 @@ class FunctionManager {
     }
 
     async loadFunction(functionId) {
+        // 1. Save current one before switching
         if (this.currentFunctionId && this.currentFunctionId !== functionId) {
-            this.saveCurrentFunction();
+            await this.saveCurrentFunction();
         }
 
-        const func = this.curDB.getFunction(functionId);
-        if (!func) return;
+        // 2. Identify target
+        let func = this.curDB.getFunction(functionId);
+        if (!func) {
+            // Stub for new functions not yet in list
+            func = {
+                id: functionId,
+                name: functionId.startsWith('agent_') ? "New Agent" : "New Function",
+                description: "",
+                tags: [],
+                inputs: [],
+                outputs: [],
+                data: null,
+                history: [],
+                historyIndex: -1
+            };
+            this.curDB.functions[functionId] = func;
+        }
 
+        // 3. Clear view and set current ID immediately
         this.currentFunctionId = functionId;
+        this.graph.clear();
         this.updateSelector();
         this.updateUI();
 
-        // Lazy Load from Server
-        if ((!func.data || Object.keys(func.data).length === 0) && window.parent) {
+        // 4. Lazy Load from Server if data is missing
+        const hasData = func.data && Object.keys(func.data).length > 0;
+        if (!hasData && window.parent) {
             console.log("Requesting data from server:", functionId);
+            this.loadingFunctions.add(functionId);
             if (this.mode === 'agent' && window.parent.requestServerAgent) {
                 window.parent.requestServerAgent(functionId);
             } else if (window.parent.requestServerFunction) {
@@ -219,32 +236,24 @@ class FunctionManager {
             return; // Wait for callback
         }
 
-        // Clear and Load
+        // 5. Populate and Load
         if (func.data) {
-            console.log("FunctionManager: Loading data into graph", typeof func.data);
-            if (this.graph.loadData) {
-                // Handle both string and object data
-                let dataToLoad = typeof func.data === 'string' ? func.data : JSON.stringify(func.data);
-                const isEmpty = !dataToLoad || dataToLoad === "{}" || dataToLoad === "null" || dataToLoad === '{"nodes":[],"connections":[]}';
+            console.log("FunctionManager: Loading data into graph", functionId);
+            // Handle both string and object data
+            let dataToLoad = typeof func.data === 'string' ? func.data : JSON.stringify(func.data);
+            const isEmpty = !dataToLoad || dataToLoad === "{}" || dataToLoad === "null" || dataToLoad === '{"nodes":[],"connections":[]}';
 
-                if (isEmpty) {
-                    console.log("FunctionManager: Graph data is empty, clearing view.");
-                    this.graph.clear();
-                    this.graph.recenter();
-                } else {
-                    await this.graph.loadData(dataToLoad);
-                }
+            if (!isEmpty) {
+                await this.graph.loadData(dataToLoad);
             } else {
-                console.warn("NodeGraph.loadData not implemented");
+                console.log("FunctionManager: Graph data is empty.");
+                this.graph.recenter();
             }
         } else {
-            console.log("FunctionManager: No data found for function, clearing.");
-            this.graph.clear();
             this.graph.recenter();
-            // Do not save initial state here if it's a new function
         }
 
-        // Restore History
+        // 6. Restore History
         if (func.history && func.history.length > 0) {
             this.graph.history = [...func.history];
             this.graph.historyIndex = func.historyIndex;
@@ -259,35 +268,25 @@ class FunctionManager {
 
     onServerFunctionLoaded(id, data) {
         console.log("FunctionManager: onServerFunctionLoaded", id, data);
+        this.loadingFunctions.delete(id);
         const func = this.curDB.getFunction(id);
         if (func) {
             if (!data) {
                 console.warn("FunctionManager: Received null data for function", id, "- assuming empty.");
                 func.data = { nodes: [], connections: [] };
-                // If it's the current function, force a re-load to clear the view
-                if (this.currentFunctionId === id) {
-                    this.loadFunction(id);
-                }
-                return;
-            }
-            // Update metadata if present in data
-            if (data.name) func.name = data.name;
-            if (data.description) func.description = data.description;
-            if (data.tags) func.tags = data.tags;
-            if (data.inputs) func.inputs = data.inputs;
-            if (data.outputs) func.outputs = data.outputs;
-
-            // Store graph data
-            func.data = data;
-
-            console.log("FunctionManager: stored data");
-
-            // Only update the graph if this function is the one currently being viewed
-            if (this.currentFunctionId === id) {
-                console.log("FunctionManager: Loading function into graph view");
-                this.loadFunction(id);
             } else {
-                console.log("FunctionManager: Function updated in background (not active)");
+                if (data.name) func.name = data.name;
+                if (data.description) func.description = data.description;
+                if (data.tags) func.tags = data.tags;
+                if (data.inputs) func.inputs = data.inputs;
+                if (data.outputs) func.outputs = data.outputs;
+                func.data = data;
+            }
+
+            // Only update view if this is the active function
+            if (this.currentFunctionId === id) {
+                console.log("FunctionManager: Refilling graph view for active function");
+                this.loadFunction(id);
             }
         } else {
             console.error("FunctionManager: Function not found in DB", id);
@@ -295,42 +294,52 @@ class FunctionManager {
     }
 
     async saveCurrentFunction() {
-        if (this.currentFunctionId) {
-            const currentFunc = this.curDB.getFunction(this.currentFunctionId);
-            if (currentFunc) {
-                const graphData = await this.graph.serialize();
-                let parsedGraph = {};
-                try {
-                    parsedGraph = JSON.parse(graphData);
-                } catch (e) { console.error("Save failure: could not parse serialized graph", e); }
+        if (!this.currentFunctionId) return;
 
-                // Avoid saving empty seeds to prevent duplicate "Main" files on disk
-                if (currentFunc.isSeed && (!parsedGraph.nodes || parsedGraph.nodes.length === 0)) {
-                    console.log("Skipping save of empty seed function:", currentFunc.name);
-                    return;
-                }
+        // CRITICAL: Protection against overwriting server with empty view during load
+        if (this.loadingFunctions.has(this.currentFunctionId)) {
+            console.warn("Skipping save: Function is still loading from server.");
+            return;
+        }
 
-                const fullPayload = {
-                    ...parsedGraph,
-                    name: currentFunc.name,
-                    description: currentFunc.description,
-                    inputs: currentFunc.inputs,
-                    outputs: currentFunc.outputs,
-                    tags: currentFunc.tags
-                };
+        const currentFunc = this.curDB.getFunction(this.currentFunctionId);
+        if (!currentFunc) return;
 
-                currentFunc.data = fullPayload; // Store object locally too
-                currentFunc.history = [...this.graph.history];
-                currentFunc.historyIndex = this.graph.historyIndex;
+        const graphDataString = await this.graph.serialize();
+        let parsedGraph = {};
+        try {
+            parsedGraph = JSON.parse(graphDataString);
+        } catch (e) {
+            console.error("Save failure: could not parse serialized graph", e);
+            return;
+        }
 
-                // Notify Server
-                if (window.parent) {
-                    if (this.mode === 'agent' && window.parent.saveAgentToServer) {
-                        window.parent.saveAgentToServer(currentFunc.id, fullPayload);
-                    } else if (window.parent.saveFunctionToServer) {
-                        window.parent.saveFunctionToServer(currentFunc.id, fullPayload);
-                    }
-                }
+        // Avoid saving empty seeds to prevent duplicate "Main" files on disk
+        if (currentFunc.isSeed && (!parsedGraph.nodes || parsedGraph.nodes.length === 0)) {
+            console.log("Skipping save of empty seed function:", currentFunc.name);
+            return;
+        }
+
+        const fullPayload = {
+            ...parsedGraph,
+            name: currentFunc.name,
+            description: currentFunc.description,
+            inputs: currentFunc.inputs,
+            outputs: currentFunc.outputs,
+            tags: currentFunc.tags
+        };
+
+        currentFunc.data = fullPayload; // Store object locally
+        currentFunc.history = [...this.graph.history];
+        currentFunc.historyIndex = this.graph.historyIndex;
+        currentFunc.isSeed = false; // It's modified now
+
+        // Notify Server
+        if (window.parent) {
+            if (this.mode === 'agent' && window.parent.saveAgentToServer) {
+                window.parent.saveAgentToServer(currentFunc.id, fullPayload);
+            } else if (window.parent.saveFunctionToServer) {
+                window.parent.saveFunctionToServer(currentFunc.id, fullPayload);
             }
         }
     }
@@ -350,13 +359,11 @@ class FunctionManager {
         this.renderIOList(func, 'input');
         this.renderIOList(func, 'output');
 
-        // Update any Special Nodes in the graph (Function Input / Return)
         this.updateSpecialNodes();
     }
 
     updateSpecialNodes() {
         const func = this.curDB.getFunction(this.currentFunctionId);
-        // Find Function Input nodes
         this.graph.nodes.forEach(node => {
             if (node.type === 'start') {
                 this.updateFunctionInputNode(node, func);
@@ -365,13 +372,9 @@ class FunctionManager {
                 this.updateFunctionReturnNode(node, func);
             }
         });
-        // We also need to update the DOM elements for these nodes to reflect new ports
+
         this.graph.nodes.forEach(node => {
             if (node.type === 'start' || node.type === 'function_return') {
-                this.graph.updateNodeElement(node); // This needs to exist or I use the internal createNodeElement re-render logic
-                // The graph.updateNodeElement only updates position. 
-                // I might need to re-create the DOM or update ports manually.
-                // Simplest is to force re-render of the node DOM.
                 const oldEl = node.element;
                 if (oldEl && oldEl.parentNode) {
                     oldEl.parentNode.removeChild(oldEl);
@@ -380,18 +383,11 @@ class FunctionManager {
             }
         });
 
-        // Redraw connections because ports might have moved
         this.graph.renderConnections();
     }
 
     updateFunctionInputNode(node, func) {
-        // Output ports of this node = Inputs of the function
-        // We must preserve IDs if possible to keep connections
         const newOutputs = func.inputs.map(input => {
-            // Check if we already have an output for this input
-            // The node outputs store the ID.
-            // We need a consistent ID generation strategy.
-            // Use the input's persistent ID from the Function definition.
             return {
                 id: node.id + '_out_' + input.id,
                 label: input.name,
@@ -400,22 +396,12 @@ class FunctionManager {
         });
         node.outputs = newOutputs;
         node.title = "Start";
-        // Inputs? Function Input node usually has no inputs (it generates data).
-        // Except maybe Exec?
-        // Let's add Exec Output automatically? Or user defines it?
-        // Usually "Entry" has Exec Out.
-        // Let's assume the first output should implicitly be Exec if not defined, 
-        // or we add a special "Start" exec pin.
-        // The user prompt "Function Input (which contains the output nodes for all of the user defined inputs to this graph)"
-        // It likely implies data inputs. The control flow usually starts from a separate "Entry" node or this node is the Entry.
-        // Let's add a fixed Exec output called "Flow".
         if (!node.outputs.find(o => o.type === 'exec')) {
             node.outputs.unshift({ id: node.id + '_flow', label: 'exec_out', type: 'exec' });
         }
     }
 
     updateFunctionReturnNode(node, func) {
-        // Input ports of this node = Outputs of the function
         const newInputs = func.outputs.map(output => {
             return {
                 id: node.id + '_in_' + output.id,
@@ -426,7 +412,6 @@ class FunctionManager {
         node.inputs = newInputs;
         node.title = "Return";
 
-        // Ensure Exec Input
         if (!node.inputs.find(i => i.type === 'exec')) {
             node.inputs.unshift({ id: node.id + '_flow', label: 'exec_in', type: 'exec' });
         }
@@ -437,7 +422,6 @@ class FunctionManager {
         if (!container) return;
         container.innerHTML = '';
 
-        // Add Button
         const addBtn = document.createElement('button');
         addBtn.className = 'tag-btn add';
         addBtn.innerText = '+ Tag';
@@ -459,7 +443,6 @@ class FunctionManager {
 
             const commit = () => {
                 const val = input.value.trim();
-                // Only add if not empty and not duplicate?
                 if (val && !func.tags.includes(val)) {
                     func.tags.push(val);
                 }
@@ -468,12 +451,8 @@ class FunctionManager {
 
             input.onblur = () => commit();
             input.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    input.blur();
-                }
-                if (e.key === 'Escape') {
-                    this.renderTags(func);
-                }
+                if (e.key === 'Enter') input.blur();
+                if (e.key === 'Escape') this.renderTags(func);
             };
         };
         container.appendChild(addBtn);
@@ -481,7 +460,7 @@ class FunctionManager {
         func.tags.forEach((tag, index) => {
             const tagEl = document.createElement('span');
             tagEl.className = 'func-tag';
-            if (index === 0) tagEl.classList.add('category-tag'); // First tag is category
+            if (index === 0) tagEl.classList.add('category-tag');
             tagEl.innerHTML = `${tag} <span class="remove" data-index="${index}">×</span>`;
 
             tagEl.querySelector('.remove').onclick = (e) => {
@@ -550,7 +529,7 @@ class FunctionManager {
             list.push({
                 id: Math.random().toString(36).substr(2, 5),
                 name: 'New ' + (type === 'input' ? 'Input' : 'Output'),
-                type: 'string' // Default
+                type: 'string'
             });
             this.renderIOList(func, type);
             this.updateSpecialNodes();

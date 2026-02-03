@@ -18,7 +18,8 @@ const STATE = {
     functions: [],
     agents: [],
     workflows: [],
-    structs: []
+    structs: [],
+    auto_run: false
 };
 
 // --- DOM Elements ---
@@ -44,6 +45,7 @@ function init() {
     setupTabs();
     setupLLMConnections();
     setupChatListeners();
+    setupAutoRunToggle();
     connect();
 
     // Global API for Iframes
@@ -223,16 +225,18 @@ function handleMessage(msg) {
             }
             break;
 
+        case 'state_update':
+            STATE.sim_state = msg.data;
+            STATE.auto_run = msg.data.auto_run;
+            updateAutoRunUI();
+            renderThreadList();
+            break;
+
         case 'log':
         case 'info':
         case 'error':
-            // Log to console and Chat
+            // Log to console only, not the chat (chat history comes from thread.messages)
             console.log(`[${msg.type.toUpperCase()}] ${msg.message}`);
-            let role = 'system';
-            if (msg.type === 'error') {
-                // optionally handle error differently
-            }
-            appendChatMessage(role, `[${msg.type.toUpperCase()}] ${msg.message}`);
             break;
 
         default:
@@ -548,9 +552,15 @@ function exposeGlobalAPI() {
 
         // Wait a tick for iframe to be ready/visible then load
         setTimeout(() => {
-            // We can use the broadcast or direct call if we track the iframe
-            // Ideally the child iframe exposes a load method, or we send a message
-            sendAction('load_function', { id: functionId });
+            const frame = document.getElementById('frame-function-editor');
+            if (frame && frame.contentWindow && frame.contentWindow.funcManager) {
+                // This triggers the internal load logic which sets currentFunctionId 
+                // and requests data from server if needed.
+                frame.contentWindow.funcManager.loadFunction(functionId);
+            } else {
+                // Fallback if not ready
+                sendAction('load_function', { id: functionId });
+            }
         }, 100);
     };
 
@@ -606,18 +616,29 @@ function setupChatListeners() {
         const text = input ? input.value.trim() : '';
         if (!text) return;
 
-        // Check if workflow selected
-        const workflowSelect = document.getElementById('chat-workflow-select');
-        const workflowId = workflowSelect ? workflowSelect.value : null;
+        const activeThreadId = STATE.sim_state?.active_thread_id;
 
-        // Add User Message
-        appendChatMessage('user', text);
+        if (activeThreadId && STATE.sim_state.threads && STATE.sim_state.threads[activeThreadId]) {
+            // Follow-up message in active thread
+            sendAction('user_message', {
+                message: text
+            });
+        } else {
+            // Start new goal thread
+            const workflowSelect = document.getElementById('chat-workflow-select');
+            const workflowId = workflowSelect ? workflowSelect.value : null;
 
-        // Send to Backend
-        sendAction('start_goal', {
-            prompt: text,
-            agent_id: workflowId
-        });
+            if (!workflowId) {
+                showToast('Please select a workflow before sending a message', 'error');
+                return;
+            }
+
+            // Send to Backend
+            sendAction('start_goal', {
+                prompt: text,
+                agent_id: workflowId
+            });
+        }
 
         if (input) input.value = '';
     };
@@ -637,10 +658,94 @@ function setupChatListeners() {
 
     if (btnNewChat) {
         btnNewChat.addEventListener('click', () => {
+            // Tell backend to clear active thread
+            sendAction('clear_active_thread');
+
             const history = document.getElementById('chat-history');
             if (history) history.innerHTML = '<div class="message system"><div class="content">New session started. Select a workflow.</div></div>';
+            delete history.dataset.lastCount;
+
+            const select = document.getElementById('chat-workflow-select');
+            if (select) select.value = '';
         });
     }
+}
+
+function renderThreadList() {
+    const list = document.getElementById('thread-list');
+    if (!list || !STATE.sim_state || !STATE.sim_state.threads) return;
+
+    list.innerHTML = '';
+    const threads = STATE.sim_state.threads;
+    const activeId = STATE.sim_state.active_thread_id;
+
+    Object.values(threads).forEach(t => {
+        const item = document.createElement('div');
+        item.className = `thread-item ${t.id === activeId ? 'active' : ''}`;
+
+        // Use a default title if memory goal is missing
+        const title = t.memory && t.memory.goal ? t.memory.goal : "Untitled Session";
+        const shortTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+
+        item.innerHTML = `
+            <div style="flex: 1; min-width: 0;">
+                <div class="thread-title">${shortTitle}</div>
+                <div class="thread-time">${t.status || 'active'}</div>
+            </div>
+            <button class="delete-thread-btn" title="Delete Thread">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                </svg>
+            </button>
+        `;
+
+        item.onclick = (e) => {
+            if (e.target.closest('.delete-thread-btn')) {
+                e.stopPropagation();
+                if (confirm(`Delete thread "${title}"?`)) {
+                    sendAction('delete_thread', { id: t.id });
+                }
+                return;
+            }
+            // Notify backend that we are switching the active thread
+            sendAction('switch_thread', { id: t.id });
+        };
+
+        list.appendChild(item);
+    });
+
+    // Auto-render chat for current active if first time
+    renderThreadChat();
+
+    // If no threads, show placeholder
+    if (Object.keys(threads).length === 0) {
+        list.innerHTML = `
+            <div class="thread-item active">
+                <div class="thread-title">Current Session</div>
+                <div class="thread-time">Just now</div>
+            </div>
+        `;
+    }
+}
+
+function renderThreadChat() {
+    const history = document.getElementById('chat-history');
+    if (!history) return;
+
+    const activeId = STATE.sim_state?.active_thread_id;
+    if (!activeId || !STATE.sim_state.threads[activeId]) return;
+
+    const thread = STATE.sim_state.threads[activeId];
+    const messages = thread.messages || [];
+
+    // Simple diffing or just redraw if it changed count
+    if (history.dataset.lastCount == messages.length) return;
+    history.dataset.lastCount = messages.length;
+
+    history.innerHTML = '';
+    messages.forEach(m => {
+        appendChatMessage(m.role, m.content);
+    });
 }
 
 function appendChatMessage(role, text) {
@@ -671,6 +776,38 @@ function appendChatMessage(role, text) {
 
     history.appendChild(msgDiv);
     history.scrollTop = history.scrollHeight;
+}
+
+function setupAutoRunToggle() {
+    const btn = document.getElementById('btn-toggle-auto');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        if (STATE.auto_run) {
+            sendAction('stop_auto');
+        } else {
+            sendAction('start_auto');
+        }
+    });
+}
+
+function updateAutoRunUI() {
+    const icon = document.getElementById('auto-run-icon');
+    const text = document.getElementById('auto-run-text');
+    const btn = document.getElementById('btn-toggle-auto');
+    if (!icon || !text || !btn) return;
+
+    if (STATE.auto_run) {
+        icon.textContent = '⏸️';
+        text.textContent = 'Pause';
+        btn.classList.add('active');
+        btn.style.borderColor = 'var(--accent-primary)';
+    } else {
+        icon.textContent = '▶️';
+        text.textContent = 'Run';
+        btn.classList.remove('active');
+        btn.style.borderColor = 'var(--border-color)';
+    }
 }
 
 // Run

@@ -22,6 +22,7 @@ class GraphInterpreter:
         self.is_suspended = False
         self.suspended_node_id = None
         self.suspended_prompt_data = None
+        self.thread_context = None # ID of the thread currently being evaluated
         
         # Initialize Handlers
         self.node_handlers = {}
@@ -69,38 +70,38 @@ class GraphInterpreter:
         self.node_handlers['set_context_top_level_goal'] = self._handle_set_context_goal
         self.node_handlers['set_context_agent_goal'] = self._handle_set_context_goal
         self.node_handlers['set_context_key_value'] = self._handle_set_context_key_value
+        
+        # Context Messages
+        self.node_handlers['context_any_pending_messages'] = self._handle_context_any_pending_messages
+        self.node_handlers['context_get_new_messages'] = self._handle_context_get_new_messages
+        self.node_handlers['context_get_all_messages'] = self._handle_context_get_all_messages
+        self.node_handlers['context_send_message'] = self._handle_context_send_message
 
     def safe_graph_eval(self, graph_data, expected_input_types, input_values):
         """
-        Validates graph inputs against expected types and executes.
-        expected_input_types: list of strings (e.g. ['number', 'string'])
-        input_values: list of values
-        Returns the return value(s) of the graph if provided via function_return.
+        Executes the graph by providing input values. 
+        Will only pass as many values as the graph has input ports for.
         """
         if not graph_data:
-            raise Exception("No graph data provided")
+            return None
             
         graph_inputs = graph_data.get('inputs', [])
         
-        # 1. Check count
-        if len(graph_inputs) < len(expected_input_types):
-             raise Exception(f"Graph lacks required inputs. Expected at least {len(expected_input_types)}, found {len(graph_inputs)}")
-             
-        # 2. Check types and build context
+        # Build context from available inputs
         context = {}
-        for i, expected_type in enumerate(expected_input_types):
-            graph_input = graph_inputs[i]
-            if graph_input.get('type') != expected_type:
-                raise Exception(f"Input {i} ('{graph_input['name']}') type mismatch. Expected '{expected_type}', found '{graph_input.get('type')}'")
+        for i, graph_input in enumerate(graph_inputs):
+            name_lower = graph_input['name'].lower()
+            if 'tick' in name_lower and len(input_values) >= 2:
+                # If we have at least 2 inputs (context, tick), and this port is for tick
+                context[graph_input['name']] = input_values[1]
+            elif i < len(input_values):
+                # Standard mapping by index
+                context[graph_input['name']] = input_values[i]
             
-            # Use the name defined in the graph for the context
-            val = input_values[i] if i < len(input_values) else None
-            context[graph_input['name']] = val
-            
-        # 3. Execute
+        # Execute
         self.execute(graph_data, context=context)
         
-        # 4. Return results if any
+        # Return results if any
         if self.return_stack:
             return self.return_stack.pop()
         return None
@@ -527,6 +528,81 @@ class GraphInterpreter:
             ctx[key] = val
         return self.follow_flow(node, 'exec_out')
 
+    def _resolve_thread(self, ctx):
+        """Helper to find the thread instance associated with a context dictionary."""
+        if not self.sim_state:
+            return None
+            
+        tid = None
+        if isinstance(ctx, dict):
+            tid = ctx.get('_thread_id')
+            
+        # Fallback to current evaluation thread if no ID in ctx
+        if not tid:
+            tid = self.thread_context
+            
+        # Final fallback to active thread
+        if not tid:
+            tid = self.sim_state.active_thread_id
+            
+        if tid:
+            return self.sim_state.threads.get(tid)
+        return None
+
+    def _handle_context_any_pending_messages(self, node):
+        ctx = self.get_input_value(node, 'ctx')
+        thread = self._resolve_thread(ctx)
+        
+        has_pending = False
+        if thread:
+            has_pending = any(m.get('role') == 'user' and not m.get('responded', False) for m in thread.get('messages', []))
+        
+        self._update_output_cache(node, 'result', has_pending)
+        # Data function - no exec follow
+        return None
+
+    def _handle_context_get_new_messages(self, node):
+        ctx = self.get_input_value(node, 'ctx')
+        thread = self._resolve_thread(ctx)
+        
+        msgs = []
+        if thread:
+            msgs = [m['content'] for m in thread.get('messages', []) if m.get('role') == 'user' and not m.get('responded', False)]
+        
+        self._update_output_cache(node, 'messages', msgs)
+        return None
+
+    def _handle_context_get_all_messages(self, node):
+        ctx = self.get_input_value(node, 'ctx')
+        thread = self._resolve_thread(ctx)
+        
+        msgs = []
+        if thread:
+            msgs = [m['content'] for m in thread.get('messages', [])]
+        
+        self._update_output_cache(node, 'messages', msgs)
+        return None
+
+    def _handle_context_send_message(self, node):
+        ctx = self.get_input_value(node, 'ctx')
+        thread = self._resolve_thread(ctx)
+        message_text = self.get_input_value(node, 'message')
+        
+        if thread:
+            # Add assistant message
+            if "messages" not in thread: thread["messages"] = []
+            thread["messages"].append({"role": "assistant", "content": message_text})
+            
+            # Mark all user messages as responded
+            for m in thread["messages"]:
+                if m.get('role') == 'user':
+                    m['responded'] = True
+                    
+            # Also log as event for UI visibility
+            self.sim_state._add_event(f"Assistant: {message_text}", "info")
+                
+        return self.follow_flow(node, 'exec_out')
+
     # --- Core Logic Methods ---
 
     def resume(self, payload):
@@ -714,6 +790,21 @@ class GraphInterpreter:
             a = float(self.get_input_value(node, 'a') or 0)
             b = float(self.get_input_value(node, 'b') or 1)
             val = a / b if b != 0 else 0
+
+        elif nt == 'context_any_pending_messages':
+            self._handle_context_any_pending_messages(node)
+            if node['id'] in self.output_cache and port_id in self.output_cache[node['id']]:
+                return self.output_cache[node['id']][port_id]
+
+        elif nt == 'context_get_new_messages':
+            self._handle_context_get_new_messages(node)
+            if node['id'] in self.output_cache and port_id in self.output_cache[node['id']]:
+                return self.output_cache[node['id']][port_id]
+
+        elif nt == 'context_get_all_messages':
+            self._handle_context_get_all_messages(node)
+            if node['id'] in self.output_cache and port_id in self.output_cache[node['id']]:
+                return self.output_cache[node['id']][port_id]
 
         elif nt == 'string_format':
             fmt = str(node.get('params', {}).get('format') or "")

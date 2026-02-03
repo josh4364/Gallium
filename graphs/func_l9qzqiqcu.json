@@ -1,22 +1,4 @@
 {
-    "id": "func_l9qzqiqcu",
-    "name": "caculate",
-    "description": "mcp tool for caculating math using qalc",
-    "tags": [],
-    "inputs": [
-        {
-            "id": "o61yn",
-            "name": "expression",
-            "type": "string"
-        }
-    ],
-    "outputs": [
-        {
-            "id": "sbtux",
-            "name": "result",
-            "type": "string"
-        }
-    ],
     "nodes": [
         {
             "id": "node_r9dfc4nuj",
@@ -371,9 +353,54 @@
             "toPort": "node_dn8qeqdhh_in_arg1_qzw9"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
         "panX": 562.3656597804741,
         "panY": 6.335642302498513,
         "zoom": 0.8684093344593065
-    }
+    },
+    "name": "caculate",
+    "description": "mcp tool for caculating math using qalc",
+    "inputs": [
+        {
+            "id": "o61yn",
+            "name": "expression",
+            "type": "string"
+        }
+    ],
+    "outputs": [
+        {
+            "id": "sbtux",
+            "name": "result",
+            "type": "string"
+        }
+    ],
+    "tags": []
 }

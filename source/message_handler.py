@@ -5,18 +5,15 @@ from source import tools
 
 logger = logging.getLogger("MessageHandler")
 
-def handle_message(msg, server, sim_state, current_auto_mode):
+def handle_message(msg, server, sim_state):
     """
     Handles a single message from the client.
-    Returns:
-        bool: New state for auto_mode (True/False). 
-              If None, auto_mode remains unchanged.
     """
     # Log messages
     logger.info(f"Received from Web Client: {msg}")
     
     if not isinstance(msg, dict):
-        return current_auto_mode
+        return
         
     msg_type = msg.get("type")
 
@@ -69,18 +66,23 @@ def handle_message(msg, server, sim_state, current_auto_mode):
     # Handle Auto Start
     elif msg_type == "start_auto":
         logging.info("Auto-run started")
+        sim_state.auto_run = True
         if sim_state.tick_count == 0:
             sim_state.start_simulation()
-            server.broadcast({
-                "type": "state_update",
-                "data": sim_state.get_state()
-            })
-        return True # Enable auto mode
+        
+        server.broadcast({
+            "type": "state_update",
+            "data": sim_state.get_state()
+        })
 
     # Handle Auto Stop
     elif msg_type == "stop_auto":
         logging.info("Auto-run stopped")
-        return False # Disable auto mode
+        sim_state.auto_run = False
+        server.broadcast({
+            "type": "state_update",
+            "data": sim_state.get_state()
+        })
     
     # Handle Initial State Request
     elif msg_type == "get_state":
@@ -207,15 +209,8 @@ def handle_message(msg, server, sim_state, current_auto_mode):
         struct_id = msg.get("id")
         success = sim_state.struct_manager.delete_struct(struct_id)
         server.broadcast({
-            "type": "struct_delete_response",
-            "id": struct_id,
-            "success": success
-        })
-        # Send updated struct list
-        structs = sim_state.struct_manager.get_all_structs_data()
-        server.broadcast({
             "type": "struct_list",
-            "structs": structs
+            "structs": sim_state.struct_manager.get_all_structs_data()
         })
             
     # Handle File List Request
@@ -291,10 +286,33 @@ def handle_message(msg, server, sim_state, current_auto_mode):
         message = msg.get("message")
         if message:
             sim_state.handle_user_message(message)
+            sim_state.auto_run = True # Resume if message sent
             server.broadcast({
                 "type": "state_update",
                 "data": sim_state.get_state()
             })
+
+    # Handle Clear Active Thread
+    elif msg_type == "clear_active_thread":
+        sim_state.active_thread_id = None
+        server.broadcast({
+            "type": "state_update",
+            "data": sim_state.get_state()
+        })
+
+    # Handle Start Goal (Workflow Instance)
+    elif msg_type == "start_goal":
+        prompt = msg.get("prompt")
+        workflow_id = msg.get("agent_id") # Frontend sends workflow ID as 'agent_id' currently
+        if prompt and workflow_id:
+            new_state = sim_state.handle_start_goal(prompt, workflow_id)
+            if new_state:
+                sim_state.auto_run = True
+                server.broadcast({
+                    "type": "state_update",
+                    "data": new_state
+                })
+                logging.info("Auto-run enabled via start_goal")
 
     # Handle Save Workflow
     elif msg_type == "save_workflow":
@@ -349,5 +367,21 @@ def handle_message(msg, server, sim_state, current_auto_mode):
             "workflows": workflows
         })
 
+    # Handle Delete Thread
+    elif msg_type == "delete_thread":
+        thread_id = msg.get("id")
+        success = sim_state.delete_thread(thread_id)
+        server.broadcast({
+            "type": "state_update",
+            "data": sim_state.get_state()
+        })
 
-    return current_auto_mode
+    # Handle Switch Active Thread
+    elif msg_type == "switch_thread":
+        thread_id = msg.get("id")
+        if thread_id in sim_state.threads:
+            sim_state.active_thread_id = thread_id
+            server.broadcast({
+                "type": "state_update",
+                "data": sim_state.get_state()
+            })

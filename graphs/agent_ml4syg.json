@@ -3,16 +3,16 @@
     "states": [
         {
             "id": "start",
-            "x": 405,
-            "y": 135,
+            "x": 409,
+            "y": 122,
             "name": "Start",
-            "function_id": "func_675268r3s",
+            "function_id": "func_sa1l6ljve",
             "isStart": true
         },
         {
             "id": "state_c9f0qg",
-            "x": 402,
-            "y": 339,
+            "x": 410,
+            "y": 333,
             "name": "clarifcation",
             "function_id": null,
             "isStart": false
@@ -38,7 +38,7 @@
             "x": 589,
             "y": 507,
             "name": "Do work",
-            "function_id": "func_675268r3s",
+            "function_id": "",
             "isStart": false
         },
         {
