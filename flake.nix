@@ -36,6 +36,7 @@
                 google-genai
                 mcp
                 aiohttp
+                requests
             ]))
           ];
 

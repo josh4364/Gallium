@@ -65,6 +65,11 @@ class GraphInterpreter:
         self.node_handlers['map_set'] = self._handle_map_set
         self.node_handlers['map_remove'] = self._handle_map_remove
 
+        # Context
+        self.node_handlers['set_context_top_level_goal'] = self._handle_set_context_goal
+        self.node_handlers['set_context_agent_goal'] = self._handle_set_context_goal
+        self.node_handlers['set_context_key_value'] = self._handle_set_context_key_value
+
     def safe_graph_eval(self, graph_data, expected_input_types, input_values):
         """
         Validates graph inputs against expected types and executes.
@@ -503,6 +508,25 @@ class GraphInterpreter:
         if out_port:
             self.output_cache[node['id']][out_port['id']] = value
 
+    # --- Context Handlers ---
+    def _handle_set_context_goal(self, node):
+        ctx = self.get_input_value(node, 'ctx')
+        goal = self.get_input_value(node, 'goal')
+        if isinstance(ctx, dict):
+            if node['type'] == 'set_context_top_level_goal':
+                ctx['goal'] = goal
+            else:
+                ctx['agent_goal'] = goal
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_set_context_key_value(self, node):
+        ctx = self.get_input_value(node, 'ctx')
+        key = self.get_input_value(node, 'key')
+        val = self.get_input_value(node, 'value')
+        if isinstance(ctx, dict):
+            ctx[key] = val
+        return self.follow_flow(node, 'exec_out')
+
     # --- Core Logic Methods ---
 
     def resume(self, payload):
@@ -897,6 +921,36 @@ class GraphInterpreter:
             except Exception as e:
                 logger.warning(f"Failed to parse JSON: {e}")
                 val = {}
+
+        elif nt == 'get_context_agent_provider':
+            ctx = self.get_input_value(node, 'ctx')
+            role = self.get_input_value(node, 'role')
+            val = "unknown"
+            if isinstance(ctx, dict):
+                # Try new workflow role format
+                roles = ctx.get('roles', [])
+                if isinstance(roles, list):
+                    for r in roles:
+                        if isinstance(r, dict) and r.get('role') == role:
+                            val = r.get('provider', "unknown")
+                            break
+                
+                # Check directly in dict if not found
+                if val == "unknown" and role in ctx:
+                    val = str(ctx[role])
+
+        elif nt == 'get_context_top_level_goal':
+            ctx = self.get_input_value(node, 'ctx')
+            val = ctx.get('goal') if isinstance(ctx, dict) else ""
+
+        elif nt == 'get_context_agent_goal':
+            ctx = self.get_input_value(node, 'ctx')
+            val = ctx.get('agent_goal') if isinstance(ctx, dict) else ""
+
+        elif nt == 'get_context_key_value':
+            ctx = self.get_input_value(node, 'ctx')
+            key = self.get_input_value(node, 'key')
+            val = ctx.get(key) if isinstance(ctx, dict) else None
 
         if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
         self.output_cache[node['id']][port_id] = val

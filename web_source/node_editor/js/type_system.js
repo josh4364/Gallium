@@ -6,6 +6,7 @@ class TypeDatabase {
             { id: 'number', name: 'Number', color: '#76ea59', description: 'Numeric values' },
             { id: 'boolean', name: 'Boolean', color: '#ef5350', description: 'True/False' },
             { id: 'tool', name: 'Tool', color: '#E91E63', description: 'Agentic Tool' },
+            { id: 'context', name: 'Context', color: '#00BCD4', description: 'Agent Context' },
             { id: 'any', name: 'Any', color: '#808080', description: 'Any type' },
             { id: 'any_not_exec', name: 'Any (No Exec)', color: '#808080', description: 'Any data type except execution flow' }
         ];

@@ -11,16 +11,39 @@ from source.function_manager import FunctionManager
 logger = logging.getLogger("web_server")
 
 class GalliumWebServer:
-    def __init__(self, host="127.0.0.1", port=8080):
+    def __init__(self, host="0.0.0.0", port=8081):
         self.host = host
         self.port = port
         self.app = web.Application()
         self.app.router.add_get('/', self.handle_index)
         self.app.router.add_get('/ws', self.handle_websocket)
         
+        # Base path for web assets
+        web_source_path = Path(__file__).parent.parent / "web_source"
+        
         # Serve node_editor static files
-        node_editor_path = Path(__file__).parent / "node_editor"
-        self.app.router.add_static('/node_editor', path=str(node_editor_path), show_index=True)
+        node_editor_path = web_source_path / "node_editor"
+        if node_editor_path.exists():
+            self.app.router.add_static('/node_editor', path=str(node_editor_path), show_index=True)
+        else:
+            logger.warning(f"node_editor path not found: {node_editor_path}")
+
+        # Serve agent_editor static files
+        agent_editor_path = web_source_path / "agent_editor"
+        if agent_editor_path.exists():
+            self.app.router.add_static('/agent_editor', path=str(agent_editor_path), show_index=True)
+        else:
+            logger.warning(f"agent_editor path not found: {agent_editor_path}")
+
+        # Serve new frontend assets
+        css_path = web_source_path / "css"
+        if css_path.exists():
+            self.app.router.add_static('/css', path=str(css_path))
+            
+        js_path = web_source_path / "js"
+        if js_path.exists():
+            self.app.router.add_static('/js', path=str(js_path))
+
 
         self.msg_queue = Queue()
         self.loop = None
@@ -58,9 +81,9 @@ class GalliumWebServer:
             asyncio.run_coroutine_threadsafe(self._broadcast_async(message), self.loop)
 
     async def handle_index(self, request):
-        path = Path(__file__).parent / "index.html"
+        path = Path(__file__).parent.parent / "web_source" / "index.html"
         if not path.exists():
-            return web.Response(text="<h1>Error: index.html not found</h1>", content_type='text/html')
+            return web.Response(text=f"<h1>Error: index.html not found at {path}</h1>", content_type='text/html')
         return web.FileResponse(path)
 
     async def handle_websocket(self, request):

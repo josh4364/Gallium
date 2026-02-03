@@ -1,10 +1,4 @@
 {
-    "id": "func_implementer",
-    "name": "func_implementer",
-    "description": "",
-    "tags": [],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_b9ac5435",
@@ -944,9 +938,42 @@
             "toPort": "node_91cb3f57_in_exec"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
-        "panX": -806.5579676336654,
-        "panY": 2.8811223715553638,
+        "panX": -333.5579676336654,
+        "panY": 59.881122371555364,
         "zoom": 0.6998040346702619
-    }
+    },
+    "name": "func_implementer",
+    "description": "",
+    "inputs": [],
+    "outputs": [],
+    "tags": []
 }

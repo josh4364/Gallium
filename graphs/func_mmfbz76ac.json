@@ -1,22 +1,10 @@
 {
-    "id": "func_mmfbz76ac",
-    "name": "get current time",
-    "description": "mcp tool",
-    "tags": [],
-    "inputs": [],
-    "outputs": [
-        {
-            "id": "3am3s",
-            "name": "Message",
-            "type": "string"
-        }
-    ],
     "nodes": [
         {
-            "id": "node_cmwhk6omi",
+            "id": "node_u4c1yacsh",
             "type": "start",
-            "x": 191.89336161124135,
-            "y": 190.80921832530217,
+            "x": 72,
+            "y": 85,
             "width": 300,
             "height": 120,
             "title": "Start",
@@ -24,40 +12,45 @@
             "inputs": [],
             "outputs": [
                 {
-                    "id": "node_cmwhk6omi_flow",
+                    "id": "node_u4c1yacsh_flow",
                     "label": "exec_out",
                     "type": "exec"
+                },
+                {
+                    "id": "node_u4c1yacsh_out_1ivd5",
+                    "label": "New Input",
+                    "type": "string"
                 }
             ]
         },
         {
-            "id": "node_eib5qrjx7",
+            "id": "node_j2ur2ke5x",
             "type": "function_return",
-            "x": 1384.45097614438,
-            "y": 242.8480960503846,
+            "x": 832,
+            "y": 90,
             "width": 300,
             "height": 120,
             "title": "Return",
             "params": {},
             "inputs": [
                 {
-                    "id": "node_eib5qrjx7_flow",
+                    "id": "node_j2ur2ke5x_flow",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_eib5qrjx7_in_3am3s",
-                    "label": "Message",
+                    "id": "node_j2ur2ke5x_in_tay7c",
+                    "label": "New Output",
                     "type": "string"
                 }
             ],
             "outputs": []
         },
         {
-            "id": "node_3lpakxjak",
+            "id": "node_16denacru",
             "type": "run_process",
-            "x": 587.6056609790555,
-            "y": 204.90308104251196,
+            "x": 444,
+            "y": 81,
             "width": 336,
             "height": 188,
             "title": "Run Process",
@@ -68,24 +61,24 @@
             },
             "inputs": [
                 {
-                    "id": "node_3lpakxjak_exec_in_gn4i",
+                    "id": "node_16denacru_exec_in_hz06",
                     "label": "exec_in",
                     "type": "exec"
                 },
                 {
-                    "id": "node_3lpakxjak_program_name",
+                    "id": "node_16denacru_program_name",
                     "label": "Program",
                     "type": "string",
                     "key": "program_name"
                 },
                 {
-                    "id": "node_3lpakxjak_arguments",
+                    "id": "node_16denacru_arguments",
                     "label": "Arguments",
                     "type": "list:string",
                     "key": "arguments"
                 },
                 {
-                    "id": "node_3lpakxjak_timeout",
+                    "id": "node_16denacru_timeout",
                     "label": "Timeout",
                     "type": "number",
                     "key": "timeout"
@@ -93,86 +86,87 @@
             ],
             "outputs": [
                 {
-                    "id": "node_3lpakxjak_exec_out_tcmm",
+                    "id": "node_16denacru_exec_out_wkg2",
                     "label": "exec_out",
                     "type": "exec"
                 },
                 {
-                    "id": "node_3lpakxjak_output",
+                    "id": "node_16denacru_output",
                     "label": "Output",
                     "type": "string",
                     "key": "output"
-                }
-            ]
-        },
-        {
-            "id": "node_1h3egnsrb",
-            "type": "log_message",
-            "x": 1007.1691126375324,
-            "y": 166.9580660346394,
-            "width": 300,
-            "height": 128,
-            "title": "Log Message",
-            "params": {
-                "message": "Hello World"
-            },
-            "inputs": [
-                {
-                    "id": "node_1h3egnsrb_exec_in_v4kl",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_1h3egnsrb_message",
-                    "label": "Message",
-                    "type": "string",
-                    "key": "message"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_1h3egnsrb_exec_out_k1xs",
-                    "label": "exec_out",
-                    "type": "exec"
                 }
             ]
         }
     ],
     "connections": [
         {
-            "fromNode": "node_3lpakxjak",
-            "fromPort": "node_3lpakxjak_output",
-            "toNode": "node_eib5qrjx7",
-            "toPort": "node_eib5qrjx7_in_3am3s"
+            "fromNode": "node_16denacru",
+            "fromPort": "node_16denacru_output",
+            "toNode": "node_j2ur2ke5x",
+            "toPort": "node_j2ur2ke5x_in_tay7c"
         },
         {
-            "fromNode": "node_cmwhk6omi",
-            "fromPort": "node_cmwhk6omi_flow",
-            "toNode": "node_3lpakxjak",
-            "toPort": "node_3lpakxjak_exec_in_gn4i"
+            "fromNode": "node_16denacru",
+            "fromPort": "node_16denacru_exec_out_wkg2",
+            "toNode": "node_j2ur2ke5x",
+            "toPort": "node_j2ur2ke5x_flow"
         },
         {
-            "fromNode": "node_3lpakxjak",
-            "fromPort": "node_3lpakxjak_output",
-            "toNode": "node_1h3egnsrb",
-            "toPort": "node_1h3egnsrb_message"
-        },
-        {
-            "fromNode": "node_3lpakxjak",
-            "fromPort": "node_3lpakxjak_exec_out_tcmm",
-            "toNode": "node_1h3egnsrb",
-            "toPort": "node_1h3egnsrb_exec_in_v4kl"
-        },
-        {
-            "fromNode": "node_1h3egnsrb",
-            "fromPort": "node_1h3egnsrb_exec_out_k1xs",
-            "toNode": "node_eib5qrjx7",
-            "toPort": "node_eib5qrjx7_flow"
+            "fromNode": "node_u4c1yacsh",
+            "fromPort": "node_u4c1yacsh_flow",
+            "toNode": "node_16denacru",
+            "toPort": "node_16denacru_exec_in_hz06"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
-        "panX": -240,
-        "panY": 141,
-        "zoom": 0.9223873015398314
-    }
+        "panX": 273.35999999999996,
+        "panY": 256.21000000000004,
+        "zoom": 0.81
+    },
+    "name": "get current time",
+    "description": "",
+    "inputs": [
+        {
+            "id": "1ivd5",
+            "name": "New Input",
+            "type": "string"
+        }
+    ],
+    "outputs": [
+        {
+            "id": "tay7c",
+            "name": "New Output",
+            "type": "string"
+        }
+    ],
+    "tags": []
 }

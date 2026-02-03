@@ -132,6 +132,56 @@ def handle_message(msg, server, sim_state, current_auto_mode):
             "type": "state_update",
             "data": sim_state.get_state()
         })
+        
+    # Handle Get Agents List
+    elif msg_type == "get_agents":
+        agents = sim_state.func_manager.get_agent_list()
+        server.broadcast({
+            "type": "agent_list",
+            "agents": agents
+        })
+
+    # Handle Load Agent Data
+    elif msg_type == "load_agent":
+        agent_id = msg.get("id")
+        data = sim_state.func_manager.load_agent(agent_id)
+        server.broadcast({
+            "type": "function_data", # Reuse function_data type for editor compatibility or make new? 
+            # If editor uses 'function_data' to load, keeping it same is easier if we just want it to load.
+            # But the ID will differ.
+            "id": agent_id,
+            "data": data,
+            "is_agent": True
+        })
+
+    # Handle Save Agent
+    elif msg_type == "save_agent":
+        agent_id = msg.get("id")
+        agent_data = msg.get("graph") # Uses 'graph' key from editor usually
+        success, new_id = sim_state.func_manager.save_agent(agent_id, agent_data)
+        server.broadcast({
+            "type": "save_response",
+            "id": new_id if new_id else agent_id,
+            "success": success,
+            "is_agent": True
+        })
+    
+    # Handle Delete Agent
+    elif msg_type == "delete_agent":
+        agent_id = msg.get("id")
+        success = sim_state.func_manager.delete_agent(agent_id)
+        server.broadcast({
+            "type": "delete_response",
+            "id": agent_id,
+            "success": success,
+            "is_agent": True
+        })
+        # Send updated agents list
+        agents = sim_state.func_manager.get_agent_list()
+        server.broadcast({
+            "type": "agent_list",
+            "agents": agents
+        })
 
     # Handle Get Structs List
     elif msg_type == "get_structs":
@@ -245,5 +295,59 @@ def handle_message(msg, server, sim_state, current_auto_mode):
                 "type": "state_update",
                 "data": sim_state.get_state()
             })
+
+    # Handle Save Workflow
+    elif msg_type == "save_workflow":
+        name = msg.get("name")
+        data = msg.get("data")
+        success = sim_state.func_manager.save_workflow(name, data)
+        server.broadcast({
+            "type": "save_response",
+            "id": f"workflow_{name}", # Approximation
+            "success": success,
+            "is_workflow": True
+        })
+        # Send updated list
+        workflows = sim_state.func_manager.get_workflow_list()
+        server.broadcast({
+            "type": "workflow_list",
+            "workflows": workflows
+        })
+
+    # Handle Get Workflows
+    elif msg_type == "get_workflows":
+        workflows = sim_state.func_manager.get_workflow_list()
+        server.broadcast({
+            "type": "workflow_list",
+            "workflows": workflows
+        })
+
+    # Handle Load Workflow
+    elif msg_type == "load_workflow":
+        wf_id = msg.get("id")
+        data = sim_state.func_manager.load_workflow(wf_id)
+        server.broadcast({
+            "type": "workflow_data",
+            "id": wf_id,
+            "data": data
+        })
+
+    # Handle Delete Workflow
+    elif msg_type == "delete_workflow":
+        wf_id = msg.get("id")
+        success = sim_state.func_manager.delete_workflow(wf_id)
+        server.broadcast({
+            "type": "delete_response",
+            "id": wf_id,
+            "success": success,
+            "is_workflow": True
+        })
+        # Send updated list
+        workflows = sim_state.func_manager.get_workflow_list()
+        server.broadcast({
+            "type": "workflow_list",
+            "workflows": workflows
+        })
+
 
     return current_auto_mode

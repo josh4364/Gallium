@@ -1,12 +1,4 @@
 {
-    "id": "func_4pyiwg24m",
-    "name": "Map testing",
-    "description": "",
-    "tags": [
-        "map"
-    ],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_27mubghj1",
@@ -620,9 +612,44 @@
             "toPort": "node_2ow5nw2we_exec_in_zjmz"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
         "panX": 498.1719225435552,
         "panY": -106.29962302121271,
         "zoom": 0.7358311349531741
-    }
+    },
+    "name": "Map testing",
+    "description": "",
+    "inputs": [],
+    "outputs": [],
+    "tags": [
+        "map"
+    ]
 }

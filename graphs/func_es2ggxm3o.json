@@ -1,12 +1,4 @@
 {
-    "id": "func_es2ggxm3o",
-    "name": "On Start",
-    "description": "my on start",
-    "tags": [
-        "event"
-    ],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_bvke7wsgm",
@@ -195,9 +187,44 @@
             "toPort": "node_zpscqq3qz_exec_in_med9"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
-        "panX": 328.6357855628871,
-        "panY": 14.78445566123139,
-        "zoom": 1.1793213184015272
-    }
+        "panX": 370.4499590674143,
+        "panY": 240.4754193698589,
+        "zoom": 0.5076591576258271
+    },
+    "name": "On Start",
+    "description": "my on start",
+    "inputs": [],
+    "outputs": [],
+    "tags": [
+        "event"
+    ]
 }

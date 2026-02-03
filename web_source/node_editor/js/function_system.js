@@ -4,11 +4,12 @@ class FunctionDatabase {
     constructor() {
         this.functions = {}; // Map<id, FunctionData>
         // Seed with a default function
-        this.createFunction('Main', 'Entry point of the program.');
+        const seed = this.createFunction('Main', 'Entry point of the program.');
+        seed.isSeed = true;
     }
 
-    createFunction(name, description = '') {
-        const id = 'func_' + Math.random().toString(36).substr(2, 9);
+    createFunction(name, description = '', prefix = 'func_') {
+        const id = prefix + Math.random().toString(36).substr(2, 9);
         this.functions[id] = {
             id: id,
             name: name,
@@ -61,25 +62,48 @@ class FunctionDatabase {
 }
 
 class FunctionManager {
-    constructor(graph, typeDB, functionDB) {
+    constructor(graph, typeDB, functionDB, agentDB) {
         this.graph = graph;
         this.typeDB = typeDB;
         this.functionDB = functionDB;
+        this.agentDB = agentDB || new FunctionDatabase(); // Optional for now
+        this.mode = 'function'; // 'function' or 'agent'
         this.currentFunctionId = null;
 
-        // Initialize with the first available function
-        const funcs = this.functionDB.getAllFunctions();
-        if (funcs.length > 0) {
-            this.loadFunction(funcs[0].id);
-        }
+        // Initialize with functions by default
+        this.loadFirstAvailable();
         this.bindUI();
+    }
+
+    get curDB() {
+        return this.mode === 'agent' ? this.agentDB : this.functionDB;
+    }
+
+    setMode(mode) {
+        if (this.mode === mode) return;
+        this.mode = mode;
+        this.currentFunctionId = null;
+        console.log("Switched to mode:", mode);
+        this.updateSelector();
+        this.loadFirstAvailable();
+    }
+
+    loadFirstAvailable() {
+        const items = this.curDB.getAllFunctions();
+        if (items.length > 0) {
+            this.loadFunction(items[0].id);
+        } else {
+            // Create default?
+            this.graph.clear();
+            this.updateSelector();
+        }
     }
 
     bindUI() {
         const nameField = document.getElementById('func-name');
         if (nameField) {
             nameField.onchange = (e) => {
-                const func = this.functionDB.getFunction(this.currentFunctionId);
+                const func = this.curDB.getFunction(this.currentFunctionId);
                 if (func) {
                     func.name = e.target.value;
                     this.updateSelector();
@@ -90,7 +114,7 @@ class FunctionManager {
         const descField = document.getElementById('func-desc');
         if (descField) {
             descField.onchange = (e) => {
-                const func = this.functionDB.getFunction(this.currentFunctionId);
+                const func = this.curDB.getFunction(this.currentFunctionId);
                 if (func) func.description = e.target.value;
             };
         }
@@ -109,7 +133,7 @@ class FunctionManager {
         if (!selector) return;
         selector.innerHTML = '';
 
-        const funcs = this.functionDB.getAllFunctions();
+        const funcs = this.curDB.getAllFunctions();
         funcs.forEach(f => {
             const opt = document.createElement('option');
             opt.value = f.id;
@@ -121,15 +145,23 @@ class FunctionManager {
 
     async createNewFunction() {
         await this.saveCurrentFunction();
-        const newFunc = this.functionDB.createFunction('New Function', '');
+        const prefix = this.mode === 'agent' ? 'agent_' : 'func_';
+        const name = this.mode === 'agent' ? 'New Agent' : 'New Function';
+        const newFunc = this.curDB.createFunction(name, '', prefix);
+
+        // Switch to the new one
+        this.currentFunctionId = newFunc.id;
         this.updateSelector();
-        this.loadFunction(newFunc.id);
+        await this.loadFunction(newFunc.id);
+
+        // Save the new stub to server immediately so it's not purged on refresh
+        await this.saveCurrentFunction();
     }
 
     async deleteCurrentFunction() {
         if (!this.currentFunctionId) return;
 
-        const func = this.functionDB.getFunction(this.currentFunctionId);
+        const func = this.curDB.getFunction(this.currentFunctionId);
         if (!func) return;
 
         if (!confirm(`Are you sure you want to delete the function "${func.name}"? This will also delete the file on disk.`)) {
@@ -139,16 +171,22 @@ class FunctionManager {
         const idToDelete = this.currentFunctionId;
 
         // Notify Server
-        if (window.parent && window.parent.deleteFunctionFromServer) {
-            window.parent.deleteFunctionFromServer(idToDelete);
+        if (this.mode === 'agent') {
+            if (window.parent && window.parent.deleteAgentToServer) {
+                window.parent.deleteAgentToServer(idToDelete);
+            }
+        } else {
+            if (window.parent && window.parent.deleteFunctionFromServer) {
+                window.parent.deleteFunctionFromServer(idToDelete);
+            }
         }
 
         // Delete Locally
-        this.functionDB.deleteFunction(idToDelete);
+        this.curDB.deleteFunction(idToDelete);
         this.currentFunctionId = null;
 
         // Load another function or a new one
-        const remaining = this.functionDB.getAllFunctions();
+        const remaining = this.curDB.getAllFunctions();
         if (remaining.length > 0) {
             await this.loadFunction(remaining[0].id);
         } else {
@@ -159,11 +197,11 @@ class FunctionManager {
     }
 
     async loadFunction(functionId) {
-        if (this.currentFunctionId) {
+        if (this.currentFunctionId && this.currentFunctionId !== functionId) {
             this.saveCurrentFunction();
         }
 
-        const func = this.functionDB.getFunction(functionId);
+        const func = this.curDB.getFunction(functionId);
         if (!func) return;
 
         this.currentFunctionId = functionId;
@@ -171,9 +209,13 @@ class FunctionManager {
         this.updateUI();
 
         // Lazy Load from Server
-        if ((!func.data || Object.keys(func.data).length === 0) && window.parent && window.parent.requestServerFunction) {
-            console.log("Requesting function data from server:", functionId);
-            window.parent.requestServerFunction(functionId);
+        if ((!func.data || Object.keys(func.data).length === 0) && window.parent) {
+            console.log("Requesting data from server:", functionId);
+            if (this.mode === 'agent' && window.parent.requestServerAgent) {
+                window.parent.requestServerAgent(functionId);
+            } else if (window.parent.requestServerFunction) {
+                window.parent.requestServerFunction(functionId);
+            }
             return; // Wait for callback
         }
 
@@ -217,7 +259,7 @@ class FunctionManager {
 
     onServerFunctionLoaded(id, data) {
         console.log("FunctionManager: onServerFunctionLoaded", id, data);
-        const func = this.functionDB.getFunction(id);
+        const func = this.curDB.getFunction(id);
         if (func) {
             if (!data) {
                 console.warn("FunctionManager: Received null data for function", id, "- assuming empty.");
@@ -254,18 +296,47 @@ class FunctionManager {
 
     async saveCurrentFunction() {
         if (this.currentFunctionId) {
-            const currentFunc = this.functionDB.getFunction(this.currentFunctionId);
+            const currentFunc = this.curDB.getFunction(this.currentFunctionId);
             if (currentFunc) {
-                currentFunc.data = await this.graph.serialize();
-                // Save History
+                const graphData = await this.graph.serialize();
+                let parsedGraph = {};
+                try {
+                    parsedGraph = JSON.parse(graphData);
+                } catch (e) { console.error("Save failure: could not parse serialized graph", e); }
+
+                // Avoid saving empty seeds to prevent duplicate "Main" files on disk
+                if (currentFunc.isSeed && (!parsedGraph.nodes || parsedGraph.nodes.length === 0)) {
+                    console.log("Skipping save of empty seed function:", currentFunc.name);
+                    return;
+                }
+
+                const fullPayload = {
+                    ...parsedGraph,
+                    name: currentFunc.name,
+                    description: currentFunc.description,
+                    inputs: currentFunc.inputs,
+                    outputs: currentFunc.outputs,
+                    tags: currentFunc.tags
+                };
+
+                currentFunc.data = fullPayload; // Store object locally too
                 currentFunc.history = [...this.graph.history];
                 currentFunc.historyIndex = this.graph.historyIndex;
+
+                // Notify Server
+                if (window.parent) {
+                    if (this.mode === 'agent' && window.parent.saveAgentToServer) {
+                        window.parent.saveAgentToServer(currentFunc.id, fullPayload);
+                    } else if (window.parent.saveFunctionToServer) {
+                        window.parent.saveFunctionToServer(currentFunc.id, fullPayload);
+                    }
+                }
             }
         }
     }
 
     updateUI() {
-        const func = this.functionDB.getFunction(this.currentFunctionId);
+        const func = this.curDB.getFunction(this.currentFunctionId);
         if (!func) return;
 
         // Populate fields
@@ -284,7 +355,7 @@ class FunctionManager {
     }
 
     updateSpecialNodes() {
-        const func = this.functionDB.getFunction(this.currentFunctionId);
+        const func = this.curDB.getFunction(this.currentFunctionId);
         // Find Function Input nodes
         this.graph.nodes.forEach(node => {
             if (node.type === 'start') {

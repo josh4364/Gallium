@@ -1,0 +1,140 @@
+{
+    "name": "Router 1",
+    "states": [
+        {
+            "id": "start",
+            "x": 405,
+            "y": 135,
+            "name": "Start",
+            "function_id": "func_675268r3s",
+            "isStart": true
+        },
+        {
+            "id": "state_c9f0qg",
+            "x": 402,
+            "y": 339,
+            "name": "clarifcation",
+            "function_id": null,
+            "isStart": false
+        },
+        {
+            "id": "state_oj2qhf",
+            "x": 96,
+            "y": 430,
+            "name": "Debug",
+            "function_id": null,
+            "isStart": false
+        },
+        {
+            "id": "state_qlptbd",
+            "x": 220,
+            "y": 505,
+            "name": "Error",
+            "function_id": null,
+            "isStart": false
+        },
+        {
+            "id": "state_gclwgm",
+            "x": 589,
+            "y": 507,
+            "name": "Do work",
+            "function_id": "func_675268r3s",
+            "isStart": false
+        },
+        {
+            "id": "state_b0zd6s",
+            "x": 68,
+            "y": 607,
+            "name": "Stop",
+            "function_id": null,
+            "isStart": false
+        }
+    ],
+    "transitions": [
+        {
+            "id": "trans_4ychh7",
+            "from": "start",
+            "to": "state_c9f0qg",
+            "conditions": [
+                {
+                    "key": "goto",
+                    "op": "==",
+                    "value": "clarify"
+                }
+            ]
+        },
+        {
+            "id": "trans_4jh5g7",
+            "from": "state_c9f0qg",
+            "to": "state_oj2qhf",
+            "conditions": [
+                {
+                    "key": "goto",
+                    "op": "==",
+                    "value": "debug"
+                }
+            ]
+        },
+        {
+            "id": "trans_15q3m1",
+            "from": "start",
+            "to": "state_oj2qhf",
+            "conditions": [
+                {
+                    "key": "goto",
+                    "op": "==",
+                    "value": "debug"
+                }
+            ]
+        },
+        {
+            "id": "trans_v0t0j7",
+            "from": "state_c9f0qg",
+            "to": "state_gclwgm",
+            "conditions": [
+                {
+                    "key": "goto",
+                    "op": "==",
+                    "value": "work"
+                }
+            ]
+        },
+        {
+            "id": "trans_adz8u7",
+            "from": "start",
+            "to": "state_gclwgm",
+            "conditions": [
+                {
+                    "key": "goto",
+                    "op": "==",
+                    "value": "work"
+                }
+            ]
+        },
+        {
+            "id": "trans_i6wbfa",
+            "from": "state_gclwgm",
+            "to": "state_qlptbd",
+            "conditions": [
+                {
+                    "key": "retries",
+                    "op": ">",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "id": "trans_i886l6",
+            "from": "state_oj2qhf",
+            "to": "state_b0zd6s",
+            "conditions": []
+        },
+        {
+            "id": "trans_ogli30",
+            "from": "state_qlptbd",
+            "to": "state_b0zd6s",
+            "conditions": []
+        }
+    ],
+    "type": "agent"
+}

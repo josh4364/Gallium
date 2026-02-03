@@ -383,5 +383,80 @@ const nodeRegistry = [
         ],
         outputs: [{ label: 'exec_out', type: 'exec' }],
         params: { event_name: '', payload: {} }
+    },
+    {
+        type: 'get_context_top_level_goal',
+        name: 'Get Top Level Goal',
+        tags: ['Context', 'Goal', 'Get'],
+        color: '#009688',
+        inputs: [{ label: 'Context', type: 'context', key: 'ctx' }],
+        outputs: [{ label: 'Goal', type: 'string' }]
+    },
+    {
+        type: 'set_context_top_level_goal',
+        name: 'Set Top Level Goal',
+        tags: ['Context', 'Goal', 'Set'],
+        color: '#009688',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Context', type: 'context', key: 'ctx' },
+            { label: 'Goal', type: 'string', key: 'goal' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }]
+    },
+    {
+        type: 'get_context_agent_goal',
+        name: 'Get Agent Goal',
+        tags: ['Context', 'Goal', 'Get'],
+        color: '#009688',
+        inputs: [{ label: 'Context', type: 'context', key: 'ctx' }],
+        outputs: [{ label: 'Goal', type: 'string' }]
+    },
+    {
+        type: 'set_context_agent_goal',
+        name: 'Set Agent Goal',
+        tags: ['Context', 'Goal', 'Set'],
+        color: '#009688',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Context', type: 'context', key: 'ctx' },
+            { label: 'Goal', type: 'string', key: 'goal' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }]
+    },
+    {
+        type: 'get_context_key_value',
+        name: 'Get Context Key',
+        tags: ['Context', 'Get', 'Value'],
+        color: '#009688',
+        inputs: [
+            { label: 'Context', type: 'context', key: 'ctx' },
+            { label: 'Key', type: 'string', key: 'key' }
+        ],
+        outputs: [{ label: 'Value', type: 'any_not_exec' }]
+    },
+    {
+        type: 'set_context_key_value',
+        name: 'Set Context Key',
+        tags: ['Context', 'Set', 'Value'],
+        color: '#009688',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Context', type: 'context', key: 'ctx' },
+            { label: 'Key', type: 'string', key: 'key' },
+            { label: 'Value', type: 'any_not_exec', key: 'value' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }]
+    },
+    {
+        type: 'get_context_agent_provider',
+        name: 'Get Agent Provider',
+        tags: ['Context', 'Agent', 'Provider', 'Get'],
+        color: '#009688',
+        inputs: [
+            { label: 'Context', type: 'context', key: 'ctx' },
+            { label: 'Role', type: 'string', key: 'role' }
+        ],
+        outputs: [{ label: 'Provider', type: 'string' }]
     }
 ];

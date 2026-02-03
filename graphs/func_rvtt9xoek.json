@@ -1,10 +1,4 @@
 {
-    "id": "func_rvtt9xoek",
-    "name": "Struct tests",
-    "description": "",
-    "tags": [],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_1rqq0u7pb",
@@ -569,9 +563,42 @@
             "toPort": "node_xsouj1iqn_val"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
         "panX": -4.522506064769459,
         "panY": -332.90966832662957,
         "zoom": 0.6142675807272507
-    }
+    },
+    "name": "Struct tests",
+    "description": "",
+    "inputs": [],
+    "outputs": [],
+    "tags": []
 }

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallium | Agentic Workflow Engine</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+    <header>
+        <div class="brand">project gallium</div>
+        <nav class="tabs">
+            <button class="tab-btn active" data-target="threads">Threads</button>
+            <button class="tab-btn" data-target="workflows">Workflows</button>
+            <button class="tab-btn" data-target="agent-editor">Agent Editor</button>
+            <button class="tab-btn" data-target="function-editor">Function Editor</button>
+            <button class="tab-btn" data-target="llm">LLM Connections</button>
+        </nav>
+        <div class="status-pill">
+            <div id="conn-indicator" class="status-dot"></div>
+            <span id="conn-text">Connecting...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Tab 1: Threads (Ex-Workflows) -->
+        <div id="view-threads" class="view active">
+            <!-- Grid Column 1: Threads Sidebar -->
+            <div class="card" style="grid-column: 1; height: 100%; display: flex; flex-direction: column;">
+                <div class="card-header" style="justify-content: space-between;">
+                    <span>Threads</span>
+                    <button id="btn-new-chat"
+                        style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:16px;">+</button>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <!-- Thread List -->
+                    <div id="thread-list" class="thread-list">
+                        <!-- Dynamic thread items -->
+                        <div class="thread-item active">
+                            <div class="thread-title">Current Session</div>
+                            <div class="thread-time">Just now</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Column 2: Chat Interface -->
+            <div class="card" style="grid-column: 2; height: 100%; display: flex; flex-direction: column;">
+                <!-- Chat Header: Workflow Selector -->
+                <div class="card-header"
+                    style="background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border-color); padding: 12px 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                        <span style="white-space: nowrap; color: var(--text-secondary); font-size: 12px;">Active
+                            Workflow:</span>
+                        <select id="chat-workflow-select"
+                            style="flex: 1; background: transparent; border: none; font-size: 14px; font-weight: 500;">
+                            <option value="">Select a Workflow...</option>
+                        </select>
+                        <div class="status-indicator-small"></div>
+                    </div>
+                </div>
+
+                <!-- Chat Messages Area -->
+                <div id="chat-history" class="card-body"
+                    style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Messages go here -->
+                    <div class="message system">
+                        <div class="content">Select a workflow and type a message to begin.</div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="chat-input-wrapper"
+                    style="padding: 16px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+                    <div style="position: relative;">
+                        <textarea id="chat-input" placeholder="Type a message..." rows="1"
+                            style="width: 100%; padding-right: 50px; resize: none; min-height: 44px; padding: 12px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: inherit; box-sizing: border-box;"></textarea>
+                        <button id="btn-send-chat"
+                            style="position: absolute; right: 8px; bottom: 8px; background: var(--accent-primary); border: none; color: white; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px; text-align: right;">Press
+                        Enter to send, Shift+Enter for new line</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Workflow Setup -->
+        <div id="view-workflows" class="view">
+            <!-- Grid Column 1: Workflows List Sidebar -->
+            <div class="card" style="grid-column: 1; height: 100%; display: flex; flex-direction: column;">
+                <div class="card-header" style="justify-content: space-between;">
+                    <span>Workflows</span>
+                    <button id="btn-new-workflow"
+                        style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:16px;">+</button>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <div id="workflow-list" class="thread-list">
+                        <!-- Dynamic items -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Column 2: Editor -->
+            <div class="card" style="grid-column: 2; height: 100%; overflow-y: auto;">
+                <div class="card-header">
+                    Workflow Configuration
+                </div>
+                <div class="card-body">
+                    <!-- Workflow Name -->
+                    <div style="margin-bottom: 24px;">
+                        <label>Workflow Name</label>
+                        <input type="text" id="wf-name-input" placeholder="e.g. Code Review Workflow">
+                    </div>
+
+                    <!-- Router Selection -->
+                    <div>
+                        <label>Router Agent</label>
+                        <select id="wf-router-select">
+                            <option value="">-- Select Router Agent --</option>
+                        </select>
+                        <div class="text-xs text-muted" style="margin-top:8px;">This agent receives the initial prompt
+                            and decides the next steps.</div>
+                    </div>
+
+                    <!-- Roles Table -->
+                    <div class="mt-4">
+                        <label>Workflow Roles</label>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-color); text-align: left;">
+                                    <th
+                                        style="padding: 8px; font-size: 12px; color: var(--text-secondary); width: 40%;">
+                                        Role Name</th>
+                                    <th style="padding: 8px; font-size: 12px; color: var(--text-secondary);">Provider
+                                    </th>
+                                    <th style="width: 40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="wf-roles-body">
+                                <!-- Dynamic Roles -->
+                            </tbody>
+                        </table>
+                        <button id="btn-add-role" class="btn btn-secondary mt-4"
+                            style="width: 100%; border-style: dashed;">+ Add Role</button>
+                    </div>
+
+                    <button id="btn-save-workflow" class="btn btn-primary mt-4" style="margin-top: 32px;">Save
+                        Workflow</button>
+                    <button id="btn-delete-workflow" class="btn btn-secondary mt-4"
+                        style="margin-top: 32px; color: var(--danger); border-color: var(--danger);">Delete
+                        Workflow</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Agent Editor -->
+        <div id="view-agent-editor" class="view">
+            <iframe id="frame-agent-editor" src="agent_editor/agent_editor.html" class="editor-frame"></iframe>
+        </div>
+
+        <!-- Tab 3: Function Editor -->
+        <div id="view-function-editor" class="view">
+            <iframe id="frame-function-editor" src="node_editor/node_editor.html" class="editor-frame"></iframe>
+        </div>
+
+        <!-- Tab 4: LLM Connections -->
+        <div id="view-llm" class="view">
+            <div class="llm-grid">
+                <!-- Local LLM -->
+                <div class="card provider-card">
+                    <div class="card-body">
+                        <div class="provider-icon">💻</div>
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Local LLM (llama.cpp)</h3>
+                        <label>Base URL</label>
+                        <input type="text" id="llm-local-url" placeholder="http://127.0.0.1:8080"
+                            value="http://127.0.0.1:8080">
+                        <label class="mt-4">API Key (Optional)</label>
+                        <input type="password" placeholder="sk-...">
+                        <button class="btn btn-primary mt-4 w-full">Save Configuration</button>
+                    </div>
+                </div>
+                <!-- OpenAI -->
+                <div class="card provider-card">
+                    <div class="card-body">
+                        <div class="provider-icon">🤖</div>
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px;">OpenAI</h3>
+                        <label>API Key</label>
+                        <input type="password" id="llm-openai-key" placeholder="sk-...">
+                        <label class="mt-4">Model</label>
+                        <input type="text" value="gpt-4-turbo">
+                        <button class="btn btn-primary mt-4 w-full">Connect</button>
+                    </div>
+                </div>
+                <!-- Gemini -->
+                <div class="card provider-card">
+                    <div class="card-body">
+                        <div class="provider-icon">✨</div>
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Google Gemini</h3>
+                        <label>API Key</label>
+                        <input type="password" id="llm-gemini-key" placeholder="AIza...">
+                        <button class="btn btn-primary mt-4 w-full">Connect</button>
+                    </div>
+                </div>
+                <!-- Claude -->
+                <div class="card provider-card">
+                    <div class="card-body">
+                        <div class="provider-icon">🧠</div>
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px;">Anthropic Claude</h3>
+                        <label>API Key</label>
+                        <input type="password" id="llm-claude-key" placeholder="sk-ant-...">
+                        <button class="btn btn-primary mt-4 w-full">Connect</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;"></div>
+
+    <!-- Application Logic -->
+    <script src="js/app.js"></script>
+</body>
+
+</html>

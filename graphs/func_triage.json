@@ -1,8 +1,652 @@
 {
-    "id": "func_triage",
+    "nodes": [
+        {
+            "id": "node_27mubghj1",
+            "type": "start",
+            "x": -371.02928718272346,
+            "y": 475.1938794843796,
+            "width": 300,
+            "height": 120,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_27mubghj1_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_lutifq8tf",
+            "type": "map_create",
+            "x": 233.2379739412445,
+            "y": 745.5438838099144,
+            "width": 300,
+            "height": 156,
+            "title": "Create Map (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_lutifq8tf_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                }
+            ]
+        },
+        {
+            "id": "node_4cfoscq4s",
+            "type": "map_set",
+            "x": 641.3994330334326,
+            "y": 520.3400064987374,
+            "width": 300,
+            "height": 186,
+            "title": "Map Set (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_4cfoscq4s_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_4cfoscq4s_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_4cfoscq4s_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                },
+                {
+                    "id": "node_4cfoscq4s_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_4cfoscq4s_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_4cfoscq4s_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                }
+            ]
+        },
+        {
+            "id": "node_3rpr9ui38",
+            "type": "map_get",
+            "x": 979.5469262965933,
+            "y": 391.108137186809,
+            "width": 300,
+            "height": 120,
+            "title": "Map Get (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_3rpr9ui38_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_3rpr9ui38_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_3rpr9ui38_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_dpkn0g4e0",
+            "type": "map_get",
+            "x": 1937.0713845636956,
+            "y": 959.0817896703909,
+            "width": 300,
+            "height": 120,
+            "title": "Map Get (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_dpkn0g4e0_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_dpkn0g4e0_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_dpkn0g4e0_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_5awu34mhe",
+            "type": "log_message",
+            "x": 71.62664809432704,
+            "y": 476.68382668310977,
+            "width": 338,
+            "height": 155,
+            "title": "Log Message",
+            "params": {
+                "message": "Map test, creating a map of string -> string\nSetting a value"
+            },
+            "inputs": [
+                {
+                    "id": "node_5awu34mhe_exec_in_ye1d",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_5awu34mhe_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_5awu34mhe_exec_out_xugb",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_4cyjvnk4c",
+            "type": "string",
+            "x": 249.53978762513927,
+            "y": 965.7685482001374,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "My Key"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_4cyjvnk4c__06sy",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_ne3ie25yg",
+            "type": "string",
+            "x": 296.02994803535546,
+            "y": 1136.1846884719744,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "This is the value."
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_ne3ie25yg__qka6",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_8319jifnb",
+            "type": "log_message",
+            "x": 1445.8115174052668,
+            "y": 548.9644748520699,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_8319jifnb_exec_in_yg81",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_8319jifnb_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_8319jifnb_exec_out_0uym",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_7uo61nf67",
+            "type": "string_format",
+            "x": 1067.8915573549282,
+            "y": 255.17998364978064,
+            "width": 300,
+            "height": 128,
+            "title": "String Format",
+            "params": {
+                "format": "Map {} = {}",
+                "arg1": null,
+                "arg2": null
+            },
+            "inputs": [
+                {
+                    "id": "node_7uo61nf67_in_arg1_tsw7",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_7uo61nf67_in_arg2_g0gn",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_7uo61nf67_result_0b9a",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_2ow5nw2we",
+            "type": "log_message",
+            "x": 2710.5095559416186,
+            "y": 608.3246460234863,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_2ow5nw2we_exec_in_zjmz",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_2ow5nw2we_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_2ow5nw2we_exec_out_plc0",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_s4r1wutpy",
+            "type": "string_format",
+            "x": 2346.154798406335,
+            "y": 845.8105245453308,
+            "width": 300,
+            "height": 128,
+            "title": "String Format",
+            "params": {
+                "format": "After remove\nMap {} = \"{}\"",
+                "arg1": null,
+                "arg2": null
+            },
+            "inputs": [
+                {
+                    "id": "node_s4r1wutpy_in_arg1_rdmq",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                },
+                {
+                    "id": "node_s4r1wutpy_in_arg2_6kcu",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_s4r1wutpy_result_tud8",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_2urz1vr6b",
+            "type": "log_message",
+            "x": 1924.8689137713343,
+            "y": 568.2687822768228,
+            "width": 300,
+            "height": 128,
+            "title": "Log Message",
+            "params": {
+                "message": "Hello World"
+            },
+            "inputs": [
+                {
+                    "id": "node_2urz1vr6b_exec_in_u4hm",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_2urz1vr6b_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_2urz1vr6b_exec_out_cee7",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_5cr7tykq5",
+            "type": "to_string",
+            "x": 1441.278205119621,
+            "y": 733.862631479404,
+            "width": 300,
+            "height": 120,
+            "title": "To String",
+            "params": {
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_5cr7tykq5_value",
+                    "label": "Value",
+                    "type": "map:string:string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_5cr7tykq5_string_k5do",
+                    "label": "String",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_3dz5gg89c",
+            "type": "map_remove",
+            "x": 2316.9284316366106,
+            "y": 598.3161110045032,
+            "width": 300,
+            "height": 147,
+            "title": "Map Remove (String -> String)",
+            "params": {
+                "key_type": "string",
+                "value_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_3dz5gg89c_exec_in",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_3dz5gg89c_map",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                },
+                {
+                    "id": "node_3dz5gg89c_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_3dz5gg89c_exec_out",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_3dz5gg89c_out",
+                    "label": "Map",
+                    "type": "map:string:string",
+                    "key": "map"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_27mubghj1",
+            "fromPort": "node_27mubghj1_flow",
+            "toNode": "node_5awu34mhe",
+            "toPort": "node_5awu34mhe_exec_in_ye1d"
+        },
+        {
+            "fromNode": "node_5awu34mhe",
+            "fromPort": "node_5awu34mhe_exec_out_xugb",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_exec_in"
+        },
+        {
+            "fromNode": "node_lutifq8tf",
+            "fromPort": "node_lutifq8tf_out",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_map"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_3rpr9ui38",
+            "toPort": "node_3rpr9ui38_map"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_key"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_3rpr9ui38",
+            "toPort": "node_3rpr9ui38_key"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_dpkn0g4e0",
+            "toPort": "node_dpkn0g4e0_key"
+        },
+        {
+            "fromNode": "node_ne3ie25yg",
+            "fromPort": "node_ne3ie25yg__qka6",
+            "toNode": "node_4cfoscq4s",
+            "toPort": "node_4cfoscq4s_val"
+        },
+        {
+            "fromNode": "node_7uo61nf67",
+            "fromPort": "node_7uo61nf67_result_0b9a",
+            "toNode": "node_8319jifnb",
+            "toPort": "node_8319jifnb_message"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_7uo61nf67",
+            "toPort": "node_7uo61nf67_in_arg1_tsw7"
+        },
+        {
+            "fromNode": "node_3rpr9ui38",
+            "fromPort": "node_3rpr9ui38_val",
+            "toNode": "node_7uo61nf67",
+            "toPort": "node_7uo61nf67_in_arg2_g0gn"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_exec_out",
+            "toNode": "node_8319jifnb",
+            "toPort": "node_8319jifnb_exec_in_yg81"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_s4r1wutpy",
+            "toPort": "node_s4r1wutpy_in_arg1_rdmq"
+        },
+        {
+            "fromNode": "node_dpkn0g4e0",
+            "fromPort": "node_dpkn0g4e0_val",
+            "toNode": "node_s4r1wutpy",
+            "toPort": "node_s4r1wutpy_in_arg2_6kcu"
+        },
+        {
+            "fromNode": "node_s4r1wutpy",
+            "fromPort": "node_s4r1wutpy_result_tud8",
+            "toNode": "node_2ow5nw2we",
+            "toPort": "node_2ow5nw2we_message"
+        },
+        {
+            "fromNode": "node_5cr7tykq5",
+            "fromPort": "node_5cr7tykq5_string_k5do",
+            "toNode": "node_2urz1vr6b",
+            "toPort": "node_2urz1vr6b_message"
+        },
+        {
+            "fromNode": "node_8319jifnb",
+            "fromPort": "node_8319jifnb_exec_out_0uym",
+            "toNode": "node_2urz1vr6b",
+            "toPort": "node_2urz1vr6b_exec_in_u4hm"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_5cr7tykq5",
+            "toPort": "node_5cr7tykq5_value"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_dpkn0g4e0",
+            "toPort": "node_dpkn0g4e0_map"
+        },
+        {
+            "fromNode": "node_4cfoscq4s",
+            "fromPort": "node_4cfoscq4s_out",
+            "toNode": "node_3dz5gg89c",
+            "toPort": "node_3dz5gg89c_map"
+        },
+        {
+            "fromNode": "node_4cyjvnk4c",
+            "fromPort": "node_4cyjvnk4c__06sy",
+            "toNode": "node_3dz5gg89c",
+            "toPort": "node_3dz5gg89c_key"
+        },
+        {
+            "fromNode": "node_2urz1vr6b",
+            "fromPort": "node_2urz1vr6b_exec_out_cee7",
+            "toNode": "node_3dz5gg89c",
+            "toPort": "node_3dz5gg89c_exec_in"
+        },
+        {
+            "fromNode": "node_3dz5gg89c",
+            "fromPort": "node_3dz5gg89c_exec_out",
+            "toNode": "node_2ow5nw2we",
+            "toPort": "node_2ow5nw2we_exec_in_zjmz"
+        }
+    ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
+    "view": {
+        "panX": 498.1719225435552,
+        "panY": -106.29962302121271,
+        "zoom": 0.7358311349531741
+    },
     "name": "func_triage",
     "description": "",
-    "tags": [],
     "inputs": [
         {
             "id": "79el2",
@@ -11,197 +655,5 @@
         }
     ],
     "outputs": [],
-    "nodes": [
-        {
-            "id": "node_e24149f9",
-            "type": "start",
-            "x": -110.5826151658001,
-            "y": -46.61816129538632,
-            "width": 300,
-            "height": 150,
-            "title": "Start",
-            "params": {},
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_e24149f9_flow",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "79el2",
-                    "label": "prompt",
-                    "type": "string"
-                }
-            ]
-        },
-        {
-            "id": "node_f1d3a85a",
-            "type": "run_process",
-            "x": 283.99666840450385,
-            "y": -54.20716429696084,
-            "width": 367,
-            "height": 230,
-            "title": "Run Process",
-            "params": {
-                "program_name": "find",
-                "arguments": [
-                    ".",
-                    "-maxdepth",
-                    "2",
-                    "-not",
-                    "-path",
-                    "'*/.*'"
-                ],
-                "timeout": 5
-            },
-            "inputs": [
-                {
-                    "id": "node_f1d3a85a_in_exec_in",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_f1d3a85a_in_program_name",
-                    "label": "program_name",
-                    "type": "string",
-                    "key": "program_name"
-                },
-                {
-                    "id": "node_f1d3a85a_in_arguments",
-                    "label": "arguments",
-                    "type": "list:string",
-                    "key": "arguments"
-                },
-                {
-                    "id": "node_f1d3a85a_in_timeout",
-                    "label": "timeout",
-                    "type": "number",
-                    "key": "timeout"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_f1d3a85a_out_exec_out",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_f1d3a85a_out_output",
-                    "label": "Output",
-                    "type": "string",
-                    "key": "output"
-                }
-            ]
-        },
-        {
-            "id": "node_95b0e023",
-            "type": "string_format",
-            "x": 369.64398799370196,
-            "y": 258.8025551343098,
-            "width": 456,
-            "height": 242,
-            "title": "String Format",
-            "params": {
-                "format": "User Message:\n{}\n\nWorkspace Summary:\n{}"
-            },
-            "inputs": [
-                {
-                    "id": "node_95b0e023_in_arg_1",
-                    "label": "Arg 1",
-                    "type": "string",
-                    "key": "arg1"
-                },
-                {
-                    "id": "node_95b0e023_in_arg_2",
-                    "label": "Arg 2",
-                    "type": "string",
-                    "key": "arg2"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_95b0e023_out_result",
-                    "label": "Result",
-                    "type": "string"
-                }
-            ]
-        },
-        {
-            "id": "node_45773f7d",
-            "type": "ai_eval",
-            "x": 836.8608717219333,
-            "y": -68.30102701417066,
-            "width": 688,
-            "height": 274,
-            "title": "AI Eval",
-            "params": {
-                "model_name": "gemini-3-flash-preview",
-                "system_prompt": "You are a Request Classifier. Analyze the user request and workspace summary.\nClassify the intent into one of these categories: NEW_FEATURE, BUG_FIX, QUESTION.\nOutput ONLY the category name."
-            },
-            "inputs": [
-                {
-                    "id": "node_45773f7d_in_exec_in",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_45773f7d_in_prompt",
-                    "label": "prompt",
-                    "type": "string",
-                    "key": "prompt"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_45773f7d_out_exec_out",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_45773f7d_out_response",
-                    "label": "response",
-                    "type": "string",
-                    "key": "response"
-                }
-            ]
-        }
-    ],
-    "connections": [
-        {
-            "fromNode": "node_e24149f9",
-            "fromPort": "node_e24149f9_flow",
-            "toNode": "node_f1d3a85a",
-            "toPort": "node_f1d3a85a_in_exec_in"
-        },
-        {
-            "fromNode": "node_f1d3a85a",
-            "fromPort": "node_f1d3a85a_out_exec_out",
-            "toNode": "node_45773f7d",
-            "toPort": "node_45773f7d_in_exec_in"
-        },
-        {
-            "fromNode": "node_95b0e023",
-            "fromPort": "node_95b0e023_out_result",
-            "toNode": "node_45773f7d",
-            "toPort": "node_45773f7d_in_prompt"
-        },
-        {
-            "fromNode": "node_f1d3a85a",
-            "fromPort": "node_f1d3a85a_out_output",
-            "toNode": "node_95b0e023",
-            "toPort": "node_95b0e023_in_arg_2"
-        },
-        {
-            "fromNode": "node_e24149f9",
-            "fromPort": "79el2",
-            "toNode": "node_95b0e023",
-            "toPort": "node_95b0e023_in_arg_1"
-        }
-    ],
-    "view": {
-        "panX": 552,
-        "panY": 225,
-        "zoom": 0.9223873015398314
-    }
+    "tags": []
 }

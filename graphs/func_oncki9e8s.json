@@ -1,10 +1,4 @@
 {
-    "id": "func_oncki9e8s",
-    "name": "user prompt test",
-    "description": "added a UI prompt tool that allows asking the user something with the vm paused until they choose a option",
-    "tags": [],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_n00wtpui4",
@@ -153,9 +147,42 @@
             "toPort": "node_fvyuvmeby_exec_in_z178"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
         "panX": 300,
         "panY": 42,
         "zoom": 0.9223873015398314
-    }
+    },
+    "name": "user prompt test",
+    "description": "added a UI prompt tool that allows asking the user something with the vm paused until they choose a option",
+    "inputs": [],
+    "outputs": [],
+    "tags": []
 }

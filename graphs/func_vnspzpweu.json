@@ -1,12 +1,4 @@
 {
-    "id": "func_vnspzpweu",
-    "name": "Nested call",
-    "description": "nested call",
-    "tags": [
-        "temp"
-    ],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_ujruo9ubb",
@@ -91,9 +83,44 @@
             "toPort": "node_rn9ica7fx_flow"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
         "panX": 226,
         "panY": 215,
         "zoom": 1
-    }
+    },
+    "name": "Nested call",
+    "description": "nested call",
+    "inputs": [],
+    "outputs": [],
+    "tags": [
+        "temp"
+    ]
 }

@@ -6,7 +6,8 @@ const graph = new NodeGraph({
 const typeDB = new TypeDatabase();
 const typeEditor = new TypeEditor(typeDB);
 const functionDB = new FunctionDatabase();
-const funcManager = new FunctionManager(graph, typeDB, functionDB);
+const agentDB = new FunctionDatabase();
+const funcManager = new FunctionManager(graph, typeDB, functionDB, agentDB);
 
 // Make globally available for UI
 window.typeDB = typeDB;
@@ -34,12 +35,13 @@ window.importFunctionList = (list) => {
 
     // Check if current is a default stub BEFORE sync
     const currentBefore = functionDB.getFunction(funcManager.currentFunctionId);
-    const isDefaultStub = currentBefore && currentBefore.name === 'Main' && currentBefore.id.startsWith('func_');
+    const isDefaultStub = currentBefore && currentBefore.name === 'Main' && currentBefore.id.startsWith('func_') && !serverIds.has(funcManager.currentFunctionId);
 
     // Remove local functions not on server
     Object.keys(functionDB.functions).forEach(id => {
         if (!serverIds.has(id)) {
-            // Actually, if the server sent a list, that IS the source of truth.
+            // Do not delete if it's the one we are currently editing/just created
+            if (id === funcManager.currentFunctionId) return;
             delete functionDB.functions[id];
         }
     });
@@ -68,10 +70,58 @@ window.importFunctionList = (list) => {
     funcManager.updateSelector();
 
     // Load first server function if current is missing, was a stub, or none loaded
+    // Load first server function if current is missing, was a stub, or none loaded
     const currentAfter = functionDB.getFunction(funcManager.currentFunctionId);
-    if ((!currentAfter || isDefaultStub || !funcManager.currentFunctionId) && list.length > 0) {
+    if (funcManager.mode === 'function' && (!currentAfter || isDefaultStub || !funcManager.currentFunctionId) && list.length > 0) {
         funcManager.loadFunction(list[0].id);
     }
+};
+
+window.importAgentList = (list) => {
+    const serverIds = new Set(list.map(f => f.id));
+
+    // Remove local agents not on server
+    Object.keys(agentDB.functions).forEach(id => {
+        if (!serverIds.has(id)) {
+            // Do not delete if it's the one we are currently editing/just created
+            if (id === funcManager.currentFunctionId) return;
+            delete agentDB.functions[id];
+        }
+    });
+
+    // Merge list into DB
+    list.forEach(f => {
+        let existing = agentDB.getFunction(f.id);
+        if (!existing) {
+            agentDB.functions[f.id] = {
+                id: f.id,
+                name: f.name || f.id,
+                description: f.description || '',
+                tags: [],
+                inputs: [],
+                outputs: [],
+                data: null,
+                history: [],
+                historyIndex: -1
+            };
+        } else {
+            existing.name = f.name;
+        }
+    });
+
+    // Only update selector if in agent mode
+    if (funcManager.mode === 'agent') {
+        funcManager.updateSelector();
+        // Load first if current missing
+        const current = agentDB.getFunction(funcManager.currentFunctionId);
+        if ((!current || !funcManager.currentFunctionId) && list.length > 0) {
+            funcManager.loadFunction(list[0].id);
+        }
+    }
+};
+
+window.setEditorMode = (mode) => {
+    funcManager.setMode(mode);
 };
 
 window.receiveServerFunction = (id, data) => {
@@ -120,3 +170,10 @@ window.toggleTypePanel = () => {
         btn.classList.add('active');
     }
 };
+
+// Request Initial Data
+if (window.parent && window.parent.sendAction) {
+    window.parent.sendAction('get_functions');
+    window.parent.sendAction('get_agents');
+    window.parent.sendAction('get_structs'); // Also structs
+}
