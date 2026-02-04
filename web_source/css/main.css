@@ -541,3 +541,68 @@ input:focus {
 .toast-info {
     border-left: 3px solid #3b82f6 !important;
 }
+
+/* Markdown Content Styles */
+.markdown-body {
+    overflow-x: auto;
+}
+
+.markdown-body :first-child {
+    margin-top: 0;
+}
+
+.markdown-body :last-child {
+    margin-bottom: 0;
+}
+
+.markdown-body p {
+    margin-bottom: 1em;
+}
+
+.markdown-body pre {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 10px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.markdown-body code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.markdown-body pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    color: inherit;
+    /* Let highlight.js handle colors, or inherit base */
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    padding-left: 20px;
+    margin: 1em 0;
+}
+
+.markdown-body blockquote {
+    border-left: 3px solid var(--text-muted);
+    margin: 0;
+    padding-left: 10px;
+    color: var(--text-muted);
+}
+
+.markdown-body a {
+    color: #a78bfa;
+    /* Slightly lighter violet */
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}

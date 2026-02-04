@@ -1,6 +1,7 @@
 import logging
 import time
 import os
+import json
 from source import tools
 
 logger = logging.getLogger("MessageHandler")
@@ -280,6 +281,60 @@ def handle_message(msg, server, sim_state):
             })
         except Exception as e:
             logging.error(f"Error updating orchestrator roles: {e}")
+
+    # Handle Get LLM Connections
+    elif msg_type == "get_llm_connections":
+        conn_path = sim_state.system_root / "gallium" / "connections.json"
+        data = {}
+        if conn_path.exists():
+            try:
+                with open(conn_path, 'r') as f:
+                    data = json.load(f)
+            except Exception as e:
+                logging.error(f"Failed to load connections.json: {e}")
+        
+        server.broadcast({
+            "type": "llm_connections",
+            "data": data
+        })
+
+    # Handle Save LLM Config
+    elif msg_type == "save_llm_config":
+        provider = msg.get("provider")
+        config = msg.get("config")
+        
+        if provider and config:
+            conn_path = sim_state.system_root / "gallium" / "connections.json"
+            data = {}
+            if conn_path.exists():
+                try:
+                    with open(conn_path, 'r') as f:
+                        data = json.load(f)
+                except: pass
+            
+            data[provider] = config
+            
+            try:
+                # Ensure dir exists
+                if not conn_path.parent.exists():
+                    conn_path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                with open(conn_path, 'w') as f:
+                    json.dump(data, f, indent=4)
+                    
+                server.broadcast({
+                    "type": "save_llm_response",
+                    "provider": provider,
+                    "success": True
+                })
+            except Exception as e:
+                logging.error(f"Failed to save connection config: {e}")
+                server.broadcast({
+                    "type": "save_llm_response",
+                    "provider": provider,
+                    "success": False,
+                    "error": str(e)
+                })
 
     # Handle User Chat Message
     elif msg_type == "user_message":

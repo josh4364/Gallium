@@ -1,0 +1,88 @@
+{
+    "name": "discuss ralph loop",
+    "states": [
+        {
+            "id": "start",
+            "x": 295,
+            "y": 249,
+            "name": "Start",
+            "function_id": "func_swpofky04",
+            "isStart": true
+        },
+        {
+            "id": "state_ub343q",
+            "x": 408,
+            "y": 391,
+            "name": "ralph",
+            "function_id": null,
+            "isStart": false
+        },
+        {
+            "id": "state_43fssc",
+            "x": 287,
+            "y": 545,
+            "name": "idle",
+            "function_id": null,
+            "isStart": false
+        },
+        {
+            "id": "state_unjkdy",
+            "x": 215,
+            "y": 383,
+            "name": "new plan",
+            "function_id": "func_swpofky04",
+            "isStart": false
+        }
+    ],
+    "transitions": [
+        {
+            "id": "trans_f5ovn5",
+            "from": "start",
+            "to": "state_ub343q",
+            "conditions": [
+                {
+                    "key": "have-plan",
+                    "op": "==",
+                    "value": "true"
+                }
+            ]
+        },
+        {
+            "id": "trans_1pv0wy",
+            "from": "state_ub343q",
+            "to": "state_43fssc",
+            "conditions": [
+                {
+                    "key": "is-done",
+                    "op": "==",
+                    "value": "true"
+                }
+            ]
+        },
+        {
+            "id": "trans_x1bjkz",
+            "from": "state_43fssc",
+            "to": "state_unjkdy",
+            "conditions": [
+                {
+                    "key": "new-message",
+                    "op": "==",
+                    "value": "true"
+                }
+            ]
+        },
+        {
+            "id": "trans_3sq5kb",
+            "from": "state_unjkdy",
+            "to": "state_ub343q",
+            "conditions": [
+                {
+                    "key": "have-plan",
+                    "op": "==",
+                    "value": "true"
+                }
+            ]
+        }
+    ],
+    "type": "agent"
+}

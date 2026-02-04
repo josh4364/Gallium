@@ -4,6 +4,8 @@ from source.ai_system import AI_Eval
 from source.blackboard import Blackboard
 from source.schemas import Event
 import json
+from source.local_llm import LocalLlamaClient
+from source.gemini_llm import GeminiClient
 
 logger = logging.getLogger("GraphInterpreter")
 
@@ -76,6 +78,10 @@ class GraphInterpreter:
         self.node_handlers['context_get_new_messages'] = self._handle_context_get_new_messages
         self.node_handlers['context_get_all_messages'] = self._handle_context_get_all_messages
         self.node_handlers['context_send_message'] = self._handle_context_send_message
+        
+        # LLM Chat Nodes
+        self.node_handlers['create_llm_chat'] = self._handle_create_llm_chat
+        self.node_handlers['send_llm_chat_message'] = self._handle_send_llm_chat_message
 
     def safe_graph_eval(self, graph_data, expected_input_types, input_values):
         """
@@ -1016,19 +1022,30 @@ class GraphInterpreter:
         elif nt == 'get_context_agent_provider':
             ctx = self.get_input_value(node, 'ctx')
             role = self.get_input_value(node, 'role')
-            val = "unknown"
+            
+            provider_val = "unknown"
+            model_val = ""
+            
             if isinstance(ctx, dict):
                 # Try new workflow role format
                 roles = ctx.get('roles', [])
                 if isinstance(roles, list):
                     for r in roles:
                         if isinstance(r, dict) and r.get('role') == role:
-                            val = r.get('provider', "unknown")
+                            provider_val = r.get('provider', "unknown")
+                            model_val = r.get('model', "")
                             break
                 
                 # Check directly in dict if not found
-                if val == "unknown" and role in ctx:
-                    val = str(ctx[role])
+                if provider_val == "unknown" and role in ctx:
+                    provider_val = str(ctx[role])
+
+            # Determine which output was requested
+            requested_port = next((p for p in node.get('outputs', []) if p['id'] == port_id), None)
+            if requested_port and requested_port.get('key') == 'model':
+                val = model_val
+            else:
+                val = provider_val
 
         elif nt == 'get_context_top_level_goal':
             ctx = self.get_input_value(node, 'ctx')
@@ -1171,3 +1188,321 @@ def {sanitized_name}({args_str}):
         if 'list' in gt: return 'list'
         if 'map' in gt: return 'dict'
         return 'str'
+
+    def _handle_create_llm_chat(self, node):
+        provider = self.get_input_value(node, 'provider')
+        model = self.get_input_value(node, 'model')
+        system_prompt = self.get_input_value(node, 'system_prompt')
+        initial_messages = self.get_input_value(node, 'message_list')
+        tools = self.get_input_value(node, 'tool_list')
+        
+        # Initialize chat state object
+        chat_state = {
+            'provider': provider,
+            'model': model,
+            'system_prompt': system_prompt,
+            'messages': [],
+            'tools': tools or []
+        }
+        
+        # Process initial messages
+        if initial_messages and isinstance(initial_messages, list):
+             for m in initial_messages:
+                  if isinstance(m, dict):
+                      role_num = m.get('role', 0)
+                      content = m.get('message', '')
+                      role_str = self._map_role_num_to_str(role_num)
+                      chat_state['messages'].append({'role': role_str, 'content': content})
+         
+        if chat_state['messages'] and chat_state['messages'][-1]['role'] == 'assistant':
+             # If the history ends in Assistant, and we plan to use this chat, 
+             # we likely want to treat that last Assistant message as the User Prompt for *this* new agent.
+             logger.info(f"Create LLM Chat (Node {node['id']}): Final message in initial list is 'assistant'. Coercing to 'user' to allow response.")
+             chat_state['messages'][-1]['role'] = 'user'
+        
+        self._update_output_cache(node, 'llm_chat', chat_state)
+        return self.follow_flow(node, 'exec_out')
+
+    def _handle_send_llm_chat_message(self, node):
+        chat_state = self.get_input_value(node, 'llm_chat')
+        message_struct = self.get_input_value(node, 'message')
+        
+        if not chat_state or not isinstance(chat_state, dict):
+             err_msg = f"Send LLM Chat Message (Node {node['id']}): Invalid chat state. State: {str(chat_state)[:100]}"
+             logger.error(err_msg)
+             # Return error message so flow doesn't crash on None
+             result_struct = {'message': "Error: Invalid Chat State", 'role': 'system'}
+             self._update_output_cache(node, 'result_message', result_struct)
+             return self.follow_flow(node, 'exec_out')
+
+        # Add user message to state
+        if message_struct:
+             role_num = message_struct.get('role', 0)
+             content = message_struct.get('message', '')
+             role_str = self._map_role_num_to_str(role_num)
+             
+             # Edge Case: If we are feeding an Assistant message (e.g. from another agent) 
+             # into this node to TRIGGER a response, we must treat it as a USER (instruction).
+             # Providing two 'assistant' messages in a row at the end of context causes errors in many backends (llama-server).
+             if role_str == 'assistant':
+                 logger.info(f"Node {node['id']}: Coercing 'assistant' input message to 'user' role for LLM Prompting.")
+                 role_str = 'user'
+                 
+             chat_state['messages'].append({'role': role_str, 'content': content})
+
+        provider = chat_state.get('provider', 'local')
+        result_content = ""
+        result_role = 1 # Assistant
+        
+        # Load Connections Config
+        connections = {}
+        if self.sim_state and self.sim_state.system_root:
+             try:
+                 conn_path = self.sim_state.system_root / "gallium" / "connections.json"
+                 if conn_path.exists():
+                     with open(conn_path, 'r') as f:
+                         connections = json.load(f)
+             except Exception as e:
+                 logger.warning(f"Failed to load connections.json: {e}")
+
+        if provider == 'local':
+             model_name = chat_state.get('model')
+             if not model_name:
+                 model_name = "current-model"
+             
+             # Config
+             local_cfg = connections.get("local", {})
+             base_url = local_cfg.get("base_url", "http://127.0.0.1:8080")
+             api_key = local_cfg.get("api_key", None)
+             
+             # Construct URL
+             if not base_url.endswith("/v1/chat/completions"):
+                  if base_url.endswith("/"):
+                      api_url = f"{base_url}v1/chat/completions"
+                  else:
+                      api_url = f"{base_url}/v1/chat/completions"
+             else:
+                  api_url = base_url
+
+             client = LocalLlamaClient(api_url=api_url, model_name=model_name)
+             # Pass Key? LocalLlamaClient doesn't take it currently, but we could add it if supported.
+             
+             # Prepare full context
+             full_messages = []
+             if chat_state.get('system_prompt'):
+                  full_messages.append({'role': 'system', 'content': chat_state['system_prompt']})
+             
+             full_messages.extend(chat_state['messages'])
+             
+             # Final Safety Check: Some backends (llama-server) fail 500 if history ends in Assistant.
+             # If we are about to call the API, the last message MUST be a prompt (User/System/Tool), not an Assistant response.
+             if full_messages and full_messages[-1].get('role') == 'assistant':
+                  logger.info(f"Local Provider Safety: Coercing final 'assistant' message to 'user' before API call.")
+                  # We copy to avoid mutating the shared chat_state reference if we used extending reference logic (though extend does copy content references)
+                  # Actually full_messages is a new list, but the dicts are references.
+                  # Let's copy the dict to be safe.
+                  last_msg = full_messages[-1].copy()
+                  last_msg['role'] = 'user'
+                  full_messages[-1] = last_msg
+             
+             # Prepare Tools
+             tool_registry = {}
+             tools_schema = []
+             
+             if chat_state.get('tools'):
+                  for t in chat_state['tools']:
+                      schema = self._create_tool_schema(t)
+                      tools_schema.append(schema)
+                      
+                      # Create callable wrapper
+                      func_id = t['id']
+                      fn_name = schema['function']['name']
+                      
+                      # Capture via closure
+                      def make_runner(fid):
+                          return lambda **kwargs: self._tool_runner(fid, kwargs)
+                      
+                      tool_registry[fn_name] = make_runner(func_id)
+
+             max_turns = 10
+             current_turn = 0
+             finished = False
+             
+             while current_turn < max_turns and not finished:
+                  try:
+                      # Debug: Dump message history to see exactly what is causing 500 error
+                      if current_turn == 0:
+                           logger.info(f"LocalLLM Debug - Sending Messages: {json.dumps(full_messages)}")
+                           
+                      response_data = client.call_api(full_messages, tools=tools_schema)
+                  except Exception as e:
+                      logger.error(f"LLM API Call failed: {e}")
+                      result_content = f"Error calling LLM provider: {e}"
+                      break
+                      
+                  if not response_data or 'choices' not in response_data or not response_data['choices']:
+                       result_content = "Error: No valid response from provider"
+                       break
+
+                  choice = response_data['choices'][0]
+                  message = choice['message']
+                  tool_calls = message.get('tool_calls', [])
+                  
+                  # Append to history
+                  full_messages.append(message)
+                  chat_state['messages'].append(message)
+                  
+                  if message.get('content'):
+                       result_content = message.get('content')
+                  
+                  if tool_calls:
+                       if self.sim_state:
+                           tool_names = [t['function']['name'] for t in tool_calls]
+                           self.sim_state._add_event(f"AI Calling Tools: {', '.join(tool_names)}", "info")
+                           
+                       for tool in tool_calls:
+                            fn_name = tool['function']['name']
+                            args_str = tool['function']['arguments']
+                            call_id = tool['id']
+                            
+                            response_content = ""
+                            try:
+                                args = json.loads(args_str)
+                                if fn_name in tool_registry:
+                                     res = tool_registry[fn_name](**args)
+                                     # Serialize
+                                     if isinstance(res, (dict, list)):
+                                         response_content = json.dumps(res)
+                                     else:
+                                         response_content = str(res)
+                                else:
+                                     response_content = json.dumps({"error": f"Tool {fn_name} not found"})
+                            except Exception as e:
+                                response_content = json.dumps({"error": f"Exception: {str(e)}"})
+                            
+                            tool_msg = {
+                                "role": "tool",
+                                "tool_call_id": call_id,
+                                "name": fn_name,
+                                "content": response_content
+                            }
+                            full_messages.append(tool_msg)
+                            chat_state['messages'].append(tool_msg)
+                       
+                       current_turn += 1
+                  else:
+                       finished = True
+        
+        elif provider == 'gemini':
+             model_name = chat_state.get('model')
+             if not model_name:
+                 model_name = "gemini-2.0-flash"
+             
+             client = GeminiClient(model_name=model_name)
+             
+             # Prepare Tools (Shared logic essentially)
+             tool_registry = {}
+             tools_schema = []
+             
+             if chat_state.get('tools'):
+                  for t in chat_state['tools']:
+                      schema = self._create_tool_schema(t)
+                      tools_schema.append(schema)
+                      
+                      # Create callable wrapper
+                      func_id = t['id']
+                      fn_name = schema['function']['name']
+                      
+                      # Capture via closure
+                      def make_runner(fid):
+                          return lambda **kwargs: self._tool_runner(fid, kwargs)
+                      
+                      tool_registry[fn_name] = make_runner(func_id)
+
+             try:
+                 # We use existing messages in chat_state
+                 # Note: run_chat expects OpenAI format which chat_state['messages'] IS.
+                 # Also need to ensure system prompt is handled.
+                 
+                 # Prepare messages list. Copy it to avoid mutation during setup if needed.
+                 # But we WANT mutation of the history.
+                 messages_for_run = []
+                 if chat_state.get('system_prompt'):
+                     messages_for_run.append({'role': 'system', 'content': chat_state['system_prompt']})
+                 
+                 messages_for_run.extend(chat_state['messages'])
+                 
+                 result_text, new_history = client.run_chat(
+                     messages_for_run, 
+                     tools_schema=tools_schema, 
+                     tool_registry=tool_registry
+                 )
+                 
+                 if result_text:
+                     result_content = result_text
+                     # Sync back the history to chat_state['messages']
+                     # We need to extract the NEW messages added by run_chat
+                     # run_chat returns the FULL history (with system prompt potentially removed/handled).
+                     # The easiest way is to replace chat_state['messages'] with the new history (minus system)
+                     
+                     # But new_history from run_chat excludes system prompt (it consumes it).
+                     # So valid logic:
+                     chat_state['messages'] = new_history
+                     
+                 else:
+                     result_content = "No response from Gemini"
+
+             except Exception as e:
+                 logger.error(f"Gemini API execution failed: {e}")
+                 result_content = f"Error: {e}"
+        
+        else:
+             # Placeholder for other providers
+             result_content = f"Provider '{provider}' not yet implemented."
+             logger.warning(result_content)
+
+        # Output result
+        result_struct = {'message': result_content, 'role': result_role}
+        self._update_output_cache(node, 'result_message', result_struct)
+        
+        return self.follow_flow(node, 'exec_out')
+
+    def _map_role_num_to_str(self, role_num):
+        mapping = {0: 'user', 1: 'assistant', 2: 'tool', 3: 'system'}
+        return mapping.get(role_num, 'user')
+
+    def _create_tool_schema(self, tool_def):
+        """Converts internal tool definition to OpenAI-compatible JSON schema."""
+        name = tool_def['name']
+        sanitized_name = name.replace(" ", "_").replace("-", "_")
+        sanitized_name = "".join(c for c in sanitized_name if c.isalnum() or c == '_')
+        if not sanitized_name: sanitized_name = "unnamed_tool"
+        
+        properties = {}
+        required = []
+        for arg in tool_def.get('args', []):
+            arg_name = arg['name']
+            arg_type = arg['type']
+            
+            json_type = "string"
+            if arg_type.lower() in ['number', 'float', 'int', 'integer']:
+                json_type = "number"
+            elif arg_type.lower() in ['boolean', 'bool']:
+                json_type = "boolean"
+            
+            properties[arg_name] = {"type": json_type, "description": f"Argument {arg_name}"}
+            # All args required by default for simplicity
+            required.append(arg_name)
+            
+        return {
+            "type": "function",
+            "function": {
+                "name": sanitized_name,
+                "description": tool_def.get('description', ''),
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required
+                }
+            }
+        }

@@ -246,7 +246,8 @@ class SimulationState:
             "memory": {
                 "goal": prompt,
                 "latest_user_message": prompt,
-                "_thread_id": thread_id
+                "_thread_id": thread_id,
+                "roles": workflow.get("roles", [])
             },
             "messages": [
                 {"role": "user", "content": prompt, "responded": False}

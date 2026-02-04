@@ -169,6 +169,16 @@ Object.assign(NodeGraph.prototype, {
             if (e.code === 'NumpadDecimal') {
                 this.focusSelection();
             }
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    this.copySelection();
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyV') {
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    this.pasteSelection();
+                }
+            }
         });
 
         window.addEventListener('keyup', (e) => {
@@ -406,5 +416,125 @@ Object.assign(NodeGraph.prototype, {
     render() {
         this.renderConnections();
         this.renderMinimap();
+    },
+
+    copySelection() {
+        const nodes = Array.from(this.selectedNodes);
+        if (nodes.length === 0 && this.selectedNode) {
+            nodes.push(this.selectedNode);
+        }
+        if (nodes.length === 0) return;
+
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const relevantConnections = this.connections.filter(c =>
+            nodeIds.has(c.fromNode.id) && nodeIds.has(c.toNode.id)
+        );
+
+        this.clipboard = {
+            nodes: nodes.map(n => ({
+                id: n.id,
+                type: n.type,
+                x: n.x,
+                y: n.y,
+                params: JSON.parse(JSON.stringify(n.params)),
+                inputs: JSON.parse(JSON.stringify(n.inputs)),
+                outputs: JSON.parse(JSON.stringify(n.outputs)),
+                title: n.title
+            })),
+            connections: relevantConnections.map(c => ({
+                fromNodeId: c.fromNode.id,
+                fromPortId: c.fromPort.id,
+                toNodeId: c.toNode.id,
+                toPortId: c.toPort.id
+            }))
+        };
+
+        // Optional: Persist to localStorage for cross-tab/reload (simple implementation)
+        // try { localStorage.setItem('gallium_clipboard', JSON.stringify(this.clipboard)); } catch(e) {}
+    },
+
+    pasteSelection() {
+        // Optional: Load from localStorage if internal is empty
+        // if (!this.clipboard) { try { this.clipboard = JSON.parse(localStorage.getItem('gallium_clipboard')); } catch(e) {} }
+
+        if (!this.clipboard || !this.clipboard.nodes || this.clipboard.nodes.length === 0) return;
+
+        this.deselectNodes();
+
+        // Prevent individual history events for each node/connection
+        const wasRestoring = this.isRestoring;
+        this.isRestoring = true;
+
+        const idMap = new Map(); // Old Node ID -> New Node ID
+        const portMap = new Map(); // Old Port ID -> New Port ID
+
+        // calculating center of pasted nodes to allow positioning under mouse?
+        // for now, just offset by 50px from original to cascade
+        const offset = 50;
+
+        // 1. Create Nodes
+        this.clipboard.nodes.forEach(data => {
+            const newNodeId = 'node_' + Math.random().toString(36).substr(2, 9);
+            idMap.set(data.id, newNodeId);
+
+            // Remap Port IDs
+            const newInputs = data.inputs.map(p => {
+                const newPortId = newNodeId + '_' + p.key + '_' + Math.random().toString(36).substr(2, 4);
+                portMap.set(p.id, newPortId);
+                return { ...p, id: newPortId };
+            });
+
+            const newOutputs = data.outputs.map(p => {
+                const newPortId = newNodeId + '_' + p.key + '_' + Math.random().toString(36).substr(2, 4);
+                portMap.set(p.id, newPortId);
+                return { ...p, id: newPortId };
+            });
+
+            const newNode = this.addNode(
+                data.type,
+                data.x + offset,
+                data.y + offset,
+                newNodeId,
+                data.params,
+                newInputs,
+                newOutputs,
+                // data.width, data.height // addNode doesn't explicitly take width/height arguments in signature shown in my read, but let's check... 
+                // Wait, addNode signature: (type, x, y, id, params, savedInputs, savedOutputs, width, height)
+                // Yes, line 277 of graph_nodes.js
+            );
+
+            // If the node was successfully created (it might fail if type invalid)
+            if (newNode) {
+                // Restore dimensions if they were custom (e.g. comment nodes)
+                // Although addNode argument 8/9 are width/height, I didn't pass them above.
+                // Let's rely on addNode defaults or pass them if I had them in clipboard (I didn't capture width height in copySelection above unless I add it)
+                this.selectNode(newNode, true);
+            }
+        });
+
+        // 2. Create Connections
+        this.clipboard.connections.forEach(c => {
+            const newFromNodeId = idMap.get(c.fromNodeId);
+            const newToNodeId = idMap.get(c.toNodeId);
+            const newFromPortId = portMap.get(c.fromPortId);
+            const newToPortId = portMap.get(c.toPortId);
+
+            if (newFromNodeId && newToNodeId && newFromPortId && newToPortId) {
+                const fromNode = this.nodes.find(n => n.id === newFromNodeId);
+                const toNode = this.nodes.find(n => n.id === newToNodeId);
+
+                if (fromNode && toNode) {
+                    const fromPort = fromNode.outputs.find(p => p.id === newFromPortId);
+                    const toPort = toNode.inputs.find(p => p.id === newToPortId);
+
+                    if (fromPort && toPort) {
+                        this.addConnection(fromNode, fromPort, toNode, toPort);
+                    }
+                }
+            }
+        });
+
+        this.isRestoring = wasRestoring;
+        this.saveHistory('Pasted Selection');
     }
 });

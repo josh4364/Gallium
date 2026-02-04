@@ -457,7 +457,10 @@ const nodeRegistry = [
             { label: 'Context', type: 'context', key: 'ctx' },
             { label: 'Role', type: 'string', key: 'role' }
         ],
-        outputs: [{ label: 'Provider', type: 'string' }]
+        outputs: [
+            { label: 'Provider', type: 'string', key: 'provider' },
+            { label: 'Model', type: 'string', key: 'model' }
+        ]
     },
     {
         type: 'context_any_pending_messages',
@@ -494,6 +497,47 @@ const nodeRegistry = [
         outputs: [
             { label: 'Messages', type: 'list:string', key: 'messages' }
         ]
+    },
+    {
+        type: 'create_llm_chat',
+        name: 'Create LLM Chat',
+        tags: ['AI', 'LLM', 'Chat', 'Start'],
+        color: '#E91E63',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Provider', type: 'string', key: 'provider' },
+            { label: 'Model', type: 'string', key: 'model' },
+            { label: 'System Prompt', type: 'string', key: 'system_prompt' },
+            { label: 'Message List', type: 'list:struct:struct_chat_message', key: 'message_list' },
+            { label: 'Tool List', type: 'list:tool', key: 'tool_list' }
+        ],
+        outputs: [
+            { label: 'exec_out', type: 'exec' },
+            { label: 'Chat State', type: 'chat_state', key: 'llm_chat' }
+        ],
+        params: {
+            provider: 'local',
+            model: '',
+            system_prompt: 'You are a helpful assistant.',
+            message_list: [],
+            tool_list: []
+        }
+    },
+    {
+        type: 'send_llm_chat_message',
+        name: 'Send LLM Chat Message',
+        tags: ['AI', 'LLM', 'Chat', 'Send'],
+        color: '#E91E63',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Chat Object', type: 'chat_state', key: 'llm_chat' },
+            { label: 'Message', type: 'struct:struct_chat_message', key: 'message' }
+        ],
+        outputs: [
+            { label: 'exec_out', type: 'exec' },
+            { label: 'Result Message', type: 'struct:struct_chat_message', key: 'result_message' }
+        ],
+        params: {}
     },
     {
         type: 'context_send_message',

@@ -8,7 +8,8 @@ class TypeDatabase {
             { id: 'tool', name: 'Tool', color: '#E91E63', description: 'Agentic Tool' },
             { id: 'context', name: 'Context', color: '#00BCD4', description: 'Agent Context' },
             { id: 'any', name: 'Any', color: '#808080', description: 'Any type' },
-            { id: 'any_not_exec', name: 'Any (No Exec)', color: '#808080', description: 'Any data type except execution flow' }
+            { id: 'any_not_exec', name: 'Any (No Exec)', color: '#808080', description: 'Any data type except execution flow' },
+            { id: 'chat_state', name: 'Chat State', color: '#E91E63', description: 'LLM Chat State' }
         ];
 
         this.structs = []; // User defined structures
@@ -34,6 +35,10 @@ class TypeDatabase {
     }
 
     getStruct(id) {
+        if (id === 'struct_message') {
+            const alias = this.structs.find(s => s.id === 'struct_chat_message');
+            if (alias) return alias;
+        }
         return this.structs.find(s => s.id === id);
     }
 
@@ -183,7 +188,14 @@ class TypeDatabase {
 
     load(data) {
         if (data && data.structs) {
-            this.structs = data.structs;
+            // Merge structs from file into global DB
+            // We favor existing global structs (which might come from server) over file structs
+            // But we add any missing ones.
+            data.structs.forEach(s => {
+                if (!this.getStruct(s.id)) {
+                    this.structs.push(s);
+                }
+            });
             this.notifyChanged();
         }
     }

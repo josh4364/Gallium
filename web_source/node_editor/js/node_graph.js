@@ -19,6 +19,7 @@ class NodeGraph {
         this.selectedNode = null;
         this.selectedNodes = new Set();
         this.hoveredConnection = null;
+        this.clipboard = null;
 
         // Node Registry configuration
         this.nodeRegistry = options.nodeRegistry || [];

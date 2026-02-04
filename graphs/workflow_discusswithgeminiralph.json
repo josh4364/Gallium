@@ -1,0 +1,17 @@
+{
+    "router_agent": "agent_e3ioaa",
+    "roles": [
+        {
+            "role": "plan",
+            "provider": "gemini",
+            "model": "gemini-3-flash-preview"
+        },
+        {
+            "role": "implement",
+            "provider": "local",
+            "model": ""
+        }
+    ],
+    "name": "discuss with gemini ralph",
+    "type": "workflow"
+}

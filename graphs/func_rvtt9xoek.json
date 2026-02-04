@@ -566,6 +566,22 @@
     "types": {
         "structs": [
             {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "number",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
                 "id": "struct_yzf6l19kx",
                 "name": "Blob",
                 "fields": [

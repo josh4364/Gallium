@@ -1,0 +1,1406 @@
+{
+    "nodes": [
+        {
+            "id": "node_9ckdax8it",
+            "type": "start",
+            "x": -6.266799138917472,
+            "y": 58.91526537824984,
+            "width": 300,
+            "height": 147,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_9ckdax8it_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_9ckdax8it_out_rglz9",
+                    "label": "ctx",
+                    "type": "context"
+                },
+                {
+                    "id": "node_9ckdax8it_out_zs7lp",
+                    "label": "tick",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_4mfc2ridn",
+            "type": "context_send_message",
+            "x": 2168.270405789604,
+            "y": -153.9505613640717,
+            "width": 338,
+            "height": 149,
+            "title": "Send Thread Message",
+            "params": {
+                "message": "created the llm chat"
+            },
+            "inputs": [
+                {
+                    "id": "node_4mfc2ridn_exec_in_rzq7",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_4mfc2ridn_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_4mfc2ridn_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_4mfc2ridn_exec_out_o1qu",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_gdw547pcw",
+            "type": "condition",
+            "x": 779.747418782784,
+            "y": 36.70215146767638,
+            "width": 300,
+            "height": 120,
+            "title": "Branch",
+            "params": {
+                "condition": false
+            },
+            "inputs": [
+                {
+                    "id": "node_gdw547pcw_exec_in_id9t",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_gdw547pcw_condition",
+                    "label": "Condition",
+                    "type": "boolean",
+                    "key": "condition"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_gdw547pcw_exec_true_ufpn",
+                    "label": "exec_true",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_gdw547pcw_exec_false_lx0y",
+                    "label": "exec_false",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_bo6v1380h",
+            "type": "compare_equal",
+            "x": 776.747418782784,
+            "y": 170.70215146767637,
+            "width": 300,
+            "height": 120,
+            "title": "Equal",
+            "params": {
+                "a": null,
+                "b": null
+            },
+            "inputs": [
+                {
+                    "id": "node_bo6v1380h_a",
+                    "label": "A",
+                    "type": "number",
+                    "key": "a"
+                },
+                {
+                    "id": "node_bo6v1380h_b",
+                    "label": "B",
+                    "type": "number",
+                    "key": "b"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_bo6v1380h_result_biqe",
+                    "label": "Result",
+                    "type": "boolean"
+                }
+            ]
+        },
+        {
+            "id": "node_cy38e0ocr",
+            "type": "number",
+            "x": 783.5560246534897,
+            "y": 299.59569706464725,
+            "width": 300,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 0
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_cy38e0ocr__wg73",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_5ac8zki8w",
+            "type": "create_tool",
+            "x": 603.9506172839506,
+            "y": -403.6049382716049,
+            "width": 537,
+            "height": 149,
+            "title": "Create Tool",
+            "params": {
+                "function_name": "caculate",
+                "description": "caculate math expressions using lib qalculate"
+            },
+            "inputs": [
+                {
+                    "id": "node_5ac8zki8w_description",
+                    "label": "Description",
+                    "type": "string",
+                    "key": "description"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_5ac8zki8w_tool_7ykn",
+                    "label": "Tool",
+                    "type": "tool"
+                }
+            ]
+        },
+        {
+            "id": "node_vsgqr00bl",
+            "type": "list_make",
+            "x": 837.6296296296296,
+            "y": -244.1604938271605,
+            "width": 300,
+            "height": 120,
+            "title": "Make List (Tool)",
+            "params": {
+                "element_type": "tool"
+            },
+            "inputs": [
+                {
+                    "id": "node_vsgqr00bl_in_0",
+                    "label": "Item 0",
+                    "type": "tool",
+                    "key": "in_0"
+                },
+                {
+                    "id": "node_vsgqr00bl_in_1",
+                    "label": "Item 1",
+                    "type": "tool",
+                    "key": "in_1"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_vsgqr00bl_out",
+                    "label": "List",
+                    "type": "list:tool",
+                    "key": "list"
+                }
+            ]
+        },
+        {
+            "id": "node_b40ovsyva",
+            "type": "string_format",
+            "x": 1698.5202209460958,
+            "y": 11.879158978924696,
+            "width": 321,
+            "height": 120,
+            "title": "String Format",
+            "params": {
+                "format": "Created llm chat: {}",
+                "arg1": null
+            },
+            "inputs": [
+                {
+                    "id": "node_b40ovsyva_in_arg1_57jg",
+                    "label": "Arg 1",
+                    "type": "chat_state",
+                    "key": "arg1"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_b40ovsyva_result_0ljn",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_yxd2ohmec",
+            "type": "send_llm_chat_message",
+            "x": 2583.197534112664,
+            "y": -111.93007687864109,
+            "width": 300,
+            "height": 147,
+            "title": "Send LLM Chat Message",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_yxd2ohmec_exec_in_wthp",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_yxd2ohmec_llm_chat",
+                    "label": "Chat Object",
+                    "type": "chat_state",
+                    "key": "llm_chat"
+                },
+                {
+                    "id": "node_yxd2ohmec_message",
+                    "label": "Message",
+                    "type": "struct:struct_chat_message",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_yxd2ohmec_exec_out_puvo",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_yxd2ohmec_result_message",
+                    "label": "Result Message",
+                    "type": "struct:struct_chat_message",
+                    "key": "result_message"
+                }
+            ]
+        },
+        {
+            "id": "node_4ltkpw08n",
+            "type": "struct_make",
+            "x": 2183.5810401702197,
+            "y": 239.67108386142039,
+            "width": 300,
+            "height": 120,
+            "title": "Make ChatMessage",
+            "params": {
+                "structId": "struct_chat_message"
+            },
+            "inputs": [
+                {
+                    "id": "node_4ltkpw08n_in_message",
+                    "label": "message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_4ltkpw08n_in_role",
+                    "label": "role",
+                    "type": "number",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_4ltkpw08n_obj",
+                    "label": "Object",
+                    "type": "struct:struct_chat_message"
+                }
+            ]
+        },
+        {
+            "id": "node_fa8b0k8kz",
+            "type": "get_context_top_level_goal",
+            "x": 1833.7027440735662,
+            "y": 189.37178827889613,
+            "width": 300,
+            "height": 120,
+            "title": "Get Top Level Goal",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_fa8b0k8kz_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_fa8b0k8kz_goal_s0td",
+                    "label": "Goal",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_7o0p5pasy",
+            "type": "number",
+            "x": 1839.8585534687857,
+            "y": 331.37427743262003,
+            "width": 300,
+            "height": 120,
+            "title": "Number Constant",
+            "params": {
+                "value": 0
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_7o0p5pasy__xqx2",
+                    "label": "",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_9w893gs2u",
+            "type": "struct_access",
+            "x": 3058.6755626211193,
+            "y": 120.01962814896679,
+            "width": 300,
+            "height": 120,
+            "title": "Access ChatMessage",
+            "params": {
+                "structId": "struct_chat_message"
+            },
+            "inputs": [
+                {
+                    "id": "node_9w893gs2u_obj",
+                    "label": "Object",
+                    "type": "struct:struct_chat_message",
+                    "key": "object"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_9w893gs2u_out_message",
+                    "label": "message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_9w893gs2u_out_role",
+                    "label": "role",
+                    "type": "number",
+                    "key": "role"
+                }
+            ]
+        },
+        {
+            "id": "node_o4za95yyf",
+            "type": "context_send_message",
+            "x": 3074.076732586503,
+            "y": -58.01444777689811,
+            "width": 300,
+            "height": 147,
+            "title": "Send Thread Message",
+            "params": {
+                "message": ""
+            },
+            "inputs": [
+                {
+                    "id": "node_o4za95yyf_exec_in_gou4",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_o4za95yyf_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_o4za95yyf_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_o4za95yyf_exec_out_ituw",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_tearf2up0",
+            "type": "context_any_pending_messages",
+            "x": 829.2575795012939,
+            "y": 747.9548307776429,
+            "width": 300,
+            "height": 120,
+            "title": "Any Pending Messages",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_tearf2up0_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_tearf2up0_result",
+                    "label": "Result",
+                    "type": "boolean",
+                    "key": "result"
+                }
+            ]
+        },
+        {
+            "id": "node_zoi1v99hg",
+            "type": "condition",
+            "x": 1223.376388013208,
+            "y": 689.8252130030244,
+            "width": 300,
+            "height": 120,
+            "title": "Branch",
+            "params": {
+                "condition": false
+            },
+            "inputs": [
+                {
+                    "id": "node_zoi1v99hg_exec_in_qklx",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_zoi1v99hg_condition",
+                    "label": "Condition",
+                    "type": "boolean",
+                    "key": "condition"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_zoi1v99hg_exec_true_cwu4",
+                    "label": "exec_true",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_zoi1v99hg_exec_false_01x5",
+                    "label": "exec_false",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_14kz7zke4",
+            "type": "send_llm_chat_message",
+            "x": 1745.3803556292837,
+            "y": 697.963359491471,
+            "width": 300,
+            "height": 147,
+            "title": "Send LLM Chat Message",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_14kz7zke4_exec_in_f9b0",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_14kz7zke4_llm_chat",
+                    "label": "Chat Object",
+                    "type": "chat_state",
+                    "key": "llm_chat"
+                },
+                {
+                    "id": "node_14kz7zke4_message",
+                    "label": "Message",
+                    "type": "struct:struct_chat_message",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_14kz7zke4_exec_out_vx70",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_14kz7zke4_result_message",
+                    "label": "Result Message",
+                    "type": "struct:struct_chat_message",
+                    "key": "result_message"
+                }
+            ]
+        },
+        {
+            "id": "node_lwc10p3hb",
+            "type": "context_send_message",
+            "x": 2212.7940909177983,
+            "y": 719.9321946911373,
+            "width": 300,
+            "height": 147,
+            "title": "Send Thread Message",
+            "params": {
+                "message": ""
+            },
+            "inputs": [
+                {
+                    "id": "node_lwc10p3hb_exec_in_9ve3",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_lwc10p3hb_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_lwc10p3hb_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_lwc10p3hb_exec_out_5bmb",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_lg7smv1mj",
+            "type": "struct_access",
+            "x": 2213.0392413742484,
+            "y": 885.7761014464722,
+            "width": 300,
+            "height": 120,
+            "title": "Access ChatMessage",
+            "params": {
+                "structId": "struct_chat_message"
+            },
+            "inputs": [
+                {
+                    "id": "node_lg7smv1mj_obj",
+                    "label": "Object",
+                    "type": "struct:struct_chat_message",
+                    "key": "object"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_lg7smv1mj_out_message",
+                    "label": "message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_lg7smv1mj_out_role",
+                    "label": "role",
+                    "type": "number",
+                    "key": "role"
+                }
+            ]
+        },
+        {
+            "id": "node_jy8eunxo9",
+            "type": "context_get_new_messages",
+            "x": 1193.1939418804516,
+            "y": 986.7315177647948,
+            "width": 300,
+            "height": 120,
+            "title": "Get New Messages",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_jy8eunxo9_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_jy8eunxo9_messages",
+                    "label": "Messages",
+                    "type": "list:string",
+                    "key": "messages"
+                }
+            ]
+        },
+        {
+            "id": "node_02ajy823f",
+            "type": "list_get",
+            "x": 1192.2639733500755,
+            "y": 1116.4229748561531,
+            "width": 300,
+            "height": 120,
+            "title": "List Get (String)",
+            "params": {
+                "element_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_02ajy823f_list",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                },
+                {
+                    "id": "node_02ajy823f_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_02ajy823f_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_up0odlxi5",
+            "type": "struct_make",
+            "x": 1575.1851582254326,
+            "y": 1119.8898029559368,
+            "width": 300,
+            "height": 120,
+            "title": "Make ChatMessage",
+            "params": {
+                "structId": "struct_chat_message"
+            },
+            "inputs": [
+                {
+                    "id": "node_up0odlxi5_in_message",
+                    "label": "message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_up0odlxi5_in_role",
+                    "label": "role",
+                    "type": "number",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_up0odlxi5_obj",
+                    "label": "Object",
+                    "type": "struct:struct_chat_message"
+                }
+            ]
+        },
+        {
+            "id": "node_b6zjqwp56",
+            "type": "set_context_key_value",
+            "x": 1728.2743272044813,
+            "y": -193.65427175672008,
+            "width": 300,
+            "height": 186,
+            "title": "Set Context Key",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_b6zjqwp56_exec_in_5pyp",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_b6zjqwp56_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_b6zjqwp56_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                },
+                {
+                    "id": "node_b6zjqwp56_value",
+                    "label": "Value",
+                    "type": "chat_state",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_b6zjqwp56_exec_out_f8rw",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_zrlctbcn7",
+            "type": "string",
+            "x": 1357.0979008491859,
+            "y": -375.04480450219774,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "chat"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_zrlctbcn7__pt4y",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_9syan1o4r",
+            "type": "get_context_key_value",
+            "x": 1229.9378514281427,
+            "y": 834.457343992715,
+            "width": 300,
+            "height": 120,
+            "title": "Get Context Key",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_9syan1o4r_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_9syan1o4r_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_9syan1o4r_value_vbxz",
+                    "label": "Value",
+                    "type": "chat_state"
+                }
+            ]
+        },
+        {
+            "id": "node_8jy315t8m",
+            "type": "string",
+            "x": 834.923583120448,
+            "y": 882.5199165624726,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "chat"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_8jy315t8m__3u9g",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_cqe7nn3ud",
+            "type": "set_variable",
+            "x": 373.8632772786722,
+            "y": 9.705825602194555,
+            "width": 346,
+            "height": 120,
+            "title": "Set Local Variable",
+            "params": {
+                "name": "ctx",
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_cqe7nn3ud_exec_in_uwpu",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_cqe7nn3ud_value",
+                    "label": "Value",
+                    "type": "context",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_cqe7nn3ud_exec_out_64n8",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_e333k6rth",
+            "type": "get_variable",
+            "x": 484.2208646382213,
+            "y": 980.0570317432175,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "ctx"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_e333k6rth_value_fyb9",
+                    "label": "Value",
+                    "type": "context"
+                }
+            ]
+        },
+        {
+            "id": "node_haumvvmnd",
+            "type": "get_variable",
+            "x": 2211.895171436643,
+            "y": 1027.8458742653331,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "ctx"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_haumvvmnd_value_tfbq",
+                    "label": "Value",
+                    "type": "context"
+                }
+            ]
+        },
+        {
+            "id": "node_lxqromy7p",
+            "type": "get_variable",
+            "x": 1433.8728874338808,
+            "y": 407.1847862949464,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "ctx"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_lxqromy7p_value_31a6",
+                    "label": "Value",
+                    "type": "context"
+                }
+            ]
+        },
+        {
+            "id": "node_0ezxk3mba",
+            "type": "get_variable",
+            "x": 3064.092594740643,
+            "y": 268.8726089592673,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "ctx"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_0ezxk3mba_value_cpjl",
+                    "label": "Value",
+                    "type": "context"
+                }
+            ]
+        },
+        {
+            "id": "node_r6aw0ap0p",
+            "type": "create_llm_chat",
+            "x": 1216.4537079901534,
+            "y": -175.37666304783988,
+            "width": 376,
+            "height": 270,
+            "title": "Create LLM Chat",
+            "params": {
+                "provider": "local",
+                "model": "",
+                "system_prompt": "You are a software engineer discussing a plan for work to be implemented",
+                "message_list": [],
+                "tool_list": []
+            },
+            "inputs": [
+                {
+                    "id": "node_r6aw0ap0p_exec_in_tjl1",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_r6aw0ap0p_provider",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_r6aw0ap0p_model",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
+                },
+                {
+                    "id": "node_r6aw0ap0p_system_prompt",
+                    "label": "System Prompt",
+                    "type": "string",
+                    "key": "system_prompt"
+                },
+                {
+                    "id": "node_r6aw0ap0p_message_list",
+                    "label": "Message List",
+                    "type": "list:struct:struct_chat_message",
+                    "key": "message_list"
+                },
+                {
+                    "id": "node_r6aw0ap0p_tool_list",
+                    "label": "Tool List",
+                    "type": "list:tool",
+                    "key": "tool_list"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_r6aw0ap0p_exec_out_2xmi",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_r6aw0ap0p_llm_chat",
+                    "label": "Chat State",
+                    "type": "chat_state",
+                    "key": "llm_chat"
+                }
+            ]
+        },
+        {
+            "id": "node_vfqayuhrn",
+            "type": "get_context_agent_provider",
+            "x": 789.6178459279542,
+            "y": -101.44435437655821,
+            "width": 300,
+            "height": 120,
+            "title": "Get Agent Provider",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_vfqayuhrn_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_vfqayuhrn_role",
+                    "label": "Role",
+                    "type": "string",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_vfqayuhrn_provider",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_vfqayuhrn_model",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
+                }
+            ]
+        },
+        {
+            "id": "node_okk1o57we",
+            "type": "string",
+            "x": 440.65734899950485,
+            "y": -188.19159655086207,
+            "width": 300,
+            "height": 126,
+            "title": "String Constant",
+            "params": {
+                "value": "plan"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_okk1o57we__hjx4",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_9ckdax8it",
+            "fromPort": "node_9ckdax8it_out_zs7lp",
+            "toNode": "node_bo6v1380h",
+            "toPort": "node_bo6v1380h_a"
+        },
+        {
+            "fromNode": "node_bo6v1380h",
+            "fromPort": "node_bo6v1380h_result_biqe",
+            "toNode": "node_gdw547pcw",
+            "toPort": "node_gdw547pcw_condition"
+        },
+        {
+            "fromNode": "node_cy38e0ocr",
+            "fromPort": "node_cy38e0ocr__wg73",
+            "toNode": "node_bo6v1380h",
+            "toPort": "node_bo6v1380h_b"
+        },
+        {
+            "fromNode": "node_5ac8zki8w",
+            "fromPort": "node_5ac8zki8w_tool_7ykn",
+            "toNode": "node_vsgqr00bl",
+            "toPort": "node_vsgqr00bl_in_0"
+        },
+        {
+            "fromNode": "node_b40ovsyva",
+            "fromPort": "node_b40ovsyva_result_0ljn",
+            "toNode": "node_4mfc2ridn",
+            "toPort": "node_4mfc2ridn_message"
+        },
+        {
+            "fromNode": "node_4mfc2ridn",
+            "fromPort": "node_4mfc2ridn_exec_out_o1qu",
+            "toNode": "node_yxd2ohmec",
+            "toPort": "node_yxd2ohmec_exec_in_wthp"
+        },
+        {
+            "fromNode": "node_4ltkpw08n",
+            "fromPort": "node_4ltkpw08n_obj",
+            "toNode": "node_yxd2ohmec",
+            "toPort": "node_yxd2ohmec_message"
+        },
+        {
+            "fromNode": "node_fa8b0k8kz",
+            "fromPort": "node_fa8b0k8kz_goal_s0td",
+            "toNode": "node_4ltkpw08n",
+            "toPort": "node_4ltkpw08n_in_message"
+        },
+        {
+            "fromNode": "node_7o0p5pasy",
+            "fromPort": "node_7o0p5pasy__xqx2",
+            "toNode": "node_4ltkpw08n",
+            "toPort": "node_4ltkpw08n_in_role"
+        },
+        {
+            "fromNode": "node_yxd2ohmec",
+            "fromPort": "node_yxd2ohmec_result_message",
+            "toNode": "node_9w893gs2u",
+            "toPort": "node_9w893gs2u_obj"
+        },
+        {
+            "fromNode": "node_9w893gs2u",
+            "fromPort": "node_9w893gs2u_out_message",
+            "toNode": "node_o4za95yyf",
+            "toPort": "node_o4za95yyf_message"
+        },
+        {
+            "fromNode": "node_yxd2ohmec",
+            "fromPort": "node_yxd2ohmec_exec_out_puvo",
+            "toNode": "node_o4za95yyf",
+            "toPort": "node_o4za95yyf_exec_in_gou4"
+        },
+        {
+            "fromNode": "node_gdw547pcw",
+            "fromPort": "node_gdw547pcw_exec_false_lx0y",
+            "toNode": "node_zoi1v99hg",
+            "toPort": "node_zoi1v99hg_exec_in_qklx"
+        },
+        {
+            "fromNode": "node_tearf2up0",
+            "fromPort": "node_tearf2up0_result",
+            "toNode": "node_zoi1v99hg",
+            "toPort": "node_zoi1v99hg_condition"
+        },
+        {
+            "fromNode": "node_14kz7zke4",
+            "fromPort": "node_14kz7zke4_result_message",
+            "toNode": "node_lg7smv1mj",
+            "toPort": "node_lg7smv1mj_obj"
+        },
+        {
+            "fromNode": "node_lg7smv1mj",
+            "fromPort": "node_lg7smv1mj_out_message",
+            "toNode": "node_lwc10p3hb",
+            "toPort": "node_lwc10p3hb_message"
+        },
+        {
+            "fromNode": "node_14kz7zke4",
+            "fromPort": "node_14kz7zke4_exec_out_vx70",
+            "toNode": "node_lwc10p3hb",
+            "toPort": "node_lwc10p3hb_exec_in_9ve3"
+        },
+        {
+            "fromNode": "node_zoi1v99hg",
+            "fromPort": "node_zoi1v99hg_exec_true_cwu4",
+            "toNode": "node_14kz7zke4",
+            "toPort": "node_14kz7zke4_exec_in_f9b0"
+        },
+        {
+            "fromNode": "node_jy8eunxo9",
+            "fromPort": "node_jy8eunxo9_messages",
+            "toNode": "node_02ajy823f",
+            "toPort": "node_02ajy823f_list"
+        },
+        {
+            "fromNode": "node_02ajy823f",
+            "fromPort": "node_02ajy823f_val",
+            "toNode": "node_up0odlxi5",
+            "toPort": "node_up0odlxi5_in_message"
+        },
+        {
+            "fromNode": "node_up0odlxi5",
+            "fromPort": "node_up0odlxi5_obj",
+            "toNode": "node_14kz7zke4",
+            "toPort": "node_14kz7zke4_message"
+        },
+        {
+            "fromNode": "node_zrlctbcn7",
+            "fromPort": "node_zrlctbcn7__pt4y",
+            "toNode": "node_b6zjqwp56",
+            "toPort": "node_b6zjqwp56_key"
+        },
+        {
+            "fromNode": "node_b6zjqwp56",
+            "fromPort": "node_b6zjqwp56_exec_out_f8rw",
+            "toNode": "node_4mfc2ridn",
+            "toPort": "node_4mfc2ridn_exec_in_rzq7"
+        },
+        {
+            "fromNode": "node_9syan1o4r",
+            "fromPort": "node_9syan1o4r_value_vbxz",
+            "toNode": "node_14kz7zke4",
+            "toPort": "node_14kz7zke4_llm_chat"
+        },
+        {
+            "fromNode": "node_8jy315t8m",
+            "fromPort": "node_8jy315t8m__3u9g",
+            "toNode": "node_9syan1o4r",
+            "toPort": "node_9syan1o4r_key"
+        },
+        {
+            "fromNode": "node_9ckdax8it",
+            "fromPort": "node_9ckdax8it_flow",
+            "toNode": "node_cqe7nn3ud",
+            "toPort": "node_cqe7nn3ud_exec_in_uwpu"
+        },
+        {
+            "fromNode": "node_cqe7nn3ud",
+            "fromPort": "node_cqe7nn3ud_exec_out_64n8",
+            "toNode": "node_gdw547pcw",
+            "toPort": "node_gdw547pcw_exec_in_id9t"
+        },
+        {
+            "fromNode": "node_9ckdax8it",
+            "fromPort": "node_9ckdax8it_out_rglz9",
+            "toNode": "node_cqe7nn3ud",
+            "toPort": "node_cqe7nn3ud_value"
+        },
+        {
+            "fromNode": "node_e333k6rth",
+            "fromPort": "node_e333k6rth_value_fyb9",
+            "toNode": "node_9syan1o4r",
+            "toPort": "node_9syan1o4r_ctx"
+        },
+        {
+            "fromNode": "node_e333k6rth",
+            "fromPort": "node_e333k6rth_value_fyb9",
+            "toNode": "node_jy8eunxo9",
+            "toPort": "node_jy8eunxo9_ctx"
+        },
+        {
+            "fromNode": "node_e333k6rth",
+            "fromPort": "node_e333k6rth_value_fyb9",
+            "toNode": "node_tearf2up0",
+            "toPort": "node_tearf2up0_ctx"
+        },
+        {
+            "fromNode": "node_haumvvmnd",
+            "fromPort": "node_haumvvmnd_value_tfbq",
+            "toNode": "node_lwc10p3hb",
+            "toPort": "node_lwc10p3hb_ctx"
+        },
+        {
+            "fromNode": "node_lxqromy7p",
+            "fromPort": "node_lxqromy7p_value_31a6",
+            "toNode": "node_fa8b0k8kz",
+            "toPort": "node_fa8b0k8kz_ctx"
+        },
+        {
+            "fromNode": "node_lxqromy7p",
+            "fromPort": "node_lxqromy7p_value_31a6",
+            "toNode": "node_b6zjqwp56",
+            "toPort": "node_b6zjqwp56_ctx"
+        },
+        {
+            "fromNode": "node_lxqromy7p",
+            "fromPort": "node_lxqromy7p_value_31a6",
+            "toNode": "node_4mfc2ridn",
+            "toPort": "node_4mfc2ridn_ctx"
+        },
+        {
+            "fromNode": "node_0ezxk3mba",
+            "fromPort": "node_0ezxk3mba_value_cpjl",
+            "toNode": "node_o4za95yyf",
+            "toPort": "node_o4za95yyf_ctx"
+        },
+        {
+            "fromNode": "node_r6aw0ap0p",
+            "fromPort": "node_r6aw0ap0p_llm_chat",
+            "toNode": "node_b40ovsyva",
+            "toPort": "node_b40ovsyva_in_arg1_57jg"
+        },
+        {
+            "fromNode": "node_gdw547pcw",
+            "fromPort": "node_gdw547pcw_exec_true_ufpn",
+            "toNode": "node_r6aw0ap0p",
+            "toPort": "node_r6aw0ap0p_exec_in_tjl1"
+        },
+        {
+            "fromNode": "node_vsgqr00bl",
+            "fromPort": "node_vsgqr00bl_out",
+            "toNode": "node_r6aw0ap0p",
+            "toPort": "node_r6aw0ap0p_tool_list"
+        },
+        {
+            "fromNode": "node_okk1o57we",
+            "fromPort": "node_okk1o57we__hjx4",
+            "toNode": "node_vfqayuhrn",
+            "toPort": "node_vfqayuhrn_role"
+        },
+        {
+            "fromNode": "node_9ckdax8it",
+            "fromPort": "node_9ckdax8it_out_rglz9",
+            "toNode": "node_vfqayuhrn",
+            "toPort": "node_vfqayuhrn_ctx"
+        },
+        {
+            "fromNode": "node_vfqayuhrn",
+            "fromPort": "node_vfqayuhrn_provider",
+            "toNode": "node_r6aw0ap0p",
+            "toPort": "node_r6aw0ap0p_provider"
+        },
+        {
+            "fromNode": "node_vfqayuhrn",
+            "fromPort": "node_vfqayuhrn_model",
+            "toNode": "node_r6aw0ap0p",
+            "toPort": "node_r6aw0ap0p_model"
+        },
+        {
+            "fromNode": "node_r6aw0ap0p",
+            "fromPort": "node_r6aw0ap0p_exec_out_2xmi",
+            "toNode": "node_b6zjqwp56",
+            "toPort": "node_b6zjqwp56_exec_in_5pyp"
+        },
+        {
+            "fromNode": "node_r6aw0ap0p",
+            "fromPort": "node_r6aw0ap0p_llm_chat",
+            "toNode": "node_b6zjqwp56",
+            "toPort": "node_b6zjqwp56_value"
+        },
+        {
+            "fromNode": "node_r6aw0ap0p",
+            "fromPort": "node_r6aw0ap0p_llm_chat",
+            "toNode": "node_yxd2ohmec",
+            "toPort": "node_yxd2ohmec_llm_chat"
+        }
+    ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "number",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
+    "view": {
+        "panX": -237.69712853495344,
+        "panY": 447.03488498210993,
+        "zoom": 0.5930273690618669
+    },
+    "name": "discuss plan",
+    "description": "",
+    "inputs": [
+        {
+            "id": "rglz9",
+            "name": "ctx",
+            "type": "context"
+        },
+        {
+            "id": "zs7lp",
+            "name": "tick",
+            "type": "number"
+        }
+    ],
+    "outputs": [],
+    "tags": []
+}

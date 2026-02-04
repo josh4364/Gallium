@@ -89,8 +89,55 @@ function switchTab(tabName) {
 }
 
 function setupLLMConnections() {
-    // Event listeners for saving LLM configs would go here
-    // For now, we just placeholder
+    // Local
+    const btnLocal = document.getElementById('btn-save-local');
+    if (btnLocal) {
+        btnLocal.addEventListener('click', () => {
+            const url = document.getElementById('llm-local-url').value.trim();
+            const key = document.getElementById('llm-local-key').value.trim();
+            sendAction('save_llm_config', {
+                provider: 'local',
+                config: { base_url: url, api_key: key }
+            });
+        });
+    }
+
+    // OpenAI
+    const btnOpenAI = document.getElementById('btn-save-openai');
+    if (btnOpenAI) {
+        btnOpenAI.addEventListener('click', () => {
+            const key = document.getElementById('llm-openai-key').value.trim();
+            const model = document.getElementById('llm-openai-model').value.trim();
+            sendAction('save_llm_config', {
+                provider: 'openai',
+                config: { api_key: key, model: model }
+            });
+        });
+    }
+
+    // Gemini
+    const btnGemini = document.getElementById('btn-save-gemini');
+    if (btnGemini) {
+        btnGemini.addEventListener('click', () => {
+            const key = document.getElementById('llm-gemini-key').value.trim();
+            sendAction('save_llm_config', {
+                provider: 'gemini',
+                config: { api_key: key }
+            });
+        });
+    }
+
+    // Claude
+    const btnClaude = document.getElementById('btn-save-claude');
+    if (btnClaude) {
+        btnClaude.addEventListener('click', () => {
+            const key = document.getElementById('llm-claude-key').value.trim();
+            sendAction('save_llm_config', {
+                provider: 'anthropic',
+                config: { api_key: key }
+            });
+        });
+    }
 }
 
 // --- WebSocket Logic ---
@@ -127,19 +174,18 @@ function connect() {
         requestWorkflows();
         requestStructs();
         sendAction('get_state');
+        sendAction('get_llm_connections'); // Fetch connection data
     };
 
     ws.onclose = () => {
         clearTimeout(connTimeout);
         STATE.connected = false;
         updateConnectionStatus(false);
-        // Exponential backoff or just fixed? Fixed for now
         setTimeout(connect, CONFIG.reconnectInterval);
     };
 
     ws.onerror = (err) => {
         console.error("WS Error:", err);
-        // onError usually leads to onClose
     };
 
     ws.onmessage = (event) => {
@@ -237,6 +283,35 @@ function handleMessage(msg) {
         case 'error':
             // Log to console only, not the chat (chat history comes from thread.messages)
             console.log(`[${msg.type.toUpperCase()}] ${msg.message}`);
+            break;
+
+        case 'save_llm_response':
+            if (msg.success) {
+                showToast(`Saved ${msg.provider} configuration`, 'success');
+            } else {
+                showToast(`Failed to save ${msg.provider} config`, 'error');
+            }
+            break;
+
+        case 'llm_connections':
+            if (msg.data) {
+                // Populate fields
+                const c = msg.data;
+                if (c.local) {
+                    if (c.local.base_url) document.getElementById('llm-local-url').value = c.local.base_url;
+                    if (c.local.api_key) document.getElementById('llm-local-key').value = c.local.api_key;
+                }
+                if (c.openai) {
+                    if (c.openai.api_key) document.getElementById('llm-openai-key').value = c.openai.api_key;
+                    if (c.openai.model) document.getElementById('llm-openai-model').value = c.openai.model;
+                }
+                if (c.gemini) {
+                    if (c.gemini.api_key) document.getElementById('llm-gemini-key').value = c.gemini.api_key;
+                }
+                if (c.anthropic) {
+                    if (c.anthropic.api_key) document.getElementById('llm-claude-key').value = c.anthropic.api_key;
+                }
+            }
             break;
 
         default:
@@ -347,8 +422,9 @@ function setupWorkflowTab() {
                     if (inputs.length >= 2) {
                         const name = inputs[0].value.trim();
                         const provider = inputs[1].value;
+                        const model = inputs[2].value.trim(); // Get model value
                         if (name) {
-                            roles.push({ role: name, provider: provider });
+                            roles.push({ role: name, provider: provider, model: model });
                         }
                     }
                 });
@@ -392,20 +468,20 @@ function setupWorkflowTab() {
             if (tbody) {
                 tbody.innerHTML = "";
                 // Add default roles?
-                addRoleRow(tbody, 'reviewer', 'local');
-                addRoleRow(tbody, 'code_generator', 'local');
+                addRoleRow(tbody, 'reviewer', 'local', '');
+                addRoleRow(tbody, 'code_generator', 'local', '');
             }
         });
     }
 
     // Initial Load - populate default if empty
     if (tbody && tbody.children.length === 0) {
-        addRoleRow(tbody, 'reviewer', 'local');
-        addRoleRow(tbody, 'code_generator', 'local');
+        addRoleRow(tbody, 'reviewer', 'local', '');
+        addRoleRow(tbody, 'code_generator', 'local', '');
     }
 }
 
-function addRoleRow(tbody, name = '', provider = 'local') {
+function addRoleRow(tbody, name = '', provider = 'local', model = '') {
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td style="padding: 8px;">
@@ -418,6 +494,9 @@ function addRoleRow(tbody, name = '', provider = 'local') {
                 <option value="gemini" ${provider === 'gemini' ? 'selected' : ''}>Gemini</option>
                 <option value="local" ${provider === 'local' ? 'selected' : ''}>Local</option>
             </select>
+        </td>
+        <td style="padding: 8px;">
+            <input type="text" value="${model}" placeholder="Model (Optional)">
         </td>
         <td><button class="btn btn-secondary btn-remove-role" style="padding:4px 8px;">✕</button></td>
     `;
@@ -470,7 +549,7 @@ function loadWorkflowToEditor(data) {
         tbody.innerHTML = "";
         const roles = data.roles || [];
         roles.forEach(r => {
-            addRoleRow(tbody, r.role, r.provider);
+            addRoleRow(tbody, r.role, r.provider, r.model || '');
         });
 
         if (roles.length === 0) {
@@ -738,9 +817,12 @@ function renderThreadChat() {
     const thread = STATE.sim_state.threads[activeId];
     const messages = thread.messages || [];
 
-    // Simple diffing or just redraw if it changed count
-    if (history.dataset.lastCount == messages.length) return;
+    // Force redraw if thread ID changed or message count changed
+    if (history.dataset.lastThreadId === activeId && history.dataset.lastCount == messages.length) return;
+
+    // Update tracking
     history.dataset.lastCount = messages.length;
+    history.dataset.lastThreadId = activeId;
 
     history.innerHTML = '';
     messages.forEach(m => {
@@ -765,13 +847,32 @@ function appendChatMessage(role, text) {
     if (role === 'user') avatarChar = '👤';
     if (role === 'system') avatarChar = '⚙️';
 
+    let contentHtml = text || '';
+
+    // Parse Markdown if available
+    if (typeof marked !== 'undefined' && contentHtml) {
+        // Configure marked to use breaks (like GitHub comments)
+        // We can do this once locally or globally, but here works too
+        contentHtml = marked.parse(contentHtml, { breaks: true });
+    } else {
+        // Fallback
+        contentHtml = contentHtml.replace(/\n/g, '<br>');
+    }
+
     if (role === 'system') {
-        msgDiv.innerHTML = `<div class="content">${text}</div>`;
+        msgDiv.innerHTML = `<div class="content">${contentHtml}</div>`;
     } else {
         msgDiv.innerHTML = `
             <div class="avatar">${avatarChar}</div>
-            <div class="content">${text.replace(/\n/g, '<br>')}</div>
+            <div class="content markdown-body">${contentHtml}</div>
         `;
+    }
+
+    // Highlight Code Blocks
+    if (typeof hljs !== 'undefined') {
+        msgDiv.querySelectorAll('pre code').forEach((el) => {
+            hljs.highlightElement(el);
+        });
     }
 
     history.appendChild(msgDiv);

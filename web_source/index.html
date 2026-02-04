@@ -13,7 +13,9 @@
         rel="stylesheet">
     <!-- Styles -->
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/lib/github-dark.min.css">
 </head>
+
 
 <body>
     <header>
@@ -148,9 +150,13 @@
                             <thead>
                                 <tr style="border-bottom: 1px solid var(--border-color); text-align: left;">
                                     <th
-                                        style="padding: 8px; font-size: 12px; color: var(--text-secondary); width: 40%;">
+                                        style="padding: 8px; font-size: 12px; color: var(--text-secondary); width: 30%;">
                                         Role Name</th>
-                                    <th style="padding: 8px; font-size: 12px; color: var(--text-secondary);">Provider
+                                    <th
+                                        style="padding: 8px; font-size: 12px; color: var(--text-secondary); width: 25%;">
+                                        Provider
+                                    </th>
+                                    <th style="padding: 8px; font-size: 12px; color: var(--text-secondary);">Model
                                     </th>
                                     <th style="width: 40px;"></th>
                                 </tr>
@@ -183,6 +189,7 @@
         </div>
 
         <!-- Tab 4: LLM Connections -->
+        <!-- Tab 4: LLM Connections -->
         <div id="view-llm" class="view">
             <div class="llm-grid">
                 <!-- Local LLM -->
@@ -194,8 +201,8 @@
                         <input type="text" id="llm-local-url" placeholder="http://127.0.0.1:8080"
                             value="http://127.0.0.1:8080">
                         <label class="mt-4">API Key (Optional)</label>
-                        <input type="password" placeholder="sk-...">
-                        <button class="btn btn-primary mt-4 w-full">Save Configuration</button>
+                        <input type="password" id="llm-local-key" placeholder="sk-...">
+                        <button id="btn-save-local" class="btn btn-primary mt-4 w-full">Save Configuration</button>
                     </div>
                 </div>
                 <!-- OpenAI -->
@@ -206,8 +213,8 @@
                         <label>API Key</label>
                         <input type="password" id="llm-openai-key" placeholder="sk-...">
                         <label class="mt-4">Model</label>
-                        <input type="text" value="gpt-4-turbo">
-                        <button class="btn btn-primary mt-4 w-full">Connect</button>
+                        <input type="text" id="llm-openai-model" value="gpt-4-turbo">
+                        <button id="btn-save-openai" class="btn btn-primary mt-4 w-full">Connect</button>
                     </div>
                 </div>
                 <!-- Gemini -->
@@ -217,7 +224,7 @@
                         <h3 style="margin: 0 0 16px 0; font-size: 16px;">Google Gemini</h3>
                         <label>API Key</label>
                         <input type="password" id="llm-gemini-key" placeholder="AIza...">
-                        <button class="btn btn-primary mt-4 w-full">Connect</button>
+                        <button id="btn-save-gemini" class="btn btn-primary mt-4 w-full">Connect</button>
                     </div>
                 </div>
                 <!-- Claude -->
@@ -227,7 +234,7 @@
                         <h3 style="margin: 0 0 16px 0; font-size: 16px;">Anthropic Claude</h3>
                         <label>API Key</label>
                         <input type="password" id="llm-claude-key" placeholder="sk-ant-...">
-                        <button class="btn btn-primary mt-4 w-full">Connect</button>
+                        <button id="btn-save-claude" class="btn btn-primary mt-4 w-full">Connect</button>
                     </div>
                 </div>
             </div>
@@ -237,6 +244,10 @@
     <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;"></div>
 
     <!-- Application Logic -->
+    <script src="js/lib/marked.min.js"></script>
+    <script src="js/lib/highlight.min.js"></script>
+    <script src="js/lib/scheme.min.js"></script>
+    <script src="js/lib/lisp.min.js"></script>
     <script src="js/app.js"></script>
 </body>
 

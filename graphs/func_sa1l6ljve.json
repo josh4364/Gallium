@@ -351,6 +351,22 @@
     "types": {
         "structs": [
             {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "number",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
                 "id": "struct_yzf6l19kx",
                 "name": "Blob",
                 "fields": [
@@ -377,8 +393,8 @@
         ]
     },
     "view": {
-        "panX": 402.4848363927041,
-        "panY": 293.0890264492231,
+        "panX": 337.4848363927041,
+        "panY": 274.0890264492231,
         "zoom": 0.605412794014159
     },
     "name": "router-on-tick",

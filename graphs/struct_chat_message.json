@@ -1,0 +1,16 @@
+{
+    "id": "struct_chat_message",
+    "name": "ChatMessage",
+    "fields": [
+        {
+            "name": "message",
+            "type": "string"
+        },
+        {
+            "name": "role",
+            "type": "number",
+            "default": 0
+        }
+    ],
+    "tag": "AI"
+}

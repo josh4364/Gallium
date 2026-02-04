@@ -1,0 +1,17 @@
+{
+    "router_agent": "agent_e3ioaa",
+    "roles": [
+        {
+            "role": "plan",
+            "provider": "local",
+            "model": ""
+        },
+        {
+            "role": "implement",
+            "provider": "local",
+            "model": ""
+        }
+    ],
+    "name": "discuss-ralph-loop",
+    "type": "workflow"
+}

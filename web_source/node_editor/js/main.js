@@ -172,8 +172,16 @@ window.toggleTypePanel = () => {
 };
 
 // Request Initial Data
+// Request Initial Data
 if (window.parent && window.parent.sendAction) {
+    console.log("Requesting initial data from server...");
     window.parent.sendAction('get_functions');
     window.parent.sendAction('get_agents');
     window.parent.sendAction('get_structs'); // Also structs
+
+    // Force retry of structs after a second just in case of race conditions
+    setTimeout(() => {
+        console.log("Re-requesting structs to ensure consistency...");
+        window.parent.sendAction('get_structs');
+    }, 1000);
 }
