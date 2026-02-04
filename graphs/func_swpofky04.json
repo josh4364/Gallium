@@ -1058,6 +1058,50 @@
                     "type": "string"
                 }
             ]
+        },
+        {
+            "id": "node_j3nj9c6xq",
+            "type": "prompt_user",
+            "x": 2770.0190821438814,
+            "y": 701.4265052824147,
+            "width": 338,
+            "height": 151,
+            "title": "Prompt User",
+            "params": {
+                "title": "Question",
+                "message": "Are you sure?"
+            },
+            "inputs": [
+                {
+                    "id": "node_j3nj9c6xq_exec_in_j4hq",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_j3nj9c6xq_title",
+                    "label": "Title",
+                    "type": "string",
+                    "key": "title"
+                },
+                {
+                    "id": "node_j3nj9c6xq_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_j3nj9c6xq_exec_yes_g28f",
+                    "label": "exec_yes",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_j3nj9c6xq_exec_no_m9v3",
+                    "label": "exec_no",
+                    "type": "exec"
+                }
+            ]
         }
     ],
     "connections": [
@@ -1336,6 +1380,12 @@
             "fromPort": "node_r6aw0ap0p_llm_chat",
             "toNode": "node_yxd2ohmec",
             "toPort": "node_yxd2ohmec_llm_chat"
+        },
+        {
+            "fromNode": "node_lwc10p3hb",
+            "fromPort": "node_lwc10p3hb_exec_out_5bmb",
+            "toNode": "node_j3nj9c6xq",
+            "toPort": "node_j3nj9c6xq_exec_in_j4hq"
         }
     ],
     "types": {
@@ -1383,8 +1433,8 @@
         ]
     },
     "view": {
-        "panX": -237.69712853495344,
-        "panY": 447.03488498210993,
+        "panX": -797.6971285349534,
+        "panY": -26.96511501789007,
         "zoom": 0.5930273690618669
     },
     "name": "discuss plan",
