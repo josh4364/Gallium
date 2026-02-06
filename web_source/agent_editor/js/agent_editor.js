@@ -537,13 +537,12 @@ class AgentEditor {
     // --- Rendering ---
 
     render() {
-        // Clear
+        // Clear (Transparent to let CSS background show)
         this.ctx.resetTransform();
-        this.ctx.fillStyle = '#1e1e1e';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Grid
-        this.drawGrid();
+        // Grid (Optional: If we want to draw a grid in JS, we can, but CSS handles the bg pattern now)
+        // this.drawGrid();
 
         // Transform
         this.ctx.translate(this.cameraX, this.cameraY);

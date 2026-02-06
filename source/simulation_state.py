@@ -1,4 +1,3 @@
-
 import logging
 import json
 import time
@@ -9,8 +8,6 @@ from source.function_manager import FunctionManager
 from source.graph_interpreter import GraphInterpreter
 from source.function_manager import FunctionManager
 from source.struct_manager import StructManager
-from source.orchestrator import Orchestrator
-from source.schemas import Event
 
 logger = logging.getLogger("SimulationState")
 
@@ -33,7 +30,6 @@ class SimulationState:
         }
         self.goal = ""
         self.workflow_memory = {}
-        self.orchestrator = Orchestrator(self)
         self.pending_graph_id = None
         self.pending_graph_context = None
         
@@ -74,38 +70,10 @@ class SimulationState:
             
         return event
 
-    def trigger_event(self, event):
-        """Pass internal events to Orchestrator."""
-        self.orchestrator.handle_event(event)
-        self.check_pending_execution()
-
     def run_graph_by_id(self, graph_id, context=None):
         """Queues a graph for execution."""
         self.pending_graph_id = graph_id
         self.pending_graph_context = context
-
-    def check_pending_execution(self):
-        """Runs any queued graphs (and chains them)."""
-        loop_guard = 0
-        while self.pending_graph_id and loop_guard < 10:
-            gid = self.pending_graph_id
-            ctx = self.pending_graph_context
-            self.pending_graph_id = None
-            self.pending_graph_context = None
-            
-            graph = self.func_manager.load_function(gid)
-            if graph:
-                self._add_event(f"Orchestrator running graph: {gid}", "info")
-                try:
-                    self.interpreter.execute(graph, context=ctx)
-                except Exception as e:
-                    logger.error(f"Error executing orchestrated graph {gid}: {e}")
-                    self._add_event(f"Orchestrator Graph Error ({gid}): {e}", "error")
-            else:
-                 self._add_event(f"Orchestrator could not load graph: {gid}", "error")
-            
-            loop_guard += 1
-
 
     def start_simulation(self):
         """Initializes the simulation state."""
@@ -114,7 +82,6 @@ class SimulationState:
         
         self.workflow_memory = {} # Reset memory on start
         
-        self.orchestrator.start()
         self.check_pending_execution()
         
         return self.get_state()
@@ -122,8 +89,6 @@ class SimulationState:
     def step(self):
         """Advances the simulation by one tick."""
         self.tick_count += 1
-        
-        self.check_pending_execution()
         
         # Evaluate dynamic workflow instances
         self._evaluate_workflow_instances()
@@ -139,7 +104,6 @@ class SimulationState:
             "workflow_memory": self.workflow_memory,
             "latest_events": self.events[-10:], # Send last 10 events for efficiency
             "pending_prompt": self.interpreter.suspended_prompt_data if self.interpreter.is_suspended else None,
-            "orchestrator_state": self.orchestrator.current_state,
             "threads": self.threads,
             "active_thread_id": self.active_thread_id,
             "auto_run": self.auto_run
@@ -150,13 +114,6 @@ class SimulationState:
              self.workflow_hooks["on_start"] = on_start
         if on_tick is not None:
              self.workflow_hooks["on_tick"] = on_tick
-        self._save_manifest()
-        return self.get_state()
-
-    def update_orchestrator_roles(self, triage, planner, implementer):
-        if triage is not None: self.workflow_hooks["triage"] = triage
-        if planner is not None: self.workflow_hooks["planner"] = planner
-        if implementer is not None: self.workflow_hooks["implementer"] = implementer
         self._save_manifest()
         return self.get_state()
 
@@ -418,13 +375,6 @@ class SimulationState:
             if manifest_path.exists():
                 with open(manifest_path, 'r') as f:
                     data = json.load(f)
-                    self.workflow_hooks["on_start"] = data.get("hook_on_start")
-                    self.workflow_hooks["on_tick"] = data.get("hook_on_tick")
-                    # Load Orchestrator Roles
-                    if "triage" in data: self.workflow_hooks["triage"] = data["triage"]
-                    if "planner" in data: self.workflow_hooks["planner"] = data["planner"]
-                    if "implementer" in data: self.workflow_hooks["implementer"] = data["implementer"]
-                    
                     self.goal = data.get("goal", "")
                     self._add_event("Loaded State from Manifest.", "info")
         except Exception as e:

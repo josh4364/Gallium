@@ -1,6 +1,5 @@
 import logging
 import subprocess
-from source.ai_system import AI_Eval
 from source.blackboard import Blackboard
 from source.schemas import Event
 import json
@@ -46,7 +45,6 @@ class GraphInterpreter:
         self.node_handlers['log_message'] = self._handle_log_message
         self.node_handlers['run_process'] = self._handle_run_process
         self.node_handlers['write_file'] = self._handle_write_file
-        self.node_handlers['ai_eval'] = self._handle_ai_eval
 
         # Variables
         self.node_handlers['set_variable'] = self._handle_set_variable
@@ -304,55 +302,6 @@ class GraphInterpreter:
             lst.clear()
         
         self._update_output_cache(node, 'list', lst)
-        return self.follow_flow(node, 'exec_out')
-
-    def _handle_ai_eval(self, node):
-        model_name = self.get_input_value(node, 'model_name')
-        system_prompt = self.get_input_value(node, 'system_prompt')
-        prompt = self.get_input_value(node, 'prompt')
-        tools_input = self.get_input_value(node, 'tools')
-
-        if self.sim_state:
-            self.sim_state._add_event(f"AI Eval: {prompt[:100]}...", "info")
-
-        # Prepare tools
-        executable_tools = []
-        if isinstance(tools_input, list):
-            for t in tools_input:
-                if isinstance(t, dict) and 'id' in t:
-                    executable_tools.append(self._create_dynamic_tool(t))
-
-        # Get before status
-        before_files = set(self._get_git_changed_files())
-
-        # Call AI (blocks)
-        try:
-            response = AI_Eval(
-                system_prompt=system_prompt,
-                user_prompt=prompt,
-                model_name=model_name,
-                tools=executable_tools if executable_tools else None,
-                dynamic_tools=tools_input if isinstance(tools_input, list) else None
-            )
-        except Exception as e:
-            logger.error(f"AI_Eval failed: {e}")
-            response = f"Error: {str(e)}"
-
-        # Get after status
-        after_files = set(self._get_git_changed_files())
-        changed_files = list(after_files - before_files)
-
-        # Store in output cache
-        if node['id'] not in self.output_cache: 
-            self.output_cache[node['id']] = {}
-            
-        for output_port in node.get('outputs', []):
-            key = output_port.get('key')
-            if key == 'response':
-                self.output_cache[node['id']][output_port['id']] = response
-            elif key == 'changed_files':
-                self.output_cache[node['id']][output_port['id']] = changed_files
-
         return self.follow_flow(node, 'exec_out')
 
     def _handle_map_set(self, node):
