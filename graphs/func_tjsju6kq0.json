@@ -1,12 +1,4 @@
 {
-    "id": "func_tjsju6kq0",
-    "name": "List tests",
-    "description": "bunch of nodes to test list functionality works",
-    "tags": [
-        "list"
-    ],
-    "inputs": [],
-    "outputs": [],
     "nodes": [
         {
             "id": "node_aqmsh8dma",
@@ -661,9 +653,60 @@
             "toPort": "node_q7pjca4e7_flow"
         }
     ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "number",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ]
+    },
     "view": {
-        "panX": 296.61685130230444,
-        "panY": 69.00552256875756,
-        "zoom": 0.9645750879769237
-    }
+        "panX": 334.2561957211183,
+        "panY": -9.995231174604896,
+        "zoom": 0.4874915260443797
+    },
+    "name": "List tests",
+    "description": "bunch of nodes to test list functionality works",
+    "inputs": [],
+    "outputs": [],
+    "tags": [
+        "list"
+    ]
 }

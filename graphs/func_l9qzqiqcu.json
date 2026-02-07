@@ -101,10 +101,10 @@
         {
             "id": "node_xhk86jzw7",
             "type": "string",
-            "x": 173.03462222990365,
-            "y": 212.53223749912132,
-            "width": 408,
-            "height": 120,
+            "x": 40.82183931883394,
+            "y": 289.30095015716176,
+            "width": 411,
+            "height": 129,
             "title": "String Constant",
             "params": {
                 "value": "qalc -s \"units off\" -s \"autoconversion 3\" -t expression"
@@ -356,6 +356,22 @@
     "types": {
         "structs": [
             {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "number",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
                 "id": "struct_yzf6l19kx",
                 "name": "Blob",
                 "fields": [
@@ -382,9 +398,9 @@
         ]
     },
     "view": {
-        "panX": 562.3656597804741,
-        "panY": 6.335642302498513,
-        "zoom": 0.8684093344593065
+        "panX": 538.7348543810062,
+        "panY": -165.93870824072883,
+        "zoom": 0.7034115609120383
     },
     "name": "caculate",
     "description": "mcp tool for caculating math using qalc",
