@@ -1228,3 +1228,139 @@ body.func-panel-hidden #type-panel {
     opacity: 0.6;
     font-style: italic;
 }
+
+/* Tooltip for Context Menu */
+.palette-tooltip {
+    position: absolute;
+    background: #1e1e1e;
+    border: 1px solid #454545;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    padding: 10px;
+    width: 280px;
+    z-index: 2000;
+    pointer-events: none;
+    font-family: 'Segoe UI', 'SF Pro Text', sans-serif;
+    font-size: 13px;
+    color: #cccccc;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+    left: 0;
+    top: 0;
+}
+
+.palette-tooltip.visible {
+    opacity: 1;
+}
+
+.tooltip-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+    margin-bottom: 2px;
+}
+
+.tooltip-title {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.tooltip-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tooltip-tag {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #aaa;
+}
+
+.tooltip-description {
+    color: #9cdcfe;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.tooltip-io-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tooltip-section-header {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #808080;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 2px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.tooltip-row:last-child {
+    border-bottom: none;
+}
+
+.tooltip-row .label {
+    color: #d4d4d4;
+    font-family: 'Inter', sans-serif;
+}
+
+.tooltip-row .type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    opacity: 0.9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Type Colors */
+.type-exec {
+    color: var(--type-exec);
+}
+
+.type-string {
+    color: var(--type-string);
+}
+
+.type-number {
+    color: var(--type-number);
+}
+
+.type-boolean {
+    color: var(--type-boolean);
+}
+
+.type-bool {
+    color: var(--type-bool);
+}
+
+.type-list {
+    color: var(--type-list);
+}
+
+.type-any {
+    color: var(--type-any);
+}
+
+.type-any_not_exec {
+    color: var(--type-any_not_exec);
+}

@@ -3,8 +3,8 @@
     "states": [
         {
             "id": "start",
-            "x": 295,
-            "y": 249,
+            "x": 420,
+            "y": 226,
             "name": "Start",
             "function_id": "func_swpofky04",
             "isStart": true

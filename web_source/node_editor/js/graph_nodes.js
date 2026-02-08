@@ -260,6 +260,15 @@ Object.assign(NodeGraph.prototype, {
         const div = document.createElement('div');
         div.className = 'menu-item';
         div.textContent = node.name;
+
+        div.addEventListener('mouseenter', (e) => {
+            this.showPaletteTooltip(node, e.target);
+        });
+
+        div.addEventListener('mouseleave', () => {
+            this.hidePaletteTooltip();
+        });
+
         div.onclick = () => {
             this.addNode(node.type, this.menuX, this.menuY, null, node.params);
             this.closePalette();
@@ -267,11 +276,130 @@ Object.assign(NodeGraph.prototype, {
         return div;
     },
 
+    showPaletteTooltip(node, targetEl) {
+        if (!this.paletteTooltip) {
+            this.paletteTooltip = document.createElement('div');
+            this.paletteTooltip.className = 'palette-tooltip';
+            document.body.appendChild(this.paletteTooltip);
+        }
+
+        let inputs = [];
+        let outputs = [];
+        let description = "";
+        let title = node.name;
+        let tags = node.tags || [];
+
+        // 1. Resolve Function Calls
+        if (node.isFunction && window.funcManager) {
+            const f = window.funcManager.functionDB.getFunction(node.params.functionId);
+            if (f) {
+                description = f.description || "Function Call";
+                // Construct inputs/outputs for display
+                inputs = [{ label: 'exec_in', type: 'exec' }];
+                f.inputs.forEach(i => inputs.push({ label: i.name, type: i.type }));
+
+                outputs = [{ label: 'exec_out', type: 'exec' }];
+                f.outputs.forEach(o => outputs.push({ label: o.name, type: o.type }));
+            }
+        }
+        // 2. Resolve Registry Nodes
+        else {
+            inputs = node.inputs || [];
+            outputs = node.outputs || [];
+
+            // Try to get description from node registry or params
+            description = node.description || (node.params && node.params.description) || "";
+
+            // Special handling for dynamic nodes
+            if (node.type === 'set_variable') {
+                description = "Set the value of a local variable.";
+                inputs = [{ label: 'exec_in', type: 'exec' }, { label: 'Value', type: 'any_not_exec' }];
+                outputs = [{ label: 'exec_out', type: 'exec' }];
+            } else if (node.type === 'get_variable') {
+                description = "Get the value of a local variable.";
+                outputs = [{ label: 'Value', type: 'any_not_exec' }];
+            }
+        }
+
+        let html = `
+            <div class="tooltip-header">
+                <div class="tooltip-title">${title}</div>
+                ${tags.length > 0 ? `<div class="tooltip-tags">${tags.map(t => `<span class="tooltip-tag">${t}</span>`).join('')}</div>` : ''}
+            </div>
+        `;
+
+        if (description) {
+            html += `<div class="tooltip-description">${description}</div>`;
+        }
+
+        if (inputs && inputs.length > 0) {
+            html += `
+                <div class="tooltip-io-section">
+                    <div class="tooltip-section-header">Inputs</div>
+                    ${inputs.map(i => `
+                        <div class="tooltip-row">
+                            <span class="label">${i.label || i.name || i.key}</span>
+                            <span class="type type-${(i.type || 'any').split(':')[0]}">${i.type || 'any'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        if (outputs && outputs.length > 0) {
+            html += `
+                <div class="tooltip-io-section" style="margin-top: 8px;">
+                    <div class="tooltip-section-header">Outputs</div>
+                    ${outputs.map(o => `
+                        <div class="tooltip-row">
+                            <span class="label">${o.label || o.name || o.key}</span>
+                            <span class="type type-${(o.type || 'any').split(':')[0]}">${o.type || 'any'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        this.paletteTooltip.innerHTML = html;
+        this.paletteTooltip.classList.add('visible');
+
+        // Position
+        const rect = targetEl.getBoundingClientRect();
+        // Position to the right of the menu
+        let left = rect.right + 10;
+        let top = rect.top;
+
+        // Check bounds
+        if (left + 280 > window.innerWidth) {
+            // detailed tooltip might be better on the left if no space on right
+            left = rect.left - 290;
+        }
+
+        // Prevent off-screen bottom
+        // We need to wait for render to get height, or approximate
+        // But since we set innerHTML, the height should be available if we query it now?
+        // Actually, sometimes browser needs a frame. But let's try.
+        const tooltipHeight = this.paletteTooltip.offsetHeight || 200; // heuristic
+        if (top + tooltipHeight > window.innerHeight) {
+            top = window.innerHeight - tooltipHeight - 10;
+        }
+
+        this.paletteTooltip.style.left = left + 'px';
+        this.paletteTooltip.style.top = top + 'px';
+    },
+
+    hidePaletteTooltip() {
+        if (this.paletteTooltip) {
+            this.paletteTooltip.classList.remove('visible');
+        }
+    },
+
     closePalette() {
         if (this.paletteEl) {
             this.paletteEl.style.display = 'none';
         }
         this.paletteVisible = false;
+        this.hidePaletteTooltip();
     },
 
     addNode(type, x, y, id = null, params = null, savedInputs = null, savedOutputs = null, width = null, height = null) {
