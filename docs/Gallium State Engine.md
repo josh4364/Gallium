@@ -84,7 +84,7 @@ To solve the synchronization issue, the "Spec" is the Single Source of Truth, st
 * **State:** `IMPLEMENTATION`
 * **Graph Logic (The Iterator):**
 1. `Load Spec`: Reads the JSON from memory.
-2. `Iterator Node`: Selects the next `status: "pending"` task.
+2. `List For Each`: Selects the next `status: "pending"` task.
 3. **Sub-Routine: The Coding Agent**
 * `LLM Coder`: Generates code for the task.
 * **The A/B Fork (Optional):**
@@ -124,10 +124,16 @@ To build this, you need to add these specific nodes to your Gallium Engine:
 * **Action:** Suspends VM execution, sends WebSocket message to client, awaits resume signal.
 
 
-3. **`JSON Iterator`**:
+3. **`List For Each`**:
 * **Input:** JSON Array.
-* **Output:** Current Item, Index, IsDone (Boolean).
-* **Action:** Standard Loop control.
+* **Output:** Current Item, Index.
+* **Action:** Standard Loop control for lists.
+
+
+4. **`Map For Each`**:
+* **Input:** JSON Object.
+* **Output:** Key, Value.
+* **Action:** Standard Loop control for maps.
 
 
 4. **`Global Context R/W`**:
@@ -146,7 +152,7 @@ This roadmap breaks down the development of the Gallium State Engine into manage
     *   Implement the `Blackboard` (Global Context) storage mechanism in the backend.
 *   **Step 1.2: Core Node Implementation**
     *   Implement `Global Context Read` and `Global Context Write` nodes.
-    *   Implement `JSON Iterator` node for looping through task lists.
+    *   Implement `List For Each` node for looping through task lists.
     *   Implement `Event Emitter` node to allow graphs to signal the Orchestrator.
 
 **Phase 2: The UI Bridge (DONE)**
@@ -179,7 +185,7 @@ This roadmap breaks down the development of the Gallium State Engine into manage
 **Phase 5: The Implementation Loop**
 *   **Step 5.1: Build the Coder Graph**
     *   Create `implementer.graph` that iterates through the Blackboard's task list.
-    *   Use the new `JSON Iterator` to process one task at a time.
+    *   Use the new `List For Each` to process one task at a time.
 *   **Step 5.2: Verification & Feedback**
     *   Add the "Verification Node" logic to run tests.
     *   Implement the loop-back mechanism to retry failed tasks.

@@ -107,10 +107,9 @@ function setupLLMConnections() {
     if (btnOpenAI) {
         btnOpenAI.addEventListener('click', () => {
             const key = document.getElementById('llm-openai-key').value.trim();
-            const model = document.getElementById('llm-openai-model').value.trim();
             sendAction('save_llm_config', {
                 provider: 'openai',
-                config: { api_key: key, model: model }
+                config: { api_key: key }
             });
         });
     }
@@ -173,6 +172,7 @@ function connect() {
         requestAgents();
         requestWorkflows();
         requestStructs();
+        requestEnums();
         sendAction('get_state');
         sendAction('get_llm_connections'); // Fetch connection data
     };
@@ -243,6 +243,10 @@ function handleMessage(msg) {
             broadcastToEditors('importStructList', msg.structs);
             break;
 
+        case 'enum_list':
+            broadcastToEditors('importEnumList', msg.enums);
+            break;
+
         case 'workflow_list':
             STATE.workflows = msg.workflows || [];
             updateWorkflowDropdowns();
@@ -255,6 +259,8 @@ function handleMessage(msg) {
 
         case 'struct_save_response':
         case 'struct_delete_response':
+        case 'enum_save_response':
+        case 'enum_delete_response':
         case 'save_response':
         case 'delete_response':
             // Log result
@@ -268,6 +274,9 @@ function handleMessage(msg) {
                 } else {
                     requestFunctions(); // Refresh list
                 }
+            } else if (msg.type === 'struct_save_response' || msg.type === 'struct_delete_response') {
+                // Type Editor handles reload via notifyChanged, but we might want to ensure sync
+                // StructManager in editor usually updates locally first, so this is just confirmation
             }
             break;
 
@@ -303,13 +312,13 @@ function handleMessage(msg) {
                 }
                 if (c.openai) {
                     if (c.openai.api_key) document.getElementById('llm-openai-key').value = c.openai.api_key;
-                    if (c.openai.model) document.getElementById('llm-openai-model').value = c.openai.model;
                 }
                 if (c.gemini) {
                     if (c.gemini.api_key) document.getElementById('llm-gemini-key').value = c.gemini.api_key;
                 }
-                if (c.anthropic) {
-                    if (c.anthropic.api_key) document.getElementById('llm-claude-key').value = c.anthropic.api_key;
+                const claude = c.claude || c.anthropic;
+                if (claude) {
+                    if (claude.api_key) document.getElementById('llm-claude-key').value = claude.api_key;
                 }
             }
             break;
@@ -612,6 +621,10 @@ function exposeGlobalAPI() {
         sendAction('save_struct', { id, data });
     };
 
+    window.saveEnumToServer = (id, data) => {
+        sendAction('save_enum', { id, data });
+    };
+
     window.saveAgentToServer = (id, data) => {
         sendAction('save_agent', { id, graph: data });
     };
@@ -647,8 +660,16 @@ function exposeGlobalAPI() {
         sendAction('delete_struct', { id });
     };
 
+    window.deleteEnumFromServer = (id) => {
+        sendAction('delete_enum', { id });
+    };
+
     window.requestServerStructs = () => {
         requestStructs();
+    };
+
+    window.requestServerEnums = () => {
+        requestEnums();
     };
 
     window.deleteAgentToServer = (id) => {
@@ -684,6 +705,7 @@ function requestFunctions() { sendAction('get_functions'); }
 function requestAgents() { sendAction('get_agents'); }
 function requestWorkflows() { sendAction('get_workflows'); }
 function requestStructs() { sendAction('get_structs'); }
+function requestEnums() { sendAction('get_enums'); }
 
 // --- Chat & Threads Logic ---
 function setupChatListeners() {

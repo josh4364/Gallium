@@ -2,14 +2,23 @@ class TypeEditor {
     constructor(typeDatabase) {
         this.db = typeDatabase;
         this.selectedStructId = null;
+        this.selectedEnumId = null;
         this.db.addChangedListener(() => this.render());
 
         this.container = document.getElementById('type-list-container');
         this.searchField = document.getElementById('type-search');
+
+        // Struct Editor Elements
         this.structEditorSection = document.getElementById('struct-editor-section');
         this.structNameInput = document.getElementById('struct-name-input');
         this.structTagInput = document.getElementById('struct-tag-input');
         this.fieldsList = document.getElementById('struct-fields-list');
+
+        // Enum Editor Elements
+        this.enumEditorSection = document.getElementById('enum-editor-section');
+        this.enumNameInput = document.getElementById('enum-name-input');
+        this.enumTagInput = document.getElementById('enum-tag-input');
+        this.enumValuesList = document.getElementById('enum-values-list');
     }
 
     createNewStruct() {
@@ -17,8 +26,20 @@ class TypeEditor {
         this.selectStruct(s.id);
     }
 
+    createNewEnum() {
+        const e = this.db.addEnum("NewEnum");
+        this.selectEnum(e.id);
+    }
+
     selectStruct(id) {
         this.selectedStructId = id;
+        this.selectedEnumId = null;
+        this.render();
+    }
+
+    selectEnum(id) {
+        this.selectedEnumId = id;
+        this.selectedStructId = null;
         this.render();
     }
 
@@ -26,6 +47,14 @@ class TypeEditor {
         if (this.selectedStructId) {
             this.db.deleteStruct(this.selectedStructId);
             this.selectedStructId = null;
+            this.render();
+        }
+    }
+
+    deleteCurrentEnum() {
+        if (this.selectedEnumId) {
+            this.db.deleteEnum(this.selectedEnumId);
+            this.selectedEnumId = null;
             this.render();
         }
     }
@@ -42,9 +71,34 @@ class TypeEditor {
         }
     }
 
+    onEnumNameChange(newName) {
+        if (this.selectedEnumId) {
+            this.db.updateEnum(this.selectedEnumId, { name: newName });
+        }
+    }
+
+    onEnumTagChange(newTag) {
+        if (this.selectedEnumId) {
+            this.db.updateEnum(this.selectedEnumId, { tag: newTag });
+        }
+    }
+
     addFieldToCurrent() {
         if (this.selectedStructId) {
             this.db.addField(this.selectedStructId, "newField", "string");
+        }
+    }
+
+    addEnumValueToCurrent() {
+        if (this.selectedEnumId) {
+            // Auto-increment value
+            const e = this.db.getEnum(this.selectedEnumId);
+            let nextVal = 0;
+            if (e && e.values.length > 0) {
+                const max = Math.max(...e.values.map(v => v.value));
+                nextVal = max + 1;
+            }
+            this.db.addEnumValue(this.selectedEnumId, "NewOption", nextVal);
         }
     }
 
@@ -57,46 +111,87 @@ class TypeEditor {
         // Render Primitives
         this.db.getPrimitives().forEach(p => {
             if (query && !p.name.toLowerCase().includes(query)) return;
-            this.container.appendChild(this.createTypeItem(p, false));
+            this.container.appendChild(this.createTypeItem(p, 'primitive'));
         });
 
         // Render Structs
         this.db.getStructs().forEach(s => {
             if (query && !s.name.toLowerCase().includes(query)) return;
-            this.container.appendChild(this.createTypeItem(s, true));
+            this.container.appendChild(this.createTypeItem(s, 'struct'));
         });
 
-        // Update struct editor
+        // Render Enums
+        // Enums not implemented on typeDB yet? I need to check type_system.js
+        // Wait, I updated type_system.js in Step 39 to add getEnums().
+        if (this.db.getEnums) {
+            this.db.getEnums().forEach(e => {
+                if (query && !e.name.toLowerCase().includes(query)) return;
+                this.container.appendChild(this.createTypeItem(e, 'enum'));
+            });
+        }
+
+        // Update Editors
         if (this.selectedStructId) {
-            const s = this.db.getStruct(this.selectedStructId);
-            if (s) {
-                this.structEditorSection.style.display = 'block';
-                this.structNameInput.value = s.name;
-                if (this.structTagInput) this.structTagInput.value = s.tag || '';
-                this.renderFields(s);
-            } else {
-                this.structEditorSection.style.display = 'none';
-            }
+            this.showStructEditor();
+        } else if (this.selectedEnumId) {
+            this.showEnumEditor();
         } else {
-            this.structEditorSection.style.display = 'none';
+            if (this.structEditorSection) this.structEditorSection.style.display = 'none';
+            if (this.enumEditorSection) this.enumEditorSection.style.display = 'none';
         }
     }
 
-    createTypeItem(type, isStruct) {
+    showStructEditor() {
+        if (this.enumEditorSection) this.enumEditorSection.style.display = 'none';
+
+        const s = this.db.getStruct(this.selectedStructId);
+        if (s && this.structEditorSection) {
+            this.structEditorSection.style.display = 'block';
+            this.structNameInput.value = s.name;
+            if (this.structTagInput) this.structTagInput.value = s.tag || '';
+            this.renderFields(s);
+        } else {
+            if (this.structEditorSection) this.structEditorSection.style.display = 'none';
+        }
+    }
+
+    showEnumEditor() {
+        if (this.structEditorSection) this.structEditorSection.style.display = 'none';
+
+        const e = this.db.getEnum(this.selectedEnumId);
+        if (e && this.enumEditorSection) {
+            this.enumEditorSection.style.display = 'block';
+            this.enumNameInput.value = e.name;
+            if (this.enumTagInput) this.enumTagInput.value = e.tag || '';
+            this.renderEnumValues(e);
+        } else {
+            if (this.enumEditorSection) this.enumEditorSection.style.display = 'none';
+        }
+    }
+
+    createTypeItem(type, kind) {
         const div = document.createElement('div');
-        div.className = `type-item ${isStruct && this.selectedStructId === type.id ? 'selected' : ''}`;
+        let isSelected = false;
+        if (kind === 'struct' && this.selectedStructId === type.id) isSelected = true;
+        if (kind === 'enum' && this.selectedEnumId === type.id) isSelected = true;
+
+        div.className = `type-item ${isSelected ? 'selected' : ''}`;
 
         const dot = document.createElement('div');
         dot.className = 'type-dot';
-        dot.style.backgroundColor = isStruct ? '#2196F3' : (type.color || '#808080');
+        if (kind === 'primitive') dot.style.backgroundColor = type.color || '#808080';
+        else if (kind === 'struct') dot.style.backgroundColor = '#2196F3';
+        else if (kind === 'enum') dot.style.backgroundColor = '#FF9800';
         div.appendChild(dot);
 
         const name = document.createElement('span');
         name.textContent = type.name;
         div.appendChild(name);
 
-        if (isStruct) {
+        if (kind === 'struct') {
             div.onclick = () => this.selectStruct(type.id);
+        } else if (kind === 'enum') {
+            div.onclick = () => this.selectEnum(type.id);
         }
 
         return div;
@@ -156,6 +251,51 @@ class TypeEditor {
         });
     }
 
+    renderEnumValues(enumObj) {
+        this.enumValuesList.innerHTML = '';
+        enumObj.values.forEach((val, index) => {
+            const row = document.createElement('div');
+            row.className = 'field-row';
+            row.style.alignItems = 'center';
+
+            // Name
+            const nameInput = document.createElement('input');
+            nameInput.className = 'io-name';
+            nameInput.style.width = '120px'; // Slightly larger for labels
+            nameInput.value = val.name;
+            nameInput.onchange = (e) => {
+                this.db.updateEnumValue(enumObj.id, index, { name: e.target.value });
+            };
+            row.appendChild(nameInput);
+
+            // Value (Number)
+            const valInput = document.createElement('input');
+            valInput.type = 'number';
+            valInput.className = 'io-name';
+            valInput.style.width = '60px'; // Smaller for integer
+            valInput.value = val.value;
+            valInput.onchange = (e) => {
+                this.db.updateEnumValue(enumObj.id, index, { value: parseInt(e.target.value) });
+            };
+            row.appendChild(valInput);
+
+            const controlsDiv = document.createElement('div');
+            controlsDiv.style.display = 'flex';
+            controlsDiv.style.gap = '2px';
+            controlsDiv.style.marginLeft = 'auto';
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'field-btn';
+            delBtn.textContent = '✕';
+            delBtn.style.color = 'var(--danger)';
+            delBtn.onclick = () => this.db.removeEnumValue(enumObj.id, index);
+            controlsDiv.appendChild(delBtn);
+
+            row.appendChild(controlsDiv);
+            this.enumValuesList.appendChild(row);
+        });
+    }
+
     createComplexTypeSelector(currentType, onChange) {
         const container = document.createElement('div');
         container.style.display = 'flex';
@@ -200,6 +340,10 @@ class TypeEditor {
                     const parts = rest.split(':');
                     baseType = parts[0] + ':' + parts[1];
                     mapValueType = parts.slice(2).join(':') || 'string';
+                } else if (rest.startsWith('enum:')) {
+                    const parts = rest.split(':');
+                    baseType = parts[0] + ':' + parts[1];
+                    mapValueType = parts.slice(2).join(':') || 'string';
                 } else {
                     const idx = rest.indexOf(':');
                     if (idx !== -1) {
@@ -214,7 +358,8 @@ class TypeEditor {
 
             const primitives = this.db.primitives.filter(p => !['exec', 'any', 'any_not_exec'].includes(p.id));
             const structs = this.db.getStructs().map(s => `struct:${s.id}`);
-            const allBase = [...primitives.map(p => p.id), ...structs];
+            const enums = this.db.getEnums ? this.db.getEnums().map(e => `enum:${e.id}`) : [];
+            const allBase = [...primitives.map(p => p.id), ...structs, ...enums];
 
             // MAIN TYPE SELECTOR
             const typeSelect = document.createElement('select');

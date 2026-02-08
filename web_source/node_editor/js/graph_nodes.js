@@ -126,12 +126,49 @@ Object.assign(NodeGraph.prototype, {
                 });
             });
 
+            // Add Cast nodes for all types
+            window.typeDB.getAllTypeStrings().forEach(typeStr => {
+                if (typeStr === 'exec' || typeStr === 'any' || typeStr === 'any_not_exec') return;
+                const details = window.typeDB.getTypeDetails(typeStr);
+                const typeName = details.name;
+                // Tag it with its type name so it shows up in that category
+                const tag = typeStr.startsWith('struct:') ? (details.struct?.tag || 'Struct') : (typeName);
+
+                searchList.push({
+                    type: 'cast_to_type',
+                    name: `Cast to ${typeName}`,
+                    tags: [tag, 'Cast', typeName],
+                    description: `Casts a value to ${typeName}. Data-only version.`,
+                    params: { target_type: typeStr }
+                });
+
+                searchList.push({
+                    type: 'try_cast_to_type',
+                    name: `Try Cast to ${typeName}`,
+                    tags: [tag, 'Cast', 'Try', typeName],
+                    description: `Attempts to cast a value to ${typeName}. Branches execution on success/fail.`,
+                    params: { target_type: typeStr }
+                });
+            });
+
             // Add List/Map generic nodes
             searchList.push({
                 type: 'list_create',
                 name: 'Create List',
                 tags: ['List', 'array', 'new'],
                 params: { element_type: 'any_not_exec', num_elements: 1 }
+            });
+            searchList.push({
+                type: 'list_cast',
+                name: 'Cast to List',
+                tags: ['List', 'Cast', 'array'],
+                params: { element_type: 'any_not_exec' }
+            });
+            searchList.push({
+                type: 'list_try_cast',
+                name: 'Try Cast to List',
+                tags: ['List', 'Cast', 'Try', 'array'],
+                params: { element_type: 'any_not_exec' }
             });
             searchList.push({
                 type: 'list_get',
@@ -163,6 +200,18 @@ Object.assign(NodeGraph.prototype, {
                 type: 'map_create',
                 name: 'Create Map',
                 tags: ['Map', 'dictionary', 'new'],
+                params: { key_type: 'string', value_type: 'any_not_exec' }
+            });
+            searchList.push({
+                type: 'map_cast',
+                name: 'Cast to Map',
+                tags: ['Map', 'Cast', 'dictionary'],
+                params: { key_type: 'string', value_type: 'any_not_exec' }
+            });
+            searchList.push({
+                type: 'map_try_cast',
+                name: 'Try Cast to Map',
+                tags: ['Map', 'Cast', 'Try', 'dictionary'],
                 params: { key_type: 'string', value_type: 'any_not_exec' }
             });
             searchList.push({
@@ -409,7 +458,10 @@ Object.assign(NodeGraph.prototype, {
         if (!nodeDef) {
             if (type === 'function_call') {
                 nodeDef = this.nodeRegistry.find(n => n.type === 'function_call');
-            } else if (type.startsWith('struct_') || type.startsWith('list_') || type.startsWith('map_')) {
+            } else if (type.startsWith('struct_') || type.startsWith('list_') || type.startsWith('map_') ||
+                type === 'cast_to_type' || type === 'try_cast_to_type' ||
+                type === 'list_cast' || type === 'list_try_cast' ||
+                type === 'map_cast' || type === 'map_try_cast') {
                 nodeDef = {
                     type: type,
                     name: type,
@@ -648,8 +700,27 @@ Object.assign(NodeGraph.prototype, {
             }
         }
 
-        // Logic for Dynamic Port Nodes (Struct/List/Map)
-        if (type === 'struct_access' && nodeParams.structId && window.typeDB) {
+        // Logic for Dynamic Port Nodes (Struct/List/Map/Cast)
+        if (type === 'cast_to_type' && nodeParams.target_type && window.typeDB) {
+            const targetType = nodeParams.target_type;
+            const details = window.typeDB.getTypeDetails(targetType);
+            nodeTitle = `Cast to ${details.name}`;
+            inputs = [{ label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }];
+            outputs = [{ label: 'Result', type: targetType, key: 'result', id: nodeId + '_out' }];
+        } else if (type === 'try_cast_to_type' && nodeParams.target_type && window.typeDB) {
+            const targetType = nodeParams.target_type;
+            const details = window.typeDB.getTypeDetails(targetType);
+            nodeTitle = `Try Cast to ${details.name}`;
+            inputs = [
+                { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+                { label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+            ];
+            outputs = [
+                { label: 'Success', type: 'exec', id: nodeId + '_exec_success' },
+                { label: 'Fail', type: 'exec', id: nodeId + '_exec_fail' },
+                { label: 'Result', type: targetType, key: 'result', id: nodeId + '_out' }
+            ];
+        } else if (type === 'struct_access' && nodeParams.structId && window.typeDB) {
             const s = window.typeDB.getStruct(nodeParams.structId);
             if (s) {
                 nodeTitle = "Access " + s.name;
@@ -725,13 +796,24 @@ Object.assign(NodeGraph.prototype, {
                     { label: 'exec_out', type: 'exec', id: nodeId + '_exec_out' },
                     { label: 'List', type: (elType === 'any_not_exec' ? 'any_not_exec' : listType), key: 'list', id: nodeId + '_out' }
                 ];
+            } else if (type === 'list_cast') {
+                nodeTitle = "Cast to List (" + (elType === 'any_not_exec' ? "Any" : details.name) + ")";
+                inputs = [{ label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }];
+                outputs = [{ label: 'Result', type: listType, key: 'result', id: nodeId + '_out' }];
+            } else if (type === 'list_try_cast') {
+                nodeTitle = "Try Cast to List (" + (elType === 'any_not_exec' ? "Any" : details.name) + ")";
+                inputs = [
+                    { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+                    { label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+                ];
+                outputs = [
+                    { label: 'Success', type: 'exec', id: nodeId + '_exec_success' },
+                    { label: 'Fail', type: 'exec', id: nodeId + '_exec_fail' },
+                    { label: 'Result', type: listType, key: 'result', id: nodeId + '_out' }
+                ];
             } else if (type === 'list_make') {
                 nodeTitle = "Make List" + (elType === 'any_not_exec' ? "" : " (" + details.name + ")");
-                // Start with 1 input if clean, or preserve if restoring? 
-                // This block is for initial creation (or restore if inputs not provided, though addNode usually handles that)
-                inputs = [
-                    { label: 'Item 0', type: elType, key: 'in_0', id: nodeId + '_in_0' }
-                ];
+                inputs = [{ label: 'Item 0', type: elType, key: 'in_0', id: nodeId + '_in_0' }];
                 outputs = [{ label: 'List', type: listType, key: 'list', id: nodeId + '_out' }];
             }
         } else if (type.startsWith('map_')) {
@@ -774,9 +856,33 @@ Object.assign(NodeGraph.prototype, {
                     { label: 'exec_out', type: 'exec', id: nodeId + '_exec_out' },
                     { label: 'Map', type: mapType, key: 'map', id: nodeId + '_out' }
                 ];
+            } else if (type === 'map_cast') {
+                nodeTitle = "Cast to Map (" + (valType === 'any_not_exec' ? "Any" : details.name.replace('Map of ', '')) + ")";
+                inputs = [{ label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }];
+                outputs = [{ label: 'Result', type: mapType, key: 'result', id: nodeId + '_out' }];
+            } else if (type === 'map_try_cast') {
+                nodeTitle = "Try Cast to Map (" + (valType === 'any_not_exec' ? "Any" : details.name.replace('Map of ', '')) + ")";
+                inputs = [
+                    { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+                    { label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+                ];
+                outputs = [
+                    { label: 'Success', type: 'exec', id: nodeId + '_exec_success' },
+                    { label: 'Fail', type: 'exec', id: nodeId + '_exec_fail' },
+                    { label: 'Result', type: mapType, key: 'result', id: nodeId + '_out' }
+                ];
             }
+        } else if (type === 'match') {
+            const vType = nodeParams.value_type || 'string';
+            inputs = [
+                { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+                { label: 'Switch On', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+            ];
+            outputs = [
+                { label: 'Default', type: 'exec', key: 'exec_default', id: nodeId + '_exec_default' }
+            ];
+            // Initial cases will be handled by updateMatchPorts via addNode tail
         }
-
 
         const node = {
             id: nodeId,
@@ -799,6 +905,8 @@ Object.assign(NodeGraph.prototype, {
 
         if (type === 'string_format') {
             this.updateStringFormatPorts(node);
+        } else if (type === 'match') {
+            this.updateMatchPorts(node);
         }
 
         this.nodes.push(node);
@@ -826,6 +934,10 @@ Object.assign(NodeGraph.prototype, {
             }
         } else if (node.type === 'string_format' && key === 'format') {
             this.updateStringFormatPorts(node);
+        } else if (node.type === 'match') {
+            if (key === 'value_type' || key === 'cases') {
+                this.updateMatchPorts(node);
+            }
         } else if (node.type === 'set_variable' && key === 'name') {
             const valuePort = node.inputs.find(i => i.key === 'value');
             if (valuePort) {
@@ -963,6 +1075,21 @@ Object.assign(NodeGraph.prototype, {
                 { label: 'exec_out', type: 'exec', id: nodeId + '_exec_out' },
                 { label: 'List', type: (elType === 'any_not_exec' ? 'any_not_exec' : listType), key: 'list', id: nodeId + '_out' }
             ];
+        } else if (type === 'list_cast') {
+            nodeTitle = "Cast to List (" + (elType === 'any_not_exec' ? "Any" : details.name) + ")";
+            inputs = [{ label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }];
+            outputs = [{ label: 'Result', type: listType, key: 'result', id: nodeId + '_out' }];
+        } else if (type === 'list_try_cast') {
+            nodeTitle = "Try Cast to List (" + (elType === 'any_not_exec' ? "Any" : details.name) + ")";
+            inputs = [
+                { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+                { label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+            ];
+            outputs = [
+                { label: 'Success', type: 'exec', id: nodeId + '_exec_success' },
+                { label: 'Fail', type: 'exec', id: nodeId + '_exec_fail' },
+                { label: 'Result', type: listType, key: 'result', id: nodeId + '_out' }
+            ];
         } else if (type === 'list_make') {
             nodeTitle = "Make List" + (elType === 'any_not_exec' ? "" : " (" + details.name + ")");
             // Preserve existing inputs but update type
@@ -1030,6 +1157,21 @@ Object.assign(NodeGraph.prototype, {
             outputs = [
                 { label: 'exec_out', type: 'exec', id: nodeId + '_exec_out' },
                 { label: 'Map', type: mapType, key: 'map', id: nodeId + '_out' }
+            ];
+        } else if (type === 'map_cast') {
+            nodeTitle = "Cast to Map (" + (valType === 'any_not_exec' ? "Any" : details.name.replace('Map of ', '')) + ")";
+            inputs = [{ label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }];
+            outputs = [{ label: 'Result', type: mapType, key: 'result', id: nodeId + '_out' }];
+        } else if (type === 'map_try_cast') {
+            nodeTitle = "Try Cast to Map (" + (valType === 'any_not_exec' ? "Any" : details.name.replace('Map of ', '')) + ")";
+            inputs = [
+                { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+                { label: 'Value', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+            ];
+            outputs = [
+                { label: 'Success', type: 'exec', id: nodeId + '_exec_success' },
+                { label: 'Fail', type: 'exec', id: nodeId + '_exec_fail' },
+                { label: 'Result', type: mapType, key: 'result', id: nodeId + '_out' }
             ];
         }
 
@@ -1114,7 +1256,77 @@ Object.assign(NodeGraph.prototype, {
         this.refreshNodePorts(node);
     },
 
-    createNodeElement(node) {
+    updateMatchPorts(node) {
+        const nodeId = node.id;
+        const vType = node.params.value_type || 'string';
+        const cases = node.params.cases || [];
+
+        // Base Inputs
+        const newInputs = [
+            { label: 'exec_in', type: 'exec', id: nodeId + '_exec_in' },
+            { label: 'Switch On', type: 'any_not_exec', key: 'value', id: nodeId + '_val' }
+        ];
+
+        // Base Outputs
+        const newOutputs = [
+            { label: 'Default', type: 'exec', key: 'exec_default', id: nodeId + '_exec_default' }
+        ];
+
+        // Add Cases
+        cases.forEach((caseVal, index) => {
+            const key = `case_${index}`;
+            const label = `Case ${index}`;
+
+            // Try to find existing input to preserve ID/connections
+            const existingInput = node.inputs.find(i => i.key === key);
+            newInputs.push({
+                label: label,
+                type: vType,
+                key: key,
+                id: existingInput ? existingInput.id : `${nodeId}_in_case_${index}_${Math.random().toString(36).substr(2, 4)}`
+            });
+
+            if (node.params[key] === undefined) {
+                node.params[key] = caseVal;
+            }
+
+            // Try to find existing output to preserve ID/connections
+            const existingOutput = node.outputs.find(o => o.key === key);
+            newOutputs.push({
+                label: `Exec ${index}`,
+                type: 'exec',
+                key: key,
+                id: existingOutput ? existingOutput.id : `${nodeId}_out_case_${index}_${Math.random().toString(36).substr(2, 4)}`
+            });
+        });
+
+        // Cleanup orphaned connections
+        const newInputIds = new Set(newInputs.map(i => i.id));
+        const newOutputIds = new Set(newOutputs.map(o => o.id));
+
+        this.connections = this.connections.filter(c => {
+            const toPortId = (typeof c.toPort === 'string') ? c.toPort : c.toPort.id;
+            const fromPortId = (typeof c.fromPort === 'string') ? c.fromPort : c.fromPort.id;
+
+            if (c.toNode === nodeId && !newInputIds.has(toPortId)) return false;
+            if (c.fromNode === nodeId && !newOutputIds.has(fromPortId)) return false;
+            return true;
+        });
+
+        node.inputs = newInputs;
+        node.outputs = newOutputs;
+
+        // Cleanup params
+        Object.keys(node.params).forEach(k => {
+            if (k.startsWith('case_') && !newInputs.some(i => i.key === k)) {
+                delete node.params[k];
+            }
+        });
+
+        this.refreshNodePorts(node);
+    },
+
+    createNodeElement(node, appendToGraph = true) {
         const div = document.createElement('div');
         div.className = `node node-type-${node.type}`;
         if (node.error) {
@@ -1193,6 +1405,8 @@ Object.assign(NodeGraph.prototype, {
             if ((node.type.startsWith('list_') || node.type.startsWith('map_')) && (key === 'element_type' || key === 'key_type' || key === 'value_type')) return;
             if (node.type.startsWith('struct_') && key === 'structId') return;
             if (node.type === 'list_create' && key === 'num_elements') return; // Now a port
+            if (node.type.startsWith('list_') && key === 'num_elements') return;
+            if (node.type === 'enum_constant' && (key === 'enum_id' || key === 'value')) return;
 
             const val = node.params[key];
             const widget = document.createElement('div');
@@ -1257,13 +1471,91 @@ Object.assign(NodeGraph.prototype, {
         });
 
         // Add Type Selector for List/Map Create
-        if (node.type === 'list_create') {
+        if (node.type === 'enum_constant') {
+            const allEnums = window.typeDB ? window.typeDB.getEnums() : [];
+
+            // Enum Type Selector
+            const enumSelector = document.createElement('select');
+            enumSelector.className = 'io-type';
+            enumSelector.style.width = '100%';
+            enumSelector.style.marginBottom = '4px';
+
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- Select Enum --';
+            enumSelector.appendChild(defaultOpt);
+
+            allEnums.forEach(e => {
+                const opt = document.createElement('option');
+                opt.value = e.id;
+                opt.textContent = e.name;
+                if (node.params.enum_id === e.id) opt.selected = true;
+                enumSelector.appendChild(opt);
+            });
+
+            enumSelector.onchange = (e) => {
+                const newId = e.target.value;
+                this.onNodeParamChanged(node, 'enum_id', newId);
+                // Reset value
+                this.onNodeParamChanged(node, 'value', 0);
+
+                // Update output type to match new enum
+                if (node.outputs && node.outputs.length > 0) {
+                    node.outputs[0].type = `enum:${newId}`;
+                }
+
+                this.saveHistory('Changed Enum Type');
+
+                // Force Re-render of node content
+                const newNodeDiv = this.createNodeElement(node, false);
+                if (div.parentNode) {
+                    div.parentNode.replaceChild(newNodeDiv, div);
+                    node.element = newNodeDiv;
+                }
+            };
+            centerCol.appendChild(enumSelector);
+
+            // Enum Value Selector
+            if (node.params.enum_id) {
+                // Ensure output type is correct if loading from save
+                if (node.outputs && node.outputs.length > 0 && node.outputs[0].type === 'number') {
+                    node.outputs[0].type = `enum:${node.params.enum_id}`;
+                }
+
+                const enumDef = window.typeDB.getEnum(node.params.enum_id);
+                if (enumDef) {
+                    const valSelector = document.createElement('select');
+                    valSelector.className = 'node-input';
+                    valSelector.style.width = '100%';
+
+                    enumDef.values.forEach(val => {
+                        const opt = document.createElement('option');
+                        opt.value = val.value;
+                        opt.textContent = `${val.name} (${val.value})`;
+                        if (node.params.value == val.value) opt.selected = true;
+                        valSelector.appendChild(opt);
+                    });
+
+                    valSelector.onchange = (e) => {
+                        this.onNodeParamChanged(node, 'value', parseInt(e.target.value));
+                        this.saveHistory('Changed Enum Value');
+                    };
+                    centerCol.appendChild(valSelector);
+                } else {
+                    const err = document.createElement('div');
+                    err.textContent = "Enum missing";
+                    err.style.color = "var(--danger)";
+                    err.style.fontSize = "10px";
+                    centerCol.appendChild(err);
+                }
+            }
+        } else if (node.type === 'list_create' || node.type === 'list_cast' || node.type === 'list_try_cast') {
             const selector = this.createComplexTypeSelector('Element Type', node.params.element_type, (newType) => {
                 this.onNodeParamChanged(node, 'element_type', newType);
                 this.saveHistory('Changed Node Type');
             });
             centerCol.insertBefore(selector, centerCol.firstChild);
-        } else if (node.type === 'map_create') {
+        } else if (node.type === 'map_create' || node.type === 'map_cast' || node.type === 'map_try_cast') {
             const valSelector = this.createComplexTypeSelector('Value Type', node.params.value_type, (newType) => {
                 this.onNodeParamChanged(node, 'value_type', newType);
                 this.saveHistory('Changed Node Type');
@@ -1280,6 +1572,48 @@ Object.assign(NodeGraph.prototype, {
                 this.saveHistory('Changed Tool Function');
             });
             centerCol.insertBefore(funcSelector, centerCol.firstChild);
+        } else if (node.type === 'match') {
+            const typeSelector = this.createComplexTypeSelector('Switch Type', node.params.value_type, (newType) => {
+                this.onNodeParamChanged(node, 'value_type', newType);
+                this.saveHistory('Changed Match Type');
+            });
+            centerCol.appendChild(typeSelector);
+
+            const addBtn = document.createElement('button');
+            addBtn.className = 'node-button';
+            addBtn.style.marginTop = '8px';
+            addBtn.innerHTML = '<i class="fas fa-plus"></i> Add Case';
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                const cases = node.params.cases || [];
+                let defaultValue = "";
+                if (node.params.value_type === 'number') defaultValue = 0;
+                if (node.params.value_type === 'boolean') defaultValue = false;
+
+                cases.push(defaultValue);
+                node.params.cases = cases;
+                this.updateMatchPorts(node);
+                this.saveHistory('Added Match Case');
+            };
+            centerCol.appendChild(addBtn);
+
+            if (node.params.cases && node.params.cases.length > 0) {
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'node-button secondary';
+                removeBtn.style.marginTop = '4px';
+                removeBtn.innerHTML = '<i class="fas fa-minus"></i> Remove Last';
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const cases = node.params.cases || [];
+                    if (cases.length > 0) {
+                        cases.pop();
+                        node.params.cases = cases;
+                        this.updateMatchPorts(node);
+                        this.saveHistory('Removed Match Case');
+                    }
+                };
+                centerCol.appendChild(removeBtn);
+            }
         }
 
         // Create Ports
@@ -1367,17 +1701,22 @@ Object.assign(NodeGraph.prototype, {
             };
         }
 
-        this.nodesLayer.appendChild(div);
-        node.element = div;
-        // Watch for resizes (manual or auto) to update connections
-        const ro = new ResizeObserver(() => {
-            // Update node dimensions
-            node.width = div.offsetWidth;
-            node.height = div.offsetHeight;
-            this.renderConnections();
-        });
-        ro.observe(div);
+        if (appendToGraph) {
+            this.nodesLayer.appendChild(div);
+            node.element = div;
+            // Watch for resizes (manual or auto) to update connections
+            const ro = new ResizeObserver(() => {
+                // Update node dimensions
+                node.width = div.offsetWidth;
+                node.height = div.offsetHeight;
+                this.renderConnections();
+            });
+            ro.observe(div);
+        }
+
+        return div;
     },
+
 
     createPort(node, portData, isInput) {
         const portWrapper = document.createElement('div');
@@ -1541,17 +1880,46 @@ Object.assign(NodeGraph.prototype, {
 
             btn.onclick = (e) => {
                 e.stopPropagation();
-            };
-            btn.onmousedown = (e) => {
-                e.stopPropagation();
                 value = !value;
                 updateBtn(value);
                 onChange(value);
-                this.saveHistory('Toggle Bool');
+                this.saveHistory('Toggled Boolean');
             };
+            btn.onmousedown = (e) => e.stopPropagation();
             return btn;
+        } else if (type.startsWith('enum:')) {
+            const enumId = type.split(':')[1];
+            const enumDef = window.typeDB ? window.typeDB.getEnum(enumId) : null;
+
+            const select = document.createElement('select');
+            select.className = 'node-input';
+            select.style.padding = '0 2px';
+            select.style.minWidth = '80px';
+
+            if (enumDef) {
+                enumDef.values.forEach(val => {
+                    const opt = document.createElement('option');
+                    opt.value = val.value;
+                    opt.textContent = val.name;
+                    if (val.value == value) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            } else {
+                const opt = document.createElement('option');
+                opt.textContent = "Unknown Enum";
+                select.appendChild(opt);
+            }
+
+            select.onchange = (e) => {
+                onChange(parseInt(e.target.value));
+                this.saveHistory('Enum Value Changed');
+            };
+            select.onmousedown = (e) => e.stopPropagation();
+            return select;
         }
+
         return document.createElement('div');
+
     },
 
     createComplexTypeSelector(label, currentType, onChange) {

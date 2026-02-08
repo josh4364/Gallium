@@ -657,12 +657,12 @@
         ]
     },
     "view": {
-        "panX": 498.1719225435552,
-        "panY": -106.29962302121271,
+        "panX": 97.17192254355518,
+        "panY": -45.29962302121271,
         "zoom": 0.7358311349531741
     },
     "name": "Map testing",
-    "description": "",
+    "description": "some test cases for hash maps",
     "inputs": [],
     "outputs": [],
     "tags": [

@@ -522,6 +522,41 @@ html {
     box-shadow: 0 0 10px rgba(239, 83, 80, 0.2);
 }
 
+.node-button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--node-border);
+    border-radius: 4px;
+    color: var(--text-main);
+    font-size: 11px;
+    font-weight: 500;
+    height: 28px;
+    padding: 0 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    pointer-events: auto;
+    width: 100%;
+}
+
+.node-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.node-button.secondary {
+    background: rgba(207, 102, 121, 0.1);
+    border-color: rgba(207, 102, 121, 0.3);
+    color: #e57373;
+}
+
+.node-button.secondary:hover {
+    background: rgba(207, 102, 121, 0.2);
+    border-color: var(--danger);
+}
+
 .node-resizer {
     position: absolute;
     right: 0;

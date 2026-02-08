@@ -5,6 +5,10 @@ from source.schemas import Event
 import json
 from source.local_llm import LocalLlamaClient
 from source.gemini_llm import GeminiClient
+from source.openai_llm import OpenAIClient
+from source.claude_llm import ClaudeClient
+import requests
+from source import tools
 
 logger = logging.getLogger("GraphInterpreter")
 
@@ -20,11 +24,40 @@ class GraphInterpreter:
         self.output_cache = {} # nodeId -> outputId -> value
         self.call_stack = [] # Stack of parent states for recursion
         self.return_stack = [] # Stack of return values from function calls
-        self.is_suspended = False
-        self.suspended_node_id = None
-        self.suspended_prompt_data = None
+
         self.thread_context = None # ID of the thread currently being evaluated
         
+        # Builtin Python Tool Definitions
+        self.builtin_python_tool_defs = [
+            {"id": "builtin_list_dir", "name": "list_dir", "description": "List the contents of a directory. Returns list of items.", 
+             "args": [{"name": "directory_path", "type": "string"}]},
+            {"id": "builtin_find_by_name", "name": "find_by_name", "description": "Search for files and subdirectories by name pattern using fd.", 
+             "args": [{"name": "search_directory", "type": "string"}, {"name": "pattern", "type": "string"}]},
+            {"id": "builtin_grep_search", "name": "grep_search", "description": "Search for text within files using ripgrep.", 
+             "args": [{"name": "search_path", "type": "string"}, {"name": "query", "type": "string"}]},
+            {"id": "builtin_view_file", "name": "view_file", "description": "View the contents of a file with line numbers.", 
+             "args": [{"name": "absolute_path", "type": "string"}, {"name": "start_line", "type": "number"}, {"name": "end_line", "type": "number"}]},
+            {"id": "builtin_read_file", "name": "read_file", "description": "Read the raw content of a file.", 
+             "args": [{"name": "absolute_path", "type": "string"}]},
+            {"id": "builtin_view_file_outline", "name": "view_file_outline", "description": "View classes and functions in a python file.", 
+             "args": [{"name": "absolute_path", "type": "string"}]},
+            {"id": "builtin_view_code_item", "name": "view_code_item", "description": "View specific classes or functions by name in a file.", 
+             "args": [{"name": "file_path", "type": "string"}, {"name": "node_paths", "type": "list"}]},
+            {"id": "builtin_write_to_file", "name": "write_to_file", "description": "Write or overwrite content to a file.", 
+             "args": [{"name": "target_file", "type": "string"}, {"name": "code_content", "type": "string"}]},
+            {"id": "builtin_replace_file_content", "name": "replace_file_content", "description": "Replace a block of text in a file.", 
+             "args": [{"name": "target_file", "type": "string"}, {"name": "start_line", "type": "number"}, {"name": "end_line", "type": "number"}, {"name": "target_content", "type": "string"}, {"name": "replacement_content", "type": "string"}]},
+            {"id": "builtin_multi_replace_file_content", "name": "multi_replace_file_content", "description": "Apply multiple replacements to a file. replacement_chunks is a list of {StartLine, EndLine, TargetContent, ReplacementContent, AllowMultiple}", 
+             "args": [{"name": "target_file", "type": "string"}, {"name": "replacement_chunks", "type": "list"}]},
+            {"id": "builtin_calculate", "name": "calculate", "description": "Execute a mathematical expression.", 
+             "args": [{"name": "expression", "type": "string"}]},
+            {"id": "builtin_run_command", "name": "run_command", "description": "Execute a shell command in the background.", 
+             "args": [{"name": "command_line", "type": "string"}, {"name": "cwd", "type": "string"}]},
+            {"id": "builtin_command_status", "name": "command_status", "description": "Check the status and output of a background command.", 
+             "args": [{"name": "command_id", "type": "string"}]},
+            
+        ]
+
         # Initialize Handlers
         self.node_handlers = {}
         self._init_node_handlers()
@@ -37,23 +70,24 @@ class GraphInterpreter:
         self.node_handlers['function_return'] = self._handle_function_return
         self.node_handlers['function_call'] = self._handle_function_call
         self.node_handlers['condition'] = self._handle_condition
+        self.node_handlers['match'] = self._handle_match
         self.node_handlers['action'] = self._handle_action
         
         # UI/System
-        self.node_handlers['prompt_user'] = self._handle_prompt_user
-        self.node_handlers['ui_yield'] = self._handle_ui_yield
+
         self.node_handlers['log_message'] = self._handle_log_message
         self.node_handlers['run_process'] = self._handle_run_process
         self.node_handlers['write_file'] = self._handle_write_file
+        self.node_handlers['web_request'] = self._handle_web_request
 
         # Variables
         self.node_handlers['set_variable'] = self._handle_set_variable
 
         # Tier 1 / State Engine Nodes
-        self.node_handlers['global_context_read'] = self._handle_global_context_read
-        self.node_handlers['global_context_write'] = self._handle_global_context_write
-        self.node_handlers['json_iterator'] = self._handle_json_iterator
-        self.node_handlers['event_emit'] = self._handle_event_emit
+
+        self.node_handlers['list_for_each'] = self._handle_list_for_each
+        self.node_handlers['map_for_each'] = self._handle_map_for_each
+
         
         # Collections (Lists/Maps) - Side-effect nodes (Set/Modify)
         # Note: 'list_create', 'list_make' etc are purely value nodes handled in evaluate_output
@@ -82,6 +116,10 @@ class GraphInterpreter:
         self.node_handlers['send_llm_chat_message'] = self._handle_send_llm_chat_message
         self.node_handlers['ai_eval'] = self._handle_ai_eval
 
+        # Casts
+        self.node_handlers['try_cast_to_type'] = self._handle_try_cast_to_type
+        self.node_handlers['list_try_cast'] = self._handle_try_cast_to_type
+        self.node_handlers['map_try_cast'] = self._handle_try_cast_to_type
     def safe_graph_eval(self, graph_data, expected_input_types, input_values):
         """
         Executes the graph by providing input values. 
@@ -118,10 +156,7 @@ class GraphInterpreter:
         if not graph_data:
             return
 
-        # If we are starting a fresh execution, ensure cleared state.
-        self.is_suspended = False
-        self.suspended_node_id = None
-        self.suspended_prompt_data = None
+
 
         self.nodes = {n['id']: n for n in graph_data.get('nodes', [])}
         self.connections = graph_data.get('connections', [])
@@ -169,32 +204,7 @@ class GraphInterpreter:
     def _handle_flow_passthrough(self, node):
         return self.follow_flow(node, 'exec_out')
 
-    def _handle_prompt_user(self, node):
-        title = self.get_input_value(node, 'title')
-        message = self.get_input_value(node, 'message')
-        
-        self.is_suspended = True
-        self.suspended_node_id = node['id']
-        self.suspended_prompt_data = {'title': title, 'message': message} # Keep for state tracking
-        
-        if self.sim_state:
-            # Use specific BinaryChoice type for backward compat or clear definition
-            self.sim_state.send_ui_yield("BinaryChoice", {'title': title, 'message': message})
-        
-        return "SUSPEND"
 
-    def _handle_ui_yield(self, node):
-        ui_type = self.get_input_value(node, 'ui_type')
-        payload = self.get_input_value(node, 'payload')
-        
-        self.is_suspended = True
-        self.suspended_node_id = node['id']
-        self.suspended_prompt_data = {'ui_type': ui_type, 'payload': payload}
-        
-        if self.sim_state:
-            self.sim_state.send_ui_yield(ui_type, payload)
-            
-        return "SUSPEND"
 
     def _handle_log_message(self, node):
         msg = self.get_input_value(node, 'message')
@@ -260,6 +270,30 @@ class GraphInterpreter:
             return self.follow_flow(node, 'exec_true')
         else:
             return self.follow_flow(node, 'exec_false')
+
+    def _handle_match(self, node):
+        switch_val = self.get_input_value(node, 'value')
+        
+        # We need to find which case matches
+        # Inputs are 'exec_in', 'value', 'case_0', 'case_1', ...
+        # Outputs are 'exec_default', 'case_0', 'case_1', ... (wait, keys match)
+        
+        case_matched = False
+        for inp in node.get('inputs', []):
+            key = inp.get('key')
+            if key and key.startswith('case_'):
+                case_val = self.get_input_value(node, key)
+                if switch_val == case_val:
+                    # Found match!
+                    case_matched = True
+                    # The output port for this case has the same key
+                    out_port = next((p for p in node.get('outputs', []) if p.get('key') == key), None)
+                    if out_port:
+                        return self.follow_flow(node, out_port['label'])
+                    break
+        
+        if not case_matched:
+            return self.follow_flow(node, 'Default')
 
     def _handle_action(self, node):
         msg = self.get_input_value(node, 'message')
@@ -375,9 +409,8 @@ class GraphInterpreter:
         content = self.get_input_value(node, 'content')
         
         try:
-            from source.tools import write_to_file
             # Call the tool function (it handles directory creation etc)
-            write_to_file(path, content, overwrite=True)
+            tools.write_to_file(path, content, overwrite=True)
             msg = f"Successfully wrote to {path}"
             logger.info(msg)
             self._update_output_cache(node, 'result', msg)
@@ -388,58 +421,55 @@ class GraphInterpreter:
             
         return self.follow_flow(node, 'exec_out')
 
-    def _handle_global_context_read(self, node):
-        key = self.get_input_value(node, 'key')
-        val = self.blackboard.get_value(key)
+    def _handle_web_request(self, node):
+        url = self.get_input_value(node, 'url')
+        method = self.get_input_value(node, 'method') or "GET"
+        headers = self.get_input_value(node, 'headers')
+        body = self.get_input_value(node, 'body')
         
-        # If looking for specific spec parts (optional logic, but basic key-value is foundation)
-        if key == "SmartSpec" and self.blackboard.get_spec():
-             val = self.blackboard.get_spec().dict()
+        if not url:
+            logger.warning("Web Request node missing URL")
+            self._update_output_cache(node, 'response', "Error: Missing URL")
+            self._update_output_cache(node, 'status_code', -1)
+            return self.follow_flow(node, 'exec_out')
 
-        self._update_output_cache(node, 'value', val)
-        return self.follow_flow(node, 'exec_out')
-
-    def _handle_global_context_write(self, node):
-        key = self.get_input_value(node, 'key')
-        val = self.get_input_value(node, 'value')
-        
-        self.blackboard.set_value(key, val)
-        return self.follow_flow(node, 'exec_out')
-
-    def _handle_event_emit(self, node):
-        event_name = self.get_input_value(node, 'event_name')
-        payload = self.get_input_value(node, 'payload') or {}
-        
-        event = Event(name=event_name, payload=payload, source=f"node_{node['id']}")
-        logger.info(f"EMITTING EVENT: {event}")
-        
-        if self.sim_state:
-            # Send full event object to SimulationState/Orchestrator
-            self.sim_state.trigger_event(event)
-            # Log for UI
-            self.sim_state._add_event(f"Event Emitted: {event_name}", "info")
+        try:
+            # Ensure headers is a dict if it's not None
+            request_headers = {}
+            if isinstance(headers, dict):
+                request_headers = {str(k): str(v) for k, v in headers.items()}
             
-        # Stop execution so the Orchestrator can decide what to do next
-        return "STOP"
-
-    def _handle_json_iterator(self, node):
+            logger.info(f"Sending {method} request to {url}")
+            
+            response = requests.request(
+                method=method.upper(),
+                url=url,
+                headers=request_headers,
+                data=body,
+                timeout=30 # Default timeout
+            )
+            
+            self._update_output_cache(node, 'response', response.text)
+            self._update_output_cache(node, 'status_code', response.status_code)
+            
+        except Exception as e:
+            logger.error(f"Web Request failed: {e}")
+            self._update_output_cache(node, 'response', f"Error: {str(e)}")
+            self._update_output_cache(node, 'status_code', -1)
+            
+        return self.follow_flow(node, 'exec_out')
+    def _handle_list_for_each(self, node):
         """
         Iterates over a list. 
         Required Inputs: 'list' (List[Any])
-        Outputs: 'item', 'index', 'is_done' (bool)
+        Outputs: 'item', 'index'
         Flows: 'exec_loop', 'exec_done'
-        
-        Note: This node is re-entrant. It keeps track of index in the local context 
-        OR we can design it to just pop one item if the list is modified. 
-        Standard iterator pattern:
         """
         collection = self.get_input_value(node, 'list')
         if not isinstance(collection, list):
             collection = []
 
         # We need to store the current index for this specific node ID in the current execution context.
-        # However, `self.context` is global to the function call.
-        # We can try to use a unique key in context.
         iter_key = f"__iter_{node['id']}_index"
         current_index = self.context.get(iter_key, 0)
         
@@ -456,6 +486,39 @@ class GraphInterpreter:
             return self.follow_flow(node, 'exec_loop')
         else:
             # Reset index in case we loop back to this node entirely later
+            self.context[iter_key] = 0
+            return self.follow_flow(node, 'exec_done')
+
+    def _handle_map_for_each(self, node):
+        """
+        Iterates over a map (dict). 
+        Required Inputs: 'map' (Dict)
+        Outputs: 'key', 'value'
+        Flows: 'exec_loop', 'exec_done'
+        """
+        collection = self.get_input_value(node, 'map')
+        if not isinstance(collection, dict):
+            collection = {}
+
+        iter_key = f"__iter_{node['id']}_index"
+        current_index = self.context.get(iter_key, 0)
+        
+        keys = sorted(list(collection.keys()))
+        
+        if current_index < len(keys):
+            key = keys[current_index]
+            value = collection[key]
+            
+            # Update outputs
+            self._update_output_cache(node, 'key', key)
+            self._update_output_cache(node, 'value', value)
+            
+            # Increment for next time
+            self.context[iter_key] = current_index + 1
+            
+            return self.follow_flow(node, 'exec_loop')
+        else:
+            # Reset index
             self.context[iter_key] = 0
             return self.follow_flow(node, 'exec_done')
 
@@ -543,92 +606,33 @@ class GraphInterpreter:
         ctx = self.get_input_value(node, 'ctx')
         thread = self._resolve_thread(ctx)
         message_text = self.get_input_value(node, 'message')
+        role_num = self.get_input_value(node, 'role')
+        
+        # Default to assistant (1) if not provided
+        if role_num is None: 
+            role_num = 1
+            
+        role_str = self._map_role_num_to_str(role_num)
         
         if thread:
-            # Add assistant message
+            # Add message with specified role
             if "messages" not in thread: thread["messages"] = []
-            thread["messages"].append({"role": "assistant", "content": message_text})
+            thread["messages"].append({"role": role_str, "content": message_text})
             
-            # Mark all user messages as responded
-            for m in thread["messages"]:
-                if m.get('role') == 'user':
-                    m['responded'] = True
+            # Mark all user messages as responded ONLY if we are replying as assistant
+            if role_str == 'assistant':
+                for m in thread["messages"]:
+                    if m.get('role') == 'user':
+                        m['responded'] = True
                     
             # Also log as event for UI visibility
-            self.sim_state._add_event(f"Assistant: {message_text}", "info")
+            self.sim_state._add_event(f"{role_str.capitalize()}: {message_text}", "info")
                 
         return self.follow_flow(node, 'exec_out')
 
     # --- Core Logic Methods ---
 
-    def resume(self, payload):
-        """
-        Resumes execution from a suspended state.
-        payload: Data returned from the UI
-        """
-        if not self.is_suspended or not self.suspended_node_id:
-            logger.warning("Attempted to resume but interpreter is not suspended.")
-            return
 
-        logger.info(f"Resuming execution with payload: {payload}")
-        
-        # 1. Clear suspension flags
-        self.is_suspended = False
-        prompt_node = self.nodes.get(self.suspended_node_id)
-        self.suspended_node_id = None
-        self.suspended_prompt_data = None
-        
-        if not prompt_node:
-            logger.error("Suspended node not found in current graph context.")
-            return
-
-        # 2. Continue flow based on node type
-        res = None
-        if prompt_node['type'] == 'prompt_user':
-            # Expect boolean payload
-            choice = bool(payload)
-            port_label = 'exec_yes' if choice else 'exec_no'
-            res = self.follow_flow(prompt_node, port_label)
-            
-        elif prompt_node['type'] == 'ui_yield':
-            # Generic yield
-            self._update_output_cache(prompt_node, 'result', payload)
-            res = self.follow_flow(prompt_node, 'exec_out')
-        
-        if res == "SUSPEND": return
-
-        # 3. Unwind manually if needed (handle function returns up the stack)
-        while self.call_stack:
-             # We finished the current level's flow. Pop back to parent.
-             parent_frame = self.call_stack.pop()
-             caller_id = parent_frame.get('caller_id')
-             
-             # Restore parent state
-             self.nodes = parent_frame['nodes']
-             self.connections = parent_frame['connections']
-             self.output_cache = parent_frame['output_cache']
-             
-             if caller_id:
-                 caller_node = self.nodes.get(caller_id)
-                 if not caller_node: continue 
-                 
-                 # Handle return values (if any were pushed by child graph)
-                 if self.return_stack:
-                     results = self.return_stack.pop()
-                     if caller_node['id'] not in self.output_cache: 
-                         self.output_cache[caller_node['id']] = {}
-                     
-                     for output_port in caller_node.get('outputs', []):
-                        if output_port['type'] != 'exec':
-                            if output_port['label'] in results:
-                                self.output_cache[caller_node['id']][output_port['id']] = results[output_port['label']]
-                 
-                 # Continue parent flow
-                 res = self.follow_flow(caller_node, 'exec_out')
-                 if res == "SUSPEND": return
-             else:
-                 # Reached root?
-                 pass
 
     def execute_function(self, function_id, args, caller_node_id=None):
         if not self.function_manager:
@@ -783,6 +787,9 @@ class GraphInterpreter:
 
         elif nt == 'string':
             val = node.get('params', {}).get('value')
+
+        elif nt == 'enum_constant':
+            val = node.get('params', {}).get('value', 0)
         
         elif nt == 'get_variable':
             name = node.get('params', {}).get('name')
@@ -919,6 +926,11 @@ class GraphInterpreter:
         elif nt == 'to_string':
             input_val = self.get_input_value(node, 'value')
             val = self._value_to_string(input_val)
+
+        elif nt in ('cast_to_type', 'list_cast', 'map_cast'):
+            # Data-only cast is a pass-through in visual scripting, 
+            # as Gallium is dynamically typed at runtime.
+            val = self.get_input_value(node, 'value')
 
         elif nt == 'create_tool':
             func_name = self.get_input_value(node, 'function_name')
@@ -1173,14 +1185,70 @@ def {sanitized_name}({args_str}):
         self._update_output_cache(node, 'llm_chat', chat_state)
         return self.follow_flow(node, 'exec_out')
 
+    def _get_llm_client(self, provider, model_name):
+        """Helper to create the appropriate LLM client based on provider."""
+        # Load Connections Config
+        connections = {}
+        if self.sim_state and self.sim_state.system_root:
+             try:
+                 conn_path = self.sim_state.system_root / "gallium" / "connections.json"
+                 if conn_path.exists():
+                     with open(conn_path, 'r') as f:
+                         connections = json.load(f)
+             except Exception as e:
+                 logger.warning(f"Failed to load connections.json: {e}")
+
+        if provider == 'local':
+            model = model_name or "current-model"
+            local_cfg = connections.get("local", {})
+            base_url = local_cfg.get("base_url", "http://127.0.0.1:8080")
+            api_url = base_url if base_url.endswith("/v1/chat/completions") else f"{base_url.rstrip('/')}/v1/chat/completions"
+            return LocalLlamaClient(api_url=api_url, model_name=model)
+        elif provider == 'gemini':
+            model = model_name or "gemini-2.0-flash"
+            gemini_cfg = connections.get("gemini", {})
+            return GeminiClient(api_key=gemini_cfg.get("api_key"), model_name=model)
+        elif provider == 'openai':
+            model = model_name or "gpt-4o"
+            openai_cfg = connections.get("openai", {})
+            return OpenAIClient(api_key=openai_cfg.get("api_key"), model_name=model)
+        elif provider == 'claude' or provider == 'anthropic':
+            model = model_name or "claude-3-5-sonnet-20241022"
+            claude_cfg = connections.get("claude", {}) or connections.get("anthropic", {})
+            return ClaudeClient(api_key=claude_cfg.get("api_key"), model_name=model)
+        return None
+
+    def _get_builtin_python_tools(self):
+        """Returns schemas and registry for built-in Python tools."""
+        tools_schema = []
+        tool_registry = {}
+        
+        for tdef in self.builtin_python_tool_defs:
+            schema = self._create_tool_schema(tdef)
+            tools_schema.append(schema)
+            # Map tool name in schema to the actual function in tools.py
+            func_name = tdef['name']
+            if hasattr(tools, func_name):
+                func = getattr(tools, func_name)
+                # Wrap it to handle and return string errors
+                def make_wrapper(f):
+                    def wrapper(**kwargs):
+                        try:
+                            res = f(**kwargs)
+                            return str(res)
+                        except Exception as e:
+                            return f"Error: {e}"
+                    return wrapper
+                tool_registry[schema['function']['name']] = make_wrapper(func)
+                
+        return tools_schema, tool_registry
+
     def _handle_send_llm_chat_message(self, node):
         chat_state = self.get_input_value(node, 'llm_chat')
         message_struct = self.get_input_value(node, 'message')
         
         if not chat_state or not isinstance(chat_state, dict):
-             err_msg = f"Send LLM Chat Message (Node {node['id']}): Invalid chat state. State: {str(chat_state)[:100]}"
-             logger.error(err_msg)
-             # Return error message so flow doesn't crash on None
+             logger.error(f"Send LLM Chat Message (Node {node['id']}): Invalid chat state.")
              result_struct = {'message': "Error: Invalid Chat State", 'role': 'system'}
              self._update_output_cache(node, 'result_message', result_struct)
              return self.follow_flow(node, 'exec_out')
@@ -1215,204 +1283,49 @@ def {sanitized_name}({args_str}):
              except Exception as e:
                  logger.warning(f"Failed to load connections.json: {e}")
 
-        if provider == 'local':
-             model_name = chat_state.get('model')
-             if not model_name:
-                 model_name = "current-model"
-             
-             # Config
-             local_cfg = connections.get("local", {})
-             base_url = local_cfg.get("base_url", "http://127.0.0.1:8080")
-             api_key = local_cfg.get("api_key", None)
-             
-             # Construct URL
-             if not base_url.endswith("/v1/chat/completions"):
-                  if base_url.endswith("/"):
-                      api_url = f"{base_url}v1/chat/completions"
-                  else:
-                      api_url = f"{base_url}/v1/chat/completions"
-             else:
-                  api_url = base_url
+        model_name = chat_state.get('model')
+        client = self._get_llm_client(provider, model_name)
 
-             client = LocalLlamaClient(api_url=api_url, model_name=model_name)
-             # Pass Key? LocalLlamaClient doesn't take it currently, but we could add it if supported.
-             
-             # Prepare full context
-             full_messages = []
-             if chat_state.get('system_prompt'):
-                  full_messages.append({'role': 'system', 'content': chat_state['system_prompt']})
-             
-             full_messages.extend(chat_state['messages'])
-             
-             # Final Safety Check: Some backends (llama-server) fail 500 if history ends in Assistant.
-             # If we are about to call the API, the last message MUST be a prompt (User/System/Tool), not an Assistant response.
-             if full_messages and full_messages[-1].get('role') == 'assistant':
-                  logger.info(f"Local Provider Safety: Coercing final 'assistant' message to 'user' before API call.")
-                  # We copy to avoid mutating the shared chat_state reference if we used extending reference logic (though extend does copy content references)
-                  # Actually full_messages is a new list, but the dicts are references.
-                  # Let's copy the dict to be safe.
-                  last_msg = full_messages[-1].copy()
-                  last_msg['role'] = 'user'
-                  full_messages[-1] = last_msg
-             
-             # Prepare Tools
-             tool_registry = {}
-             tools_schema = []
-             
-             if chat_state.get('tools'):
-                  for t in chat_state['tools']:
-                      schema = self._create_tool_schema(t)
-                      tools_schema.append(schema)
-                      
-                      # Create callable wrapper
-                      func_id = t['id']
-                      fn_name = schema['function']['name']
-                      
-                      # Capture via closure
-                      def make_runner(fid):
-                          return lambda **kwargs: self._tool_runner(fid, kwargs)
-                      
-                      tool_registry[fn_name] = make_runner(func_id)
+        if client:
+            try:
+                messages_for_run = []
+                if chat_state.get('system_prompt'):
+                    messages_for_run.append({'role': 'system', 'content': chat_state['system_prompt']})
+                messages_for_run.extend(chat_state['messages'])
+                
+                # Prepare Tools
+                builtin_schema, builtin_registry = self._get_builtin_python_tools()
+                
+                tool_registry = builtin_registry
+                tools_schema = builtin_schema
+                
+                if chat_state.get('tools'):
+                    for t in chat_state['tools']:
+                        # Skip if it's already a builtin (prevent name collisions)
+                        # though IDs should be different.
+                        schema = self._create_tool_schema(t)
+                        tools_schema.append(schema)
+                        tool_registry[schema['function']['name']] = lambda tid=t['id'], **kwargs: self._tool_runner(tid, kwargs)
 
-             max_turns = 10
-             current_turn = 0
-             finished = False
-             
-             while current_turn < max_turns and not finished:
-                  try:
-                      # Debug: Dump message history to see exactly what is causing 500 error
-                      if current_turn == 0:
-                           logger.info(f"LocalLLM Debug - Sending Messages: {json.dumps(full_messages)}")
-                           
-                      response_data = client.call_api(full_messages, tools=tools_schema)
-                  except Exception as e:
-                      logger.error(f"LLM API Call failed: {e}")
-                      result_content = f"Error calling LLM provider: {e}"
-                      break
-                      
-                  if not response_data or 'choices' not in response_data or not response_data['choices']:
-                       result_content = "Error: No valid response from provider"
-                       break
-
-                  choice = response_data['choices'][0]
-                  message = choice['message']
-                  tool_calls = message.get('tool_calls', [])
-                  
-                  # Append to history
-                  full_messages.append(message)
-                  chat_state['messages'].append(message)
-                  
-                  if message.get('content'):
-                       result_content = message.get('content')
-                  
-                  if tool_calls:
-                       if self.sim_state:
-                           tool_names = [t['function']['name'] for t in tool_calls]
-                           self.sim_state._add_event(f"AI Calling Tools: {', '.join(tool_names)}", "info")
-                           
-                       for tool in tool_calls:
-                            fn_name = tool['function']['name']
-                            args_str = tool['function']['arguments']
-                            call_id = tool['id']
-                            
-                            response_content = ""
-                            try:
-                                args = json.loads(args_str)
-                                if fn_name in tool_registry:
-                                     res = tool_registry[fn_name](**args)
-                                     # Serialize
-                                     if isinstance(res, (dict, list)):
-                                         response_content = json.dumps(res)
-                                     else:
-                                         response_content = str(res)
-                                else:
-                                     response_content = json.dumps({"error": f"Tool {fn_name} not found"})
-                            except Exception as e:
-                                response_content = json.dumps({"error": f"Exception: {str(e)}"})
-                            
-                            tool_msg = {
-                                "role": "tool",
-                                "tool_call_id": call_id,
-                                "name": fn_name,
-                                "content": response_content
-                            }
-                            full_messages.append(tool_msg)
-                            chat_state['messages'].append(tool_msg)
-                       
-                       current_turn += 1
-                  else:
-                       finished = True
-        
-        elif provider == 'gemini':
-             model_name = chat_state.get('model')
-             if not model_name:
-                 model_name = "gemini-2.0-flash"
-             
-             client = GeminiClient(model_name=model_name)
-             
-             # Prepare Tools (Shared logic essentially)
-             tool_registry = {}
-             tools_schema = []
-             
-             if chat_state.get('tools'):
-                  for t in chat_state['tools']:
-                      schema = self._create_tool_schema(t)
-                      tools_schema.append(schema)
-                      
-                      # Create callable wrapper
-                      func_id = t['id']
-                      fn_name = schema['function']['name']
-                      
-                      # Capture via closure
-                      def make_runner(fid):
-                          return lambda **kwargs: self._tool_runner(fid, kwargs)
-                      
-                      tool_registry[fn_name] = make_runner(func_id)
-
-             try:
-                 # We use existing messages in chat_state
-                 # Note: run_chat expects OpenAI format which chat_state['messages'] IS.
-                 # Also need to ensure system prompt is handled.
-                 
-                 # Prepare messages list. Copy it to avoid mutation during setup if needed.
-                 # But we WANT mutation of the history.
-                 messages_for_run = []
-                 if chat_state.get('system_prompt'):
-                     messages_for_run.append({'role': 'system', 'content': chat_state['system_prompt']})
-                 
-                 messages_for_run.extend(chat_state['messages'])
-                 
-                 result_text, new_history = client.run_chat(
-                     messages_for_run, 
-                     tools_schema=tools_schema, 
-                     tool_registry=tool_registry
-                 )
-                 
-                 if result_text:
-                     result_content = result_text
-                     # Sync back the history to chat_state['messages']
-                     # We need to extract the NEW messages added by run_chat
-                     # run_chat returns the FULL history (with system prompt potentially removed/handled).
-                     # The easiest way is to replace chat_state['messages'] with the new history (minus system)
-                     
-                     # But new_history from run_chat excludes system prompt (it consumes it).
-                     # So valid logic:
-                     chat_state['messages'] = new_history
-                     
-                 else:
-                     result_content = "No response from Gemini"
-
-             except Exception as e:
-                 logger.error(f"Gemini API execution failed: {e}")
-                 result_content = f"Error: {e}"
-        
+                result_text, new_history = client.run_chat(
+                    messages_for_run, 
+                    tools_schema=tools_schema, 
+                    tool_registry=tool_registry
+                )
+                
+                if result_text:
+                    result_content = result_text
+                    chat_state['messages'] = [m for m in new_history if m.get('role') != 'system']
+                else:
+                    result_content = f"No response from {provider}"
+            except Exception as e:
+                logger.error(f"LLM execution ({provider}) failed: {e}")
+                result_content = f"Error: {e}"
         else:
-             # Placeholder for other providers
-             result_content = f"Provider '{provider}' not yet implemented."
-             logger.warning(result_content)
-
+            result_content = f"Provider '{provider}' not implemented."
+        
         # Output result
-        result_struct = {'message': result_content, 'role': result_role}
+        result_struct = {'message': result_content, 'role': 1}
         self._update_output_cache(node, 'result_message', result_struct)
         
         return self.follow_flow(node, 'exec_out')
@@ -1439,6 +1352,10 @@ def {sanitized_name}({args_str}):
                 json_type = "number"
             elif arg_type.lower() in ['boolean', 'bool']:
                 json_type = "boolean"
+            elif arg_type.lower() in ['list', 'array']:
+                json_type = "array"
+            elif arg_type.lower() in ['map', 'dict', 'object']:
+                json_type = "object"
             
             properties[arg_name] = {"type": json_type, "description": f"Argument {arg_name}"}
             # All args required by default for simplicity
@@ -1458,99 +1375,92 @@ def {sanitized_name}({args_str}):
         }
 
     def _handle_ai_eval(self, node):
-        provider = self.get_input_value(node, 'provider')
+        provider = self.get_input_value(node, 'provider') or 'gemini'
         model = self.get_input_value(node, 'model') or self.get_input_value(node, 'model_name')
         system_prompt = self.get_input_value(node, 'system_prompt')
         prompt = self.get_input_value(node, 'prompt')
-        tools = self.get_input_value(node, 'tools')
+        tools_list = self.get_input_value(node, 'tools')
 
-        # Create a temporary chat state for one-shot eval
-        chat_state = {
-            'provider': provider or 'gemini',
-            'model': model or 'gemini-2.0-flash',
-            'system_prompt': system_prompt,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'tools': tools or []
-        }
+        client = self._get_llm_client(provider, model)
+        
+        if not client:
+            result_content = f"Provider '{provider}' not implemented."
+            self._update_output_cache(node, 'response', result_content)
+            return self.follow_flow(node, 'exec_out')
 
-        # We need to call the logic from _handle_send_llm_chat_message but results are different
-        # Instead of duplicating, we can extract the common 'send' logic or just duplicate it for simplicity if it's cleaner.
-        # However, _handle_send_llm_chat_message already does the heavy lifting.
+        # Prepare Tools
+        builtin_schema, builtin_registry = self._get_builtin_python_tools()
         
-        # Let's create a dummy node to pass to _handle_send_llm_chat_message if we wanted to reuse it, 
-        # but it's better to just implement it or refactor. 
-        # Since I can't easily refactor without seeing the whole class again, let's look at the logic.
-        
-        # Actually, let's just implement the one-shot logic here by calling Gemini/Local clients.
-        # This is matches "use the same logic as the newer Create LLM Chat node".
+        tool_registry = builtin_registry
+        tools_schema = builtin_schema
 
-        result_content = ""
-        
-        # Reusing the provider logic from _handle_send_llm_chat_message...
-        # Since it's quite long, I should probably have helper methods, but for now I'll implement a clean version.
-        
-        if chat_state['provider'] == 'gemini':
-            client = GeminiClient(model_name=chat_state['model'])
-            messages = []
-            if system_prompt:
-                messages.append({'role': 'system', 'content': system_prompt})
-            messages.append({'role': 'user', 'content': prompt})
-            
-            # Tools logic
-            tool_registry = {}
-            tools_schema = []
-            if chat_state['tools']:
-                for t in chat_state['tools']:
-                    schema = self._create_tool_schema(t)
-                    tools_schema.append(schema)
-                    func_id = t['id']
-                    fn_name = schema['function']['name']
-                    tool_registry[fn_name] = lambda **kwargs: self._tool_runner(func_id, kwargs)
+        if tools_list:
+            for t in tools_list:
+                schema = self._create_tool_schema(t)
+                tools_schema.append(schema)
+                tool_registry[schema['function']['name']] = lambda tid=t['id'], **kwargs: self._tool_runner(tid, kwargs)
 
-            try:
-                result_text, _ = client.run_chat(messages, tools_schema=tools_schema, tool_registry=tool_registry)
-                result_content = result_text
-            except Exception as e:
-                logger.error(f"AI Eval (Gemini) failed: {e}")
-                result_content = f"Error: {e}"
-        
-        elif chat_state['provider'] == 'local':
-            # Local logic (simplified or copied)
-            model_name = chat_state['model'] or "current-model"
-            
-            connections = {}
-            if self.sim_state and self.sim_state.system_root:
-                try:
-                    conn_path = self.sim_state.system_root / "gallium" / "connections.json"
-                    if conn_path.exists():
-                        with open(conn_path, 'r') as f:
-                            connections = json.load(f)
-                except: pass
-            
-            local_cfg = connections.get("local", {})
-            base_url = local_cfg.get("base_url", "http://127.0.0.1:8080")
-            api_url = base_url if base_url.endswith("/v1/chat/completions") else f"{base_url.rstrip('/')}/v1/chat/completions"
-            
-            client = LocalLlamaClient(api_url=api_url, model_name=model_name)
-            
-            full_messages = []
-            if system_prompt:
-                full_messages.append({'role': 'system', 'content': system_prompt})
-            full_messages.append({'role': 'user', 'content': prompt})
-            
-            # Simplified one-shot (no tool loop for now as it's an 'eval' node, 
-            # though the newer logic might want it. Let's stick to simple for now or copy loops if needed.)
-            try:
-                # Actually, ai_eval nodes usually don't support multi-turn tools as easily because they return a single string.
-                # But we can support it.
-                response_data = client.call_api(full_messages) # No tools for one-shot ai_eval for now?
-                if response_data and 'choices' in response_data and response_data['choices']:
-                    result_content = response_data['choices'][0]['message'].get('content', '')
-            except Exception as e:
-                logger.error(f"AI Eval (Local) failed: {e}")
-                result_content = f"Error: {e}"
-        
+        messages = []
+        if system_prompt:
+            messages.append({'role': 'system', 'content': system_prompt})
+        messages.append({'role': 'user', 'content': prompt})
+
+        try:
+            result_content, _ = client.run_chat(messages, tools_schema=tools_schema, tool_registry=tool_registry)
+        except Exception as e:
+            logger.error(f"AI Eval ({provider}) failed: {e}")
+            result_content = f"Error: {e}"
+
         self._update_output_cache(node, 'response', result_content)
         self._update_output_cache(node, 'changed_files', self._get_git_changed_files())
-        
         return self.follow_flow(node, 'exec_out')
+
+    def _handle_try_cast_to_type(self, node):
+        target_type = node.get('params', {}).get('target_type')
+        if not target_type:
+            if node['type'] == 'list_try_cast':
+                el_type = node.get('params', {}).get('element_type', 'any_not_exec')
+                target_type = f"list:{el_type}"
+            elif node['type'] == 'map_try_cast':
+                k_type = node.get('params', {}).get('key_type', 'string')
+                v_type = node.get('params', {}).get('value_type', 'any_not_exec')
+                target_type = f"map:{k_type}:{v_type}"
+
+        val = self.get_input_value(node, 'value')
+        
+        if self._check_type_match(val, target_type):
+            # Cache the result for the output data port
+            if node['id'] not in self.output_cache: self.output_cache[node['id']] = {}
+            # Result port might be 'result' or 'Result' or indexed. 
+            # We look for the first non-exec output.
+            out_port = next((p for p in node.get('outputs', []) if p.get('type') != 'exec'), None)
+            if out_port:
+                self.output_cache[node['id']][out_port['id']] = val
+            
+            return self.follow_flow(node, 'Success')
+        else:
+            return self.follow_flow(node, 'Fail')
+
+    def _check_type_match(self, val, target_type):
+        """Checks if a value matches the given Gallium type string."""
+        if not target_type or target_type == 'any' or target_type == 'any_not_exec':
+            return True
+        
+        if val is None:
+             return False
+
+        if target_type == 'string':
+            return isinstance(val, str)
+        if target_type == 'number':
+            return isinstance(val, (int, float)) and not isinstance(val, bool)
+        if target_type == 'boolean':
+            return isinstance(val, bool)
+        if target_type == 'chat_state' or target_type == 'context' or target_type.startswith('struct:'):
+            # These are all represented as dictionaries in the interpreter
+            return isinstance(val, dict)
+        if target_type.startswith('list:'):
+            return isinstance(val, list)
+        if target_type.startswith('map:'):
+            return isinstance(val, dict)
+        
+        return True

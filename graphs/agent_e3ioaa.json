@@ -4,7 +4,7 @@
         {
             "id": "start",
             "x": 420,
-            "y": 226,
+            "y": 220,
             "name": "Start",
             "function_id": "func_swpofky04",
             "isStart": true
@@ -14,7 +14,7 @@
             "x": 424,
             "y": 386,
             "name": "ralph",
-            "function_id": null,
+            "function_id": "func_sa1l6ljve",
             "isStart": false
         },
         {

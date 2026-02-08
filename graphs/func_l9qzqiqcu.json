@@ -402,8 +402,8 @@
         "panY": -56.93870824072883,
         "zoom": 0.7034115609120383
     },
-    "name": "caculate",
-    "description": "mcp tool for caculating math using qalc",
+    "name": "calculate",
+    "description": "mcp tool for calculating math expressions using qalc",
     "inputs": [
         {
             "id": "o61yn",

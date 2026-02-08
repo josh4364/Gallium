@@ -6,10 +6,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LocalLLM")
 
-class LocalLlamaClient:
+from source.base_llm import LLMClient
+
+class LocalLlamaClient(LLMClient):
     def __init__(self, api_url="http://127.0.0.1:8080/v1/chat/completions", model_name="current-model"):
+        super().__init__(model_name)
         self.api_url = api_url
-        self.model_name = model_name
 
     def call_api(self, messages, tools=None, tool_choice="auto"):
         payload = {
@@ -30,28 +32,29 @@ class LocalLlamaClient:
                     error_data = response.json()
                     err_msg = error_data.get("error", {}).get("message", "")
                     if "requires --jinja flag" in err_msg:
-                        logger.error("CRITICAL: The local llama-server MUST be started with the '--jinja' flag to support tool calling.")
+                        self.logger.error("CRITICAL: The local llama-server MUST be started with the '--jinja' flag to support tool calling.")
                         raise RuntimeError(f"Server configuration error: {err_msg}")
                 except (json.JSONDecodeError, KeyError):
                     pass
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP Error calling local Llama API: {e}")
+            self.logger.error(f"HTTP Error calling local Llama API: {e}")
             if e.response is not None:
-                logger.error(f"Response Body: {e.response.text}")
+                self.logger.error(f"Response Body: {e.response.text}")
             raise
         except Exception as e:
-            logger.error(f"Error calling local Llama API: {e}")
+            self.logger.error(f"Error calling local Llama API: {e}")
             raise
 
-    def run_agent(self, user_prompt, system_prompt="You are a helpful assistant. Use tools when necessary.", tool_registry=None, tools_schema=None, max_turns=5):
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-        logger.info(f"User: {user_prompt}")
+    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=10):
+        # Local client doesn't have state, so we just continue from the provided list
+        
+        # Safety Check: Some backends (llama-server) fail 500 if history ends in Assistant.
+        if messages and messages[-1].get('role') == 'assistant':
+            self.logger.info("Local Provider Safety: Coercing final 'assistant' message to 'user' before API call.")
+            messages[-1] = messages[-1].copy()
+            messages[-1]['role'] = 'user'
 
         for i in range(max_turns):
             response_data = self.call_api(messages, tools=tools_schema)
@@ -70,7 +73,7 @@ class LocalLlamaClient:
                     function_args = tool['function']['arguments']
                     call_id = tool['id']
                     
-                    logger.info(f"Agent wants to call: {function_name}({function_args})")
+                    self.logger.info(f"Agent wants to call: {function_name}({function_args})")
 
                     try:
                         args_dict = json.loads(function_args)
@@ -94,10 +97,12 @@ class LocalLlamaClient:
                 continue
             else:
                 # Final answer
-                logger.info(f"Agent: {message.get('content')}")
-                return message.get('content'), messages
+                content = message.get('content')
+                messages.append(message)
+                self.logger.info(f"Agent: {content}")
+                return content, messages
 
-        logger.warning("Agent reached maximum turns.")
+        self.logger.warning("Agent reached maximum turns.")
         return None, messages
 
 # Example usage/testing block

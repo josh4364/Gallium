@@ -44,25 +44,7 @@ def handle_message(msg, server, sim_state):
             "data": new_state
         })
 
-    # Handle Prompt Response
-    elif msg_type == "prompt_response":
-        choice = msg.get("choice")
-        logging.info(f"Received prompt response: {choice}")
-        sim_state.handle_prompt_response(choice)
-        server.broadcast({
-            "type": "state_update",
-            "data": sim_state.get_state()
-        })
 
-    # Handle UI Resume
-    elif msg_type == "ui_resume":
-        payload = msg.get("payload")
-        logging.info(f"Received UI resume: {payload}")
-        sim_state.handle_ui_resume(payload)
-        server.broadcast({
-            "type": "state_update",
-            "data": sim_state.get_state()
-        })
 
     # Handle Auto Start
     elif msg_type == "start_auto":
@@ -184,6 +166,34 @@ def handle_message(msg, server, sim_state):
         server.broadcast({
             "type": "agent_list",
             "agents": agents
+        })
+
+    # Handle Get Enums List
+    elif msg_type == "get_enums":
+        enums = sim_state.struct_manager.get_all_enums_data()
+        server.broadcast({
+            "type": "enum_list",
+            "enums": enums
+        })
+
+    # Handle Save Enum
+    elif msg_type == "save_enum":
+        enum_id = msg.get("id")
+        enum_data = msg.get("data")
+        success = sim_state.struct_manager.save_enum(enum_id, enum_data)
+        server.broadcast({
+            "type": "enum_save_response",
+            "id": enum_id,
+            "success": success
+        })
+
+    # Handle Delete Enum
+    elif msg_type == "delete_enum":
+        enum_id = msg.get("id")
+        success = sim_state.struct_manager.delete_enum(enum_id)
+        server.broadcast({
+            "type": "enum_list",
+            "enums": sim_state.struct_manager.get_all_enums_data()
         })
 
     # Handle Get Structs List

@@ -1,0 +1,23 @@
+{
+    "id": "enum_role",
+    "name": "Chat Role",
+    "tag": "ChatMessage",
+    "values": [
+        {
+            "name": "User",
+            "value": 0
+        },
+        {
+            "name": "Assistant",
+            "value": 1
+        },
+        {
+            "name": "Tool",
+            "value": 2
+        },
+        {
+            "name": "System",
+            "value": 3
+        }
+    ]
+}

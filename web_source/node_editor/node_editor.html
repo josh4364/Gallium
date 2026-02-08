@@ -164,8 +164,9 @@
                     <div class="panel-header">Type Database</div>
                     <div style="display: flex; gap: 4px; margin-bottom: 10px;">
                         <button class="tool-btn" style="flex: 1; font-size: 11px;"
-                            onclick="typeEditor.createNewStruct()">+ New
-                            Struct</button>
+                            onclick="typeEditor.createNewStruct()">+ Struct</button>
+                        <button class="tool-btn" style="flex: 1; font-size: 11px;"
+                            onclick="typeEditor.createNewEnum()">+ Enum</button>
                     </div>
                     <div class="search-container" style="padding: 0; margin-bottom: 10px;">
                         <input type="text" id="type-search" placeholder="Search types..." class="panel-input"
@@ -200,6 +201,32 @@
                 <div style="margin-top: 15px;">
                     <button class="tool-btn" style="width: 100%; font-size: 11px; color: var(--danger);"
                         onclick="typeEditor.deleteCurrentStruct()">Delete Structure</button>
+                </div>
+            </div>
+
+            <div id="enum-editor-section" class="panel-section"
+                style="display: none; flex: 1; padding: 20px; border-top: none; overflow-y: auto;">
+                <div class="panel-header">Enum Editor</div>
+                <label class="panel-label">Enum Name</label>
+                <input type="text" id="enum-name-input" class="panel-input"
+                    onchange="typeEditor.onEnumNameChange(this.value)">
+
+                <label class="panel-label" style="margin-top: 8px;">Type Tag</label>
+                <input type="text" id="enum-tag-input" class="panel-input" placeholder="e.g. Role"
+                    onchange="typeEditor.onEnumTagChange(this.value)">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <label class="panel-label" style="margin-bottom: 0;">Values</label>
+                    <button class="tool-btn" style="width: auto; height: 24px; padding: 0 8px; font-size: 10px;"
+                        onclick="typeEditor.addEnumValueToCurrent()">+ Add Value</button>
+                </div>
+                <div id="enum-values-list" class="io-list" style="margin-top: 5px;">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <button class="tool-btn" style="width: 100%; font-size: 11px; color: var(--danger);"
+                        onclick="typeEditor.deleteCurrentEnum()">Delete Enum</button>
                 </div>
             </div>
         </div>

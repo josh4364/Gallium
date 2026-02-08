@@ -103,7 +103,6 @@ class SimulationState:
             "workflow_hooks": self.workflow_hooks,
             "workflow_memory": self.workflow_memory,
             "latest_events": self.events[-10:], # Send last 10 events for efficiency
-            "pending_prompt": self.interpreter.suspended_prompt_data if self.interpreter.is_suspended else None,
             "threads": self.threads,
             "active_thread_id": self.active_thread_id,
             "auto_run": self.auto_run
@@ -136,31 +135,7 @@ class SimulationState:
         
         return success
     
-    def send_ui_yield(self, ui_type, payload):
-        """
-        Pauses execution and requests UI interaction from the client.
-        """
-        self._add_event(f"UI Yield Triggered: {ui_type}", "info")
-        if self.on_event:
-            self.on_event({
-                "type": "ui_yield",
-                "ui_type": ui_type,
-                "payload": payload,
-                "timestamp": datetime.now().isoformat()
-            })
 
-    def handle_ui_resume(self, payload):
-        """
-        Resumes execution with data from the UI.
-        """
-        self._add_event("UI Resumed", "info")
-        try:
-             self.interpreter.resume(payload)
-        except Exception as e:
-             logger.error(f"Error resuming from UI yield: {e}")
-             self._add_event(f"Error Resuming: {e}", "error")
-        # Resume might have triggered more events/graphs
-        self.check_pending_execution()
 
     def handle_user_message(self, message):
         """Handle incoming chat message from user."""
@@ -180,8 +155,6 @@ class SimulationState:
         else:
             # Fallback to global
             self.workflow_memory["latest_user_message"] = message
-        
-        self.check_pending_execution()
 
     def handle_start_goal(self, prompt, workflow_id):
         """Initializes a new workflow instance from a user goal/prompt."""
@@ -317,9 +290,7 @@ class SimulationState:
     def _evaluate_conditions(self, conditions, memory):
         """Checks if all conditions in a transition are met."""
         if not conditions:
-            # If no conditions, it's an automatic transition? 
-            # Usually yes, or maybe after one tick. 
-            # In Agent Editor, unconditional transitions might be allowed.
+            # If no conditions, it's an automatic transition
             return True
             
         for cond in conditions:
@@ -329,26 +300,49 @@ class SimulationState:
             
             mem_val = memory.get(key)
             
+            # Helper to normalize values for comparison
+            def normalize(v):
+                if v is None: return None
+                if isinstance(v, bool): return v
+                if isinstance(v, (int, float)): return v
+                
+                # Check for boolean strings
+                s = str(v).lower()
+                if s == "true": return True
+                if s == "false": return False
+                
+                # Try number
+                try:
+                    if "." in s: return float(s)
+                    return int(s)
+                except:
+                    pass
+                
+                return s # Keep as string (lowercase for comparison if we want, but let's be careful)
+
+            norm_mem = normalize(mem_val)
+            norm_val = normalize(val)
+
             # Simple evaluation
             if op == "==":
-                if str(mem_val) != str(val): return False
+                if norm_mem != norm_val: return False
             elif op == "!=":
-                if str(mem_val) == str(val): return False
+                if norm_mem == norm_val: return False
             elif op == ">":
                 try:
-                    if not float(mem_val) > float(val): return False
+                    if not float(norm_mem) > float(norm_val): return False
                 except: return False
             elif op == "<":
                 try:
-                    if not float(mem_val) < float(val): return False
+                    if not float(norm_mem) < float(norm_val): return False
                 except: return False
             elif op == ">=":
                 try:
-                    if not float(mem_val) >= float(val): return False
+                    if not float(norm_mem) >= float(norm_val): return False
                 except: return False
             elif op == "<=":
                 try:
-                    if not float(mem_val) <= float(val): return False
+                    if not float(norm_mem) <= float(norm_val): return False
                 except: return False
             elif op == "exists":
                 if mem_val is None: return False
@@ -362,12 +356,7 @@ class SimulationState:
 
     # Deprecated / Alias for backward compatibility if needed, 
     # but we will update call sites.
-    def send_prompt_request(self, title, message):
-        self.send_ui_yield("BinaryChoice", {"title": title, "message": message})
 
-    def handle_prompt_response(self, response_bool):
-        # The prompt_user node expects a boolean
-        self.handle_ui_resume(response_bool)
 
     def _load_state_from_manifest(self):
         try:

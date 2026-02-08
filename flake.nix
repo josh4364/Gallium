@@ -34,7 +34,6 @@
             libqalculate
             (pkgs.python312.withPackages (ps: with ps; [
                 google-genai
-                mcp
                 aiohttp
                 requests
             ]))

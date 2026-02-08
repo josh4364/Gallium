@@ -117,3 +117,84 @@ class StructManager:
             except Exception as e:
                 logger.error(f"Error reading struct {file_path}: {e}")
         return structs
+
+    # --- Enum Management ---
+    def get_enum_list(self):
+        """Returns a list of available enums."""
+        enums = []
+        for file_path in self.graphs_dir.glob("enum_*.json"):
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    enums.append({
+                        "id": data.get("id", file_path.stem),
+                        "name": data.get("name", file_path.stem),
+                        "values": data.get("values", []),
+                        "filename": file_path.name
+                    })
+            except Exception as e:
+                logger.error(f"Error reading enum {file_path}: {e}")
+        return enums
+
+    def save_enum(self, enum_id, enum_data):
+        """Saves an enum to disk."""
+        try:
+            safe_id = "".join([c for c in enum_id if c.isalnum() or c in ('_', '-')])
+            if not safe_id:
+                safe_id = "enum_unnamed"
+                
+            file_path = self.graphs_dir / f"{safe_id}.json"
+            
+            # Ensure id is in the data
+            if isinstance(enum_data, dict):
+                enum_data["id"] = safe_id
+                if "name" not in enum_data:
+                    enum_data["name"] = safe_id
+
+            with open(file_path, 'w') as f:
+                json.dump(enum_data, f, indent=4)
+            logger.info(f"Saved enum: {file_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving enum {enum_id}: {e}")
+            return False
+
+    def load_enum(self, enum_id):
+        """Loads an enum from disk."""
+        try:
+            safe_id = "".join([c for c in enum_id if c.isalnum() or c in ('_', '-')])
+            file_path = self.graphs_dir / f"{safe_id}.json"
+            if file_path.exists():
+                with open(file_path, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading enum {enum_id}: {e}")
+        return None
+
+    def delete_enum(self, enum_id):
+        """Deletes an enum from disk."""
+        try:
+            safe_id = "".join([c for c in enum_id if c.isalnum() or c in ('_', '-')])
+            file_path = self.graphs_dir / f"{safe_id}.json"
+            if file_path.exists():
+                os.remove(file_path)
+                logger.info(f"Deleted enum file: {file_path}")
+                return True
+            else:
+                logger.warning(f"Could not delete enum {enum_id}: File not found.")
+                return False
+        except Exception as e:
+            logger.error(f"Error deleting enum {enum_id}: {e}")
+            return False
+
+    def get_all_enums_data(self):
+        """Returns full data for all enums (for initial load)."""
+        enums = []
+        for file_path in self.graphs_dir.glob("enum_*.json"):
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    enums.append(data)
+            except Exception as e:
+                logger.error(f"Error reading enum {file_path}: {e}")
+        return enums

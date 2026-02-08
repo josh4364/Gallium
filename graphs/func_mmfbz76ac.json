@@ -44,8 +44,8 @@
         {
             "id": "node_08j5plbgf",
             "type": "run_process",
-            "x": 447,
-            "y": 66,
+            "x": 450.9503746429648,
+            "y": 58.88932564266337,
             "width": 336,
             "height": 188,
             "title": "Run Process",
@@ -126,7 +126,7 @@
                     },
                     {
                         "name": "role",
-                        "type": "number",
+                        "type": "enum:enum_role",
                         "default": 0
                     }
                 ],
@@ -156,12 +156,37 @@
                     }
                 ]
             }
+        ],
+        "enums": [
+            {
+                "id": "enum_role",
+                "name": "Chat Role",
+                "tag": "Chat",
+                "values": [
+                    {
+                        "name": "User",
+                        "value": 0
+                    },
+                    {
+                        "name": "Assistant",
+                        "value": 1
+                    },
+                    {
+                        "name": "Tool",
+                        "value": 2
+                    },
+                    {
+                        "name": "System",
+                        "value": 3
+                    }
+                ]
+            }
         ]
     },
     "view": {
-        "panX": 115,
-        "panY": 92,
-        "zoom": 1
+        "panX": -28.916051405869894,
+        "panY": -390.4162551557072,
+        "zoom": 1.2657027375630006
     },
     "name": "get current time",
     "description": "",

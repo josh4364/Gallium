@@ -13,7 +13,9 @@ class TypeDatabase {
         ];
 
         this.structs = []; // User defined structures
+        this.enums = [];   // User defined enums
         // Example struct: { id: 'struct_1', name: 'Person', fields: [{ name: 'name', type: 'string' }, { name: 'age', type: 'number' }] }
+        // Example enum: { id: 'enum_1', name: 'Role', values: [{ name: 'Agent', value: 0 }, { name: 'User', value: 1 }] }
 
         this.onChangedCallbacks = [];
     }
@@ -42,6 +44,14 @@ class TypeDatabase {
         return this.structs.find(s => s.id === id);
     }
 
+    getEnums() {
+        return this.enums;
+    }
+
+    getEnum(id) {
+        return this.enums.find(e => e.id === id);
+    }
+
     // Save a specific struct to the server
     _saveStructToServer(struct) {
         if (window.parent && window.parent.saveStructToServer) {
@@ -53,6 +63,20 @@ class TypeDatabase {
     _deleteStructFromServer(id) {
         if (window.parent && window.parent.deleteStructFromServer) {
             window.parent.deleteStructFromServer(id);
+        }
+    }
+
+    // Save a specific enum to the server
+    _saveEnumToServer(enumObj) {
+        if (window.parent && window.parent.saveEnumToServer) {
+            window.parent.saveEnumToServer(enumObj.id, enumObj);
+        }
+    }
+
+    // Delete an enum from the server
+    _deleteEnumFromServer(id) {
+        if (window.parent && window.parent.deleteEnumFromServer) {
+            window.parent.deleteEnumFromServer(id);
         }
     }
 
@@ -70,9 +94,29 @@ class TypeDatabase {
         return newStruct;
     }
 
+    addEnum(name) {
+        const id = 'enum_' + Math.random().toString(36).substr(2, 9);
+        const newEnum = {
+            id: id,
+            name: name || 'NewEnum',
+            values: [], // Array of { name: 'Something', value: 0 }
+            tag: ''
+        };
+        this.enums.push(newEnum);
+        this._saveEnumToServer(newEnum);
+        this.notifyChanged();
+        return newEnum;
+    }
+
     deleteStruct(id) {
         this.structs = this.structs.filter(s => s.id !== id);
         this._deleteStructFromServer(id);
+        this.notifyChanged();
+    }
+
+    deleteEnum(id) {
+        this.enums = this.enums.filter(e => e.id !== id);
+        this._deleteEnumFromServer(id);
         this.notifyChanged();
     }
 
@@ -81,6 +125,15 @@ class TypeDatabase {
         if (s) {
             Object.assign(s, updates);
             this._saveStructToServer(s);
+            this.notifyChanged();
+        }
+    }
+
+    updateEnum(id, updates) {
+        const e = this.getEnum(id);
+        if (e) {
+            Object.assign(e, updates);
+            this._saveEnumToServer(e);
             this.notifyChanged();
         }
     }
@@ -113,7 +166,35 @@ class TypeDatabase {
         }
     }
 
-    // Type strings: "string", "number", "boolean", "list:string", "map:string:number", "struct:struct_id"
+    // Enum Value Management
+    addEnumValue(enumId, name, value) {
+        const e = this.getEnum(enumId);
+        if (e) {
+            e.values.push({ name: name || 'Option', value: value !== undefined ? value : 0 });
+            this._saveEnumToServer(e);
+            this.notifyChanged();
+        }
+    }
+
+    removeEnumValue(enumId, index) {
+        const e = this.getEnum(enumId);
+        if (e && e.values[index]) {
+            e.values.splice(index, 1);
+            this._saveEnumToServer(e);
+            this.notifyChanged();
+        }
+    }
+
+    updateEnumValue(enumId, index, updates) {
+        const e = this.getEnum(enumId);
+        if (e && e.values[index]) {
+            Object.assign(e.values[index], updates);
+            this._saveEnumToServer(e);
+            this.notifyChanged();
+        }
+    }
+
+    // Type strings: "string", "number", "boolean", "list:string", "map:string:number", "struct:struct_id", "enum:enum_id"
     getTypeDetails(typeStr) {
         if (!typeStr) return { name: 'Unknown', color: '#808080' };
 
@@ -130,6 +211,10 @@ class TypeDatabase {
             const rest = typeStr.substring(4);
             let keyStr, valStr;
             if (rest.startsWith('struct:')) {
+                const parts = rest.split(':');
+                keyStr = parts[0] + ':' + parts[1];
+                valStr = parts.slice(2).join(':') || 'any';
+            } else if (rest.startsWith('enum:')) {
                 const parts = rest.split(':');
                 keyStr = parts[0] + ':' + parts[1];
                 valStr = parts.slice(2).join(':') || 'any';
@@ -163,6 +248,16 @@ class TypeDatabase {
             };
         }
 
+        if (typeStr.startsWith('enum:')) {
+            const eid = typeStr.substring(5);
+            const e = this.getEnum(eid);
+            return {
+                name: e ? e.name : 'MissingEnum',
+                color: '#FF9800', // Orange for enums
+                enum: e
+            };
+        }
+
         const p = this.primitives.find(p => p.id === typeStr);
         if (p) return p;
 
@@ -174,6 +269,9 @@ class TypeDatabase {
         this.structs.forEach(s => {
             types.push(`struct:${s.id}`);
         });
+        this.enums.forEach(e => {
+            types.push(`enum:${e.id}`);
+        });
 
         // We can't really list all possible combinations of lists and maps
         // But we can offer common ones or a dynamic adder in the UI
@@ -182,20 +280,27 @@ class TypeDatabase {
 
     serialize() {
         return {
-            structs: this.structs
+            structs: this.structs,
+            enums: this.enums
         };
     }
 
     load(data) {
-        if (data && data.structs) {
-            // Merge structs from file into global DB
-            // We favor existing global structs (which might come from server) over file structs
-            // But we add any missing ones.
-            data.structs.forEach(s => {
-                if (!this.getStruct(s.id)) {
-                    this.structs.push(s);
-                }
-            });
+        if (data) {
+            if (data.structs) {
+                data.structs.forEach(s => {
+                    if (!this.getStruct(s.id)) {
+                        this.structs.push(s);
+                    }
+                });
+            }
+            if (data.enums) {
+                data.enums.forEach(e => {
+                    if (!this.getEnum(e.id)) {
+                        this.enums.push(e);
+                    }
+                });
+            }
             this.notifyChanged();
         }
     }
@@ -205,6 +310,14 @@ class TypeDatabase {
         if (Array.isArray(structsArray)) {
             this.structs = structsArray;
             console.log("TypeDatabase: Imported", structsArray.length, "structs from server");
+            this.notifyChanged();
+        }
+    }
+
+    importEnumsFromServer(enumsArray) {
+        if (Array.isArray(enumsArray)) {
+            this.enums = enumsArray;
+            console.log("TypeDatabase: Imported", enumsArray.length, "enums from server");
             this.notifyChanged();
         }
     }
@@ -219,6 +332,14 @@ window.importStructList = function (structs) {
     } else {
         // Queue for later if typeDB not ready yet
         window._pendingStructs = structs;
+    }
+};
+
+window.importEnumList = function (enums) {
+    if (window.typeDB) {
+        window.typeDB.importEnumsFromServer(enums);
+    } else {
+        window._pendingEnums = enums;
     }
 };
 

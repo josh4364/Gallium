@@ -698,12 +698,12 @@
         ]
     },
     "view": {
-        "panX": 334.2561957211183,
-        "panY": -9.995231174604896,
-        "zoom": 0.4874915260443797
+        "panX": 107.24731577081775,
+        "panY": 12.372040240986848,
+        "zoom": 0.7851099776097341
     },
     "name": "List tests",
-    "description": "bunch of nodes to test list functionality works",
+    "description": "bunch of nodes to test list functionality",
     "inputs": [],
     "outputs": [],
     "tags": [

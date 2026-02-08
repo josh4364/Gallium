@@ -8,7 +8,7 @@
         },
         {
             "name": "role",
-            "type": "number",
+            "type": "enum:enum_role",
             "default": 0
         }
     ],

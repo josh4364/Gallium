@@ -7,40 +7,7 @@ const nodeRegistry = [
         inputs: [], // Dynamic
         outputs: [{ label: 'exec_out', type: 'exec' }] // Defaults
     },
-    {
-        type: 'prompt_user',
-        name: 'Prompt User',
-        description: 'Displays a dialog to the user with a title and message, branching based on their choice.',
-        tags: ['UI', 'input', 'interactive', 'ask'],
-        color: '#673AB7',
-        inputs: [
-            { label: 'exec_in', type: 'exec' },
-            { label: 'Title', type: 'string', key: 'title' },
-            { label: 'Message', type: 'string', key: 'message' }
-        ],
-        outputs: [
-            { label: 'exec_yes', type: 'exec' },
-            { label: 'exec_no', type: 'exec' }
-        ],
-        params: { title: 'Question', message: 'Are you sure?' }
-    },
-    {
-        type: 'ui_yield',
-        name: 'UI Yield',
-        description: 'Suspends execution to wait for a specific UI event or user interaction.',
-        tags: ['UI', 'system', 'wait', 'user'],
-        color: '#673AB7',
-        inputs: [
-            { label: 'exec_in', type: 'exec' },
-            { label: 'UI Type', type: 'string', key: 'ui_type' },
-            { label: 'Payload', type: 'any_not_exec', key: 'payload' }
-        ],
-        outputs: [
-            { label: 'exec_out', type: 'exec' },
-            { label: 'Result', type: 'any_not_exec', key: 'result' }
-        ],
-        params: { ui_type: 'BinaryChoice', payload: {} }
-    },
+
     {
         type: 'function_return',
         name: 'Return',
@@ -71,6 +38,23 @@ const nodeRegistry = [
             { label: 'exec_false', type: 'exec' }
         ],
         params: { condition: false }
+    },
+    {
+        type: 'match',
+        name: 'Match',
+        description: 'Branches execution based on matching an input value against several constant cases.',
+        tags: ['Flow', 'logic', 'switch', 'match', 'pattern'],
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'Switch On', type: 'any_not_exec', key: 'value' }
+        ],
+        outputs: [
+            { label: 'Default', type: 'exec', key: 'exec_default' }
+        ],
+        params: {
+            cases: [],
+            value_type: 'string'
+        }
     },
     {
         type: 'log_message',
@@ -157,7 +141,7 @@ const nodeRegistry = [
         type: 'string',
         name: 'String Constant',
         description: 'A constant text value.',
-        tags: ['Data', 'variable', 'text'],
+        tags: ['String', 'variable', 'text'],
         resizable: true,
         outputs: [{ label: '', type: 'string' }],
         params: { value: 'Hello World' }
@@ -166,7 +150,7 @@ const nodeRegistry = [
         type: 'string_format',
         name: 'String Format',
         description: 'Combines multiple values into a string using curly braces {} as placeholders.',
-        tags: ['Data', 'string', 'format', 'template'],
+        tags: ['String', 'string', 'format', 'template'],
         resizable: true,
         inputs: [],
         outputs: [{ label: 'Result', type: 'string' }],
@@ -176,7 +160,7 @@ const nodeRegistry = [
         type: 'number',
         name: 'Number Constant',
         description: 'A constant numeric (integer or float) value.',
-        tags: ['Data', 'variable', 'float', 'int'],
+        tags: ['Number', 'variable', 'float', 'int'],
         outputs: [{ label: '', type: 'number' }],
         params: { value: 42 }
     },
@@ -184,9 +168,17 @@ const nodeRegistry = [
         type: 'boolean',
         name: 'Boolean Constant',
         description: 'A constant true or false value.',
-        tags: ['Data', 'variable', 'bool'],
+        tags: ['Boolean', 'variable', 'bool'],
         outputs: [{ label: '', type: 'boolean' }],
         params: { value: false }
+    },
+    {
+        type: 'enum_constant',
+        name: 'Enum Constant',
+        description: 'A constant value from an enumeration.',
+        tags: ['Enum', 'constant'],
+        outputs: [{ label: '', type: 'number' }],
+        params: { enum_id: '', value: 0 }
     },
     {
         type: 'math_add',
@@ -311,7 +303,7 @@ const nodeRegistry = [
         type: 'to_string',
         name: 'To String',
         description: 'Converts any value (number, boolean, etc.) into its text representation.',
-        tags: ['Data', 'string', 'convert', 'format', 'print'],
+        tags: ['String', 'string', 'convert', 'format', 'print'],
         inputs: [
             { label: 'Value', type: 'any_not_exec', key: 'value' }
         ],
@@ -356,40 +348,12 @@ const nodeRegistry = [
             element_type: 'any_not_exec'
         }
     },
+
     {
-        type: 'global_context_read',
-        name: 'Context Read',
-        description: 'Reads a value from the global blackboard or context storage using a key.',
-        tags: ['State', 'global', 'read', 'memory', 'blackboard'],
-        color: '#009688',
-        inputs: [
-            { label: 'Key', type: 'string', key: 'key' }
-        ],
-        outputs: [
-            { label: 'Value', type: 'any_not_exec', key: 'value' },
-            { label: 'exec_out', type: 'exec' } // Optional flow passthrough
-        ],
-        params: { key: '' }
-    },
-    {
-        type: 'global_context_write',
-        name: 'Context Write',
-        description: 'Writes a value to the global blackboard or context storage for a given key.',
-        tags: ['State', 'global', 'write', 'memory', 'blackboard'],
-        color: '#009688',
-        inputs: [
-            { label: 'exec_in', type: 'exec' },
-            { label: 'Key', type: 'string', key: 'key' },
-            { label: 'Value', type: 'any_not_exec', key: 'value' }
-        ],
-        outputs: [{ label: 'exec_out', type: 'exec' }],
-        params: { key: '', value: null }
-    },
-    {
-        type: 'json_iterator',
-        name: 'Iterator',
+        type: 'list_for_each',
+        name: 'List For Each',
         description: 'Iterates through a list, executing a loop for each item.',
-        tags: ['State', 'loop', 'foreach', 'json', 'list'],
+        tags: ['Flow', 'loop', 'foreach', 'list'],
         color: '#FFC107',
         inputs: [
             { label: 'exec_in', type: 'exec' },
@@ -404,19 +368,24 @@ const nodeRegistry = [
         params: { list: [] }
     },
     {
-        type: 'event_emit',
-        name: 'Emit Event',
-        description: 'Signals that a specific event has occurred, optionally carrying a payload.',
-        tags: ['State', 'event', 'signal', 'trigger'],
-        color: '#FF5722',
+        type: 'map_for_each',
+        name: 'Map For Each',
+        description: 'Iterates through a map, executing a loop for each key-value pair.',
+        tags: ['Flow', 'loop', 'foreach', 'map'],
+        color: '#FFC107',
         inputs: [
             { label: 'exec_in', type: 'exec' },
-            { label: 'Event Name', type: 'string', key: 'event_name' },
-            { label: 'Payload', type: 'any_not_exec', key: 'payload' }
+            { label: 'Map', type: 'map:string:any_not_exec', key: 'map' }
         ],
-        outputs: [{ label: 'exec_out', type: 'exec' }],
-        params: { event_name: '', payload: {} }
+        outputs: [
+            { label: 'Loop', type: 'exec', key: 'exec_loop' },
+            { label: 'Done', type: 'exec', key: 'exec_done' },
+            { label: 'Key', type: 'string', key: 'key' },
+            { label: 'Value', type: 'any_not_exec', key: 'value' }
+        ],
+        params: { map: {} }
     },
+
     {
         type: 'get_context_top_level_goal',
         name: 'Get Top Level Goal',
@@ -593,9 +562,35 @@ const nodeRegistry = [
         inputs: [
             { label: 'exec_in', type: 'exec' },
             { label: 'Context', type: 'context', key: 'ctx' },
-            { label: 'Message', type: 'string', key: 'message' }
+            { label: 'Message', type: 'string', key: 'message' },
+            { label: 'Role', type: 'enum:enum_role', key: 'role' }
         ],
         outputs: [{ label: 'exec_out', type: 'exec' }],
-        params: { message: '' }
+        params: { message: '', role: 1 }
+    },
+    {
+        type: 'web_request',
+        name: 'Web Request',
+        description: 'Sends an HTTP request to a URL and captures the response.',
+        tags: ['System', 'web', 'http', 'request', 'network'],
+        color: '#4CAF50',
+        resizable: true,
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'URL', type: 'string', key: 'url' },
+            { label: 'Method', type: 'string', key: 'method' },
+            { label: 'Headers', type: 'map:string:string', key: 'headers' },
+            { label: 'Body', type: 'string', key: 'body' }
+        ],
+        outputs: [
+            { label: 'exec_out', type: 'exec' },
+            { label: 'Response', type: 'string', key: 'response' },
+            { label: 'Status Code', type: 'number', key: 'status_code' }
+        ],
+        params: {
+            url: '',
+            method: 'GET',
+            body: ''
+        }
     }
 ];

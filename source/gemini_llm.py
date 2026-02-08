@@ -8,8 +8,11 @@ from google.genai import types
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GeminiLLM")
 
-class GeminiClient:
+from source.base_llm import LLMClient
+
+class GeminiClient(LLMClient):
     def __init__(self, api_key=None, model_name="gemini-2.0-flash"):
+        super().__init__(model_name)
         if not api_key:
             # Try to load from keys.json in root if not provided
             try:
@@ -21,7 +24,7 @@ class GeminiClient:
                         data = json.load(f)
                         api_key = data.get("gemini_api_key")
             except Exception as e:
-                logger.error(f"Failed to load keys.json: {e}")
+                self.logger.error(f"Failed to load keys.json: {e}")
         
         if not api_key:
             # Check environment variable as fallback
@@ -31,7 +34,6 @@ class GeminiClient:
             raise ValueError("API Key not found. Please provide api_key, set GEMINI_API_KEY env var, or put it in keys.json")
 
         self.client = genai.Client(api_key=api_key)
-        self.model_name = model_name
 
     def _convert_openai_to_gemini(self, messages):
         """
@@ -138,9 +140,6 @@ class GeminiClient:
         )
 
         # Separate the last user message to be sent as the trigger
-        # If the last message is NOT user, we assume we just want to continue/generate from history?
-        # But for 'send_llm_chat_message' node, we usually append a user message then run.
-        
         history_msgs = []
         last_msg = None
         
@@ -150,8 +149,6 @@ class GeminiClient:
                 history_msgs = cleaned_messages[:-1]
             else:
                 # If last msg is assistant or tool, we might be in a loop or something.
-                # But Gemini SDK usually expects a User message to trigger generation.
-                # If we just want to continue generation... 
                 history_msgs = cleaned_messages
                 last_msg = None # No new message to send
         
@@ -168,18 +165,10 @@ class GeminiClient:
             
             # Initial Send
             if last_msg and last_msg['role'] == 'user':
-                logger.info(f"User: {last_msg['content']}")
+                self.logger.info(f"User: {last_msg['content']}")
                 response = chat.send_message(last_msg['content'])
             else:
-                # Try to generate without input? Not typical for chat.
-                # Maybe sending empty string?
-                # Or if the last message was a Tool response (user role), we are 'continuing'.
-                # But my logic above put Tool responses in history_msgs.
-                # If the last thing in history is a Tool Response, we need to send *something* or call generate?
-                # Actually, if the last thing is a Tool Response, we should have processed it.
-                # Let's assume standard Use Case: User message is the trigger.
                 if not last_msg:
-                     # Fallback 
                      return None, messages
                 response = chat.send_message(last_msg.get('content', ''))
 
@@ -209,7 +198,7 @@ class GeminiClient:
                     }
                     messages.append(assistant_msg)
                     
-                    logger.info(f"Agent calls: {fc.name}({args})")
+                    self.logger.info(f"Agent calls: {fc.name}({args})")
                     
                     # 2. Execute Tool
                     result_data = {}
@@ -225,7 +214,7 @@ class GeminiClient:
                     except Exception as e:
                         result_data = {"error": str(e)}
 
-                    logger.info(f"Tool Result: {result_data}")
+                    self.logger.info(f"Tool Result: {result_data}")
 
                     # 3. Add Tool Response to return messages
                     tool_msg = {
@@ -257,22 +246,14 @@ class GeminiClient:
                         "role": "assistant",
                         "content": txt
                     })
-                    logger.info(f"Agent: {txt}")
+                    self.logger.info(f"Agent: {txt}")
                     return txt, messages
                     
             return "Max turns reached", messages
 
         except Exception as e:
-            logger.error(f"Error calling Gemini API: {e}")
+            self.logger.error(f"Error calling Gemini API: {e}")
             raise
-
-    def run_agent(self, user_prompt, system_prompt="You are a helpful assistant.", tool_registry=None, tools_schema=None, max_turns=10):
-        # Compatibility wrapper
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-        return self.run_chat(messages, tools_schema, tool_registry, max_turns)
 
 if __name__ == "__main__":
     # Test Block
