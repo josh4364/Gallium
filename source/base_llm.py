@@ -7,7 +7,7 @@ class LLMClient(abc.ABC):
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @abc.abstractmethod
-    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=10):
+    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=100):
         """
         Runs a chat turn starting with the provided history.
         
@@ -22,7 +22,7 @@ class LLMClient(abc.ABC):
         """
         pass
 
-    def run_agent(self, user_prompt, system_prompt="You are a helpful assistant.", tool_registry=None, tools_schema=None, max_turns=10):
+    def run_agent(self, user_prompt, system_prompt="You are a helpful assistant.", tool_registry=None, tools_schema=None, max_turns=100):
         """
         Compatibility wrapper for single-turn agent execution.
         """

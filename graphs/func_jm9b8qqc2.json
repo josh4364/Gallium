@@ -532,21 +532,28 @@
         {
             "id": "node_png2da56o",
             "type": "string_format",
-            "x": 1204.7598987854317,
-            "y": 1288.4816086977848,
+            "x": 1184.4333506609694,
+            "y": 1282.674023519367,
             "width": 669,
             "height": 320,
             "title": "String Format",
             "params": {
-                "format": "Based on this reply from the user does it seem like they want to proceed with the plan and begin working on it?\nif they do want begin reply exactly \"true\" or \"false\"\nUser:{}",
-                "arg1": null
+                "format": "Based on this conversation from the user does it seem like they want to proceed with the plan and begin working on it?\nif they do want begin reply exactly \"true\" or \"false\"\nWe're trying to decide if their last message indicates that they want to begin. \nOtherwise we want to stay in the planning phase and listen for more feedback.\nConversation:\n{}\n{}",
+                "arg1": null,
+                "arg2": null
             },
             "inputs": [
                 {
                     "id": "node_png2da56o_in_arg1_zvay",
                     "label": "Arg 1",
-                    "type": "string",
+                    "type": "list:string",
                     "key": "arg1"
+                },
+                {
+                    "id": "node_png2da56o_in_arg2_upex",
+                    "label": "Arg 2",
+                    "type": "string",
+                    "key": "arg2"
                 }
             ],
             "outputs": [
@@ -636,6 +643,122 @@
                     "id": "node_nxgfwv3ot__ybd7",
                     "label": "",
                     "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_oktxpx6nk",
+            "type": "display_file_editor",
+            "x": 2968.9154924506242,
+            "y": 1381.7511537798787,
+            "width": 321,
+            "height": 120,
+            "title": "Display File Editor",
+            "params": {
+                "file_path": "plan.md"
+            },
+            "inputs": [
+                {
+                    "id": "node_oktxpx6nk_exec_in_xmf3",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_oktxpx6nk_file_path",
+                    "label": "File Path",
+                    "type": "string",
+                    "key": "file_path"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_oktxpx6nk_exec_out_q175",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_s0v2oj45c",
+            "type": "context_get_all_messages",
+            "x": 831.93948552794,
+            "y": 1282.467301810557,
+            "width": 300,
+            "height": 120,
+            "title": "Get All Messages",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_s0v2oj45c_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_s0v2oj45c_messages",
+                    "label": "Messages",
+                    "type": "list:string",
+                    "key": "messages"
+                }
+            ]
+        },
+        {
+            "id": "node_5ul0wpuvz",
+            "type": "string",
+            "x": 1216.578130687885,
+            "y": 1781.6942377478915,
+            "width": 300,
+            "height": 124,
+            "title": "String Constant",
+            "params": {
+                "value": "plan"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_5ul0wpuvz_undefined_238x",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_9fqdpxn7r",
+            "type": "get_context_agent_provider",
+            "x": 1569.1209283726103,
+            "y": 1781.2721615194891,
+            "width": 300,
+            "height": 120,
+            "title": "Get Agent Provider",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_9fqdpxn7r_ctx_lwtz",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_9fqdpxn7r_role_obsl",
+                    "label": "Role",
+                    "type": "string",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_9fqdpxn7r_provider_pjfp",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_9fqdpxn7r_model_f92e",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
                 }
             ]
         }
@@ -756,12 +879,6 @@
             "toPort": "node_wjbp26ujg_in_message"
         },
         {
-            "fromNode": "node_vqiv6lp7x",
-            "fromPort": "node_vqiv6lp7x_val",
-            "toNode": "node_png2da56o",
-            "toPort": "node_png2da56o_in_arg1_zvay"
-        },
-        {
             "fromNode": "node_af9e1hetq",
             "fromPort": "node_af9e1hetq_exec_out_vsaq",
             "toNode": "node_fsyquye0o",
@@ -796,6 +913,54 @@
             "fromPort": "node_nxgfwv3ot__ybd7",
             "toNode": "node_7qb1q8xz7",
             "toPort": "node_7qb1q8xz7_key"
+        },
+        {
+            "fromNode": "node_7qb1q8xz7",
+            "fromPort": "node_7qb1q8xz7_exec_out_k9i2",
+            "toNode": "node_oktxpx6nk",
+            "toPort": "node_oktxpx6nk_exec_in_xmf3"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_out_322om",
+            "toNode": "node_s0v2oj45c",
+            "toPort": "node_s0v2oj45c_ctx"
+        },
+        {
+            "fromNode": "node_vqiv6lp7x",
+            "fromPort": "node_vqiv6lp7x_val",
+            "toNode": "node_png2da56o",
+            "toPort": "node_png2da56o_in_arg2_upex"
+        },
+        {
+            "fromNode": "node_s0v2oj45c",
+            "fromPort": "node_s0v2oj45c_messages",
+            "toNode": "node_png2da56o",
+            "toPort": "node_png2da56o_in_arg1_zvay"
+        },
+        {
+            "fromNode": "node_5ul0wpuvz",
+            "fromPort": "node_5ul0wpuvz_undefined_238x",
+            "toNode": "node_9fqdpxn7r",
+            "toPort": "node_9fqdpxn7r_role_obsl"
+        },
+        {
+            "fromNode": "node_9fqdpxn7r",
+            "fromPort": "node_9fqdpxn7r_provider_pjfp",
+            "toNode": "node_fsyquye0o",
+            "toPort": "node_fsyquye0o_provider"
+        },
+        {
+            "fromNode": "node_9fqdpxn7r",
+            "fromPort": "node_9fqdpxn7r_model_f92e",
+            "toNode": "node_fsyquye0o",
+            "toPort": "node_fsyquye0o_model"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_out_322om",
+            "toNode": "node_9fqdpxn7r",
+            "toPort": "node_9fqdpxn7r_ctx_lwtz"
         }
     ],
     "types": {
@@ -868,9 +1033,9 @@
         ]
     },
     "view": {
-        "panX": -457.5464273786379,
-        "panY": -385.88053959100716,
-        "zoom": 0.6720031179755953
+        "panX": -2983.9957313401173,
+        "panY": -1569.2729163181302,
+        "zoom": 1.3756448107252353
     },
     "name": "refine plan",
     "description": "",

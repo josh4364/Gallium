@@ -296,6 +296,64 @@
                     "type": "string"
                 }
             ]
+        },
+        {
+            "id": "node_c7io6jqah",
+            "type": "string",
+            "x": 538.010700775143,
+            "y": -44.6906496420207,
+            "width": 300,
+            "height": 124,
+            "title": "String Constant",
+            "params": {
+                "value": "plan"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_c7io6jqah_undefined_9jwk",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_f7lfxs9q2",
+            "type": "get_context_agent_provider",
+            "x": 540.5901986040161,
+            "y": 95.76757024076178,
+            "width": 300,
+            "height": 120,
+            "title": "Get Agent Provider",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_f7lfxs9q2_ctx_9w7f",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_f7lfxs9q2_role_526q",
+                    "label": "Role",
+                    "type": "string",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_f7lfxs9q2_provider_rd00",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_f7lfxs9q2_model_h2ay",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
+                }
+            ]
         }
     ],
     "connections": [
@@ -358,6 +416,42 @@
             "fromPort": "node_byi63dj6j_out_fqat7",
             "toNode": "node_m4ypccmo7",
             "toPort": "node_m4ypccmo7_ctx"
+        },
+        {
+            "fromNode": "node_c7io6jqah",
+            "fromPort": "node_c7io6jqah_undefined_9jwk",
+            "toNode": "node_f7lfxs9q2",
+            "toPort": "node_f7lfxs9q2_role_526q"
+        },
+        {
+            "fromNode": "node_byi63dj6j",
+            "fromPort": "node_byi63dj6j_out_fqat7",
+            "toNode": "node_f7lfxs9q2",
+            "toPort": "node_f7lfxs9q2_ctx_9w7f"
+        },
+        {
+            "fromNode": "node_f7lfxs9q2",
+            "fromPort": "node_f7lfxs9q2_provider_rd00",
+            "toNode": "node_p3avckbvl",
+            "toPort": "node_p3avckbvl_provider"
+        },
+        {
+            "fromNode": "node_f7lfxs9q2",
+            "fromPort": "node_f7lfxs9q2_model_h2ay",
+            "toNode": "node_p3avckbvl",
+            "toPort": "node_p3avckbvl_model"
+        },
+        {
+            "fromNode": "node_f7lfxs9q2",
+            "fromPort": "node_f7lfxs9q2_provider_rd00",
+            "toNode": "node_b5evelx3k",
+            "toPort": "node_b5evelx3k_provider"
+        },
+        {
+            "fromNode": "node_f7lfxs9q2",
+            "fromPort": "node_f7lfxs9q2_model_h2ay",
+            "toNode": "node_b5evelx3k",
+            "toPort": "node_b5evelx3k_model"
         }
     ],
     "types": {
@@ -430,9 +524,9 @@
         ]
     },
     "view": {
-        "panX": -781.4522366948772,
-        "panY": 80.74296962514973,
-        "zoom": 0.6854171496186693
+        "panX": 102.95377045954308,
+        "panY": 212.406807248488,
+        "zoom": 0.6818668824206284
     },
     "name": "implement",
     "description": "implement a plan.md file at the root of the project and when we think were done set is-done to true in the thread context",

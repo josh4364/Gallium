@@ -574,21 +574,7 @@ def multi_replace_file_content(target_file: str, replacement_chunks: List[Dict])
     except Exception as e:
         raise RuntimeError(f"Error in multi_replace: {e}")
 
-def calculate(expression: str) -> str:
-    """
-    Calculate a mathematical expression using qalc.
-    """
-    cmd = ["qalc", "-s", "units off", "-s", "autoconversion 3", "-t", expression]
-    
-    try:
-        result = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
-        return result.strip()
-    except subprocess.CalledProcessError as e:
-        return f"Error executing qalc: {e.output.strip() if e.output else str(e)}"
-    except FileNotFoundError:
-        return "Error: qalc tool not found. Please ensure libqalculate is installed."
-    except Exception as e:
-        return f"Error: {e}"
+
 
 # Command Execution Tools
 

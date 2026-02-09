@@ -10,7 +10,7 @@ class OpenAIClient(LLMClient):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.api_url = "https://api.openai.com/v1/chat/completions"
 
-    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=10):
+    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=100):
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
 

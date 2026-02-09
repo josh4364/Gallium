@@ -261,6 +261,28 @@ def handle_message(msg, server, sim_state):
                 "message": f"Failed to read file: {str(e)}"
             })
 
+    # Handle File Save Request
+    elif msg_type == "save_file":
+        try:
+            req_path = msg.get("path", "")
+            content = msg.get("content", "")
+            
+            tools.write_to_file(req_path, content, overwrite=True)
+            
+            server.broadcast({
+                "type": "save_file_response",
+                "path": req_path,
+                "success": True
+            })
+        except Exception as e:
+            logging.error(f"Error saving file: {e}")
+            server.broadcast({
+                "type": "save_file_response", 
+                "path": msg.get("path", ""),
+                "success": False,
+                "error": str(e)
+            })
+
     # Handle Workflow Hooks Update
     elif msg_type == "update_workflow_hooks":
         try:

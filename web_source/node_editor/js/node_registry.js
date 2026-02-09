@@ -569,6 +569,20 @@ const nodeRegistry = [
         params: { message: '', role: 1 }
     },
     {
+        type: 'display_file_editor',
+        name: 'Display File Editor',
+        description: 'Displays a text file in a collapsible editor within the thread view.',
+        tags: ['UI', 'File', 'Editor', 'Display'],
+        color: '#FF9800',
+        inputs: [
+            { label: 'exec_in', type: 'exec' },
+            { label: 'File Path', type: 'string', key: 'file_path' }
+        ],
+        outputs: [{ label: 'exec_out', type: 'exec' }],
+        params: { file_path: '' }
+    },
+    {
+
         type: 'web_request',
         name: 'Web Request',
         description: 'Sends an HTTP request to a URL and captures the response.',

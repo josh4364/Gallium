@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import os
 from source.blackboard import Blackboard
 from source.schemas import Event
 import json
@@ -35,8 +36,8 @@ class GraphInterpreter:
              "args": [
                  {"name": "search_directory", "type": "string"}, 
                  {"name": "pattern", "type": "string"},
-                 {"name": "excludes", "type": "list", "optional": True},
-                 {"name": "extensions", "type": "list", "optional": True},
+                 {"name": "excludes", "type": "list:string", "optional": True},
+                 {"name": "extensions", "type": "list:string", "optional": True},
                  {"name": "full_path", "type": "boolean", "optional": True},
                  {"name": "max_depth", "type": "number", "optional": True},
                  {"name": "type_filter", "type": "string", "optional": True}
@@ -46,7 +47,7 @@ class GraphInterpreter:
                  {"name": "search_path", "type": "string"}, 
                  {"name": "query", "type": "string"},
                  {"name": "case_insensitive", "type": "boolean", "optional": True},
-                 {"name": "includes", "type": "list", "optional": True},
+                 {"name": "includes", "type": "list:string", "optional": True},
                  {"name": "is_regex", "type": "boolean", "optional": True},
                  {"name": "match_per_line", "type": "boolean", "optional": True}
              ]},
@@ -57,7 +58,7 @@ class GraphInterpreter:
             {"id": "builtin_view_file_outline", "name": "view_file_outline", "description": "View classes and functions in a python file.", 
              "args": [{"name": "absolute_path", "type": "string"}, {"name": "item_offset", "type": "number", "optional": True}]},
             {"id": "builtin_view_code_item", "name": "view_code_item", "description": "View specific classes or functions by name in a file.", 
-             "args": [{"name": "file_path", "type": "string"}, {"name": "node_paths", "type": "list"}]},
+             "args": [{"name": "file_path", "type": "string"}, {"name": "node_paths", "type": "list:string"}]},
             {"id": "builtin_write_to_file", "name": "write_to_file", "description": "Write content to a file. Use overwrite=true to replace existing files.", 
              "args": [{"name": "target_file", "type": "string"}, {"name": "code_content", "type": "string"}, {"name": "overwrite", "type": "boolean", "optional": True}, {"name": "empty_file", "type": "boolean", "optional": True}]},
             {"id": "builtin_replace_file_content", "name": "replace_file_content", "description": "Replace a block of text in a file.", 
@@ -70,9 +71,8 @@ class GraphInterpreter:
                  {"name": "allow_multiple", "type": "boolean", "optional": True}
              ]},
             {"id": "builtin_multi_replace_file_content", "name": "multi_replace_file_content", "description": "Apply multiple replacements to a file. replacement_chunks is a list of {StartLine, EndLine, TargetContent, ReplacementContent, AllowMultiple}", 
-             "args": [{"name": "target_file", "type": "string"}, {"name": "replacement_chunks", "type": "list"}]},
-            {"id": "builtin_calculate", "name": "calculate", "description": "Execute a mathematical expression.", 
-             "args": [{"name": "expression", "type": "string"}]},
+             "args": [{"name": "target_file", "type": "string"}, {"name": "replacement_chunks", "type": "list:object"}]},
+
             {"id": "builtin_run_command", "name": "run_command", "description": "Execute a shell command in the background.", 
              "args": [{"name": "command_line", "type": "string"}, {"name": "cwd", "type": "string"}, {"name": "safe_to_auto_run", "type": "boolean", "optional": True}, {"name": "wait_ms_before_async", "type": "number", "optional": True}]},
             {"id": "builtin_command_status", "name": "command_status", "description": "Check the status and output of a background command.", 
@@ -102,6 +102,7 @@ class GraphInterpreter:
         self.node_handlers['run_process'] = self._handle_run_process
         self.node_handlers['write_file'] = self._handle_write_file
         self.node_handlers['web_request'] = self._handle_web_request
+        self.node_handlers['display_file_editor'] = self._handle_display_file_editor
 
         # Variables
         self.node_handlers['set_variable'] = self._handle_set_variable
@@ -481,6 +482,35 @@ class GraphInterpreter:
             self._update_output_cache(node, 'status_code', -1)
             
         return self.follow_flow(node, 'exec_out')
+
+    def _handle_display_file_editor(self, node):
+        file_path = self.get_input_value(node, 'file_path')
+        if not file_path:
+            logger.warning("Display File Editor node missing file_path")
+            return self.follow_flow(node, 'exec_out')
+        
+        try:
+            content = ""
+            try:
+                content = tools.read_file(file_path)
+            except FileNotFoundError:
+                logger.info(f"File {file_path} not found, displaying empty editor.")
+                content = ""
+            except Exception as e:
+                logger.warning(f"Could not read file {file_path}: {e}")
+                content = f"Error reading file: {e}"
+
+            if self.sim_state:
+                self.sim_state._add_event(
+                    f"Displaying file: {file_path}", 
+                    event_type="display_file", 
+                    data={"file_path": file_path, "content": content}
+                )
+                
+        except Exception as e:
+            logger.error(f"Error in display_file_editor: {e}")
+            
+        return self.follow_flow(node, 'exec_out')
     def _handle_list_for_each(self, node):
         """
         Iterates over a list. 
@@ -650,6 +680,7 @@ class GraphInterpreter:
                     
             # Also log as event for UI visibility
             self.sim_state._add_event(f"{role_str.capitalize()}: {message_text}", "info")
+            self.sim_state.notify_state_change()
                 
         return self.follow_flow(node, 'exec_out')
 
@@ -679,12 +710,14 @@ class GraphInterpreter:
         self.connections = graph_data.get('connections', [])
         self.output_cache = {}
 
+        res = None
         try:
             entry_node = self.find_entry_node()
             if entry_node:
-                return self.execute_node(entry_node)
+                res = self.execute_node(entry_node)
+                return res
         finally:
-            if not self.is_suspended:
+            if res != "SUSPEND":
                 self._restore_parent()
 
     def _restore_parent(self):
@@ -1142,6 +1175,18 @@ def {sanitized_name}({args_str}):
         Callback used by dynamic tools to execute the graph.
         """
         try:
+             # Resolve tool name
+             tool_name = function_id
+             if self.function_manager:
+                 graph = self.function_manager.load_function(function_id)
+                 if graph and 'name' in graph:
+                     tool_name = graph['name']
+             
+             try:
+                 self._log_tool_event(tool_name, args)
+             except Exception as log_err:
+                 logger.error(f"Failed to log tool event: {log_err}")
+
              logger.info(f"Executing Tool: {function_id} with args: {args}")
              
              # Execute the function graph
@@ -1241,6 +1286,41 @@ def {sanitized_name}({args_str}):
             return ClaudeClient(api_key=claude_cfg.get("api_key"), model_name=model)
         return None
 
+    def _log_tool_event(self, tool_name, args):
+        """Logs a tool invocation as a system message to the current thread."""
+        if not self.sim_state:
+            return
+
+        # Create a display-friendly version of args
+        display_args = {}
+        for k, v in args.items():
+            # Filter large content fields
+            if k in ('code_content', 'replacement_content', 'content', 'target_content', 'replacement_chunks'):
+                 if k == 'replacement_chunks' and isinstance(v, list):
+                     display_args[k] = f"<{len(v)} chunks>"
+                 else:
+                     display_args[k] = f"<{len(str(v))} chars>"
+            elif isinstance(v, str) and len(v) > 200:
+                 display_args[k] = v[:50] + f"... ({len(v)} chars)"
+            else:
+                 display_args[k] = v
+        
+        arg_str = ", ".join([f"{k}={v}" for k, v in display_args.items()])
+        msg = f"Running tool: {tool_name}({arg_str})"
+        
+        # Resolve thread
+        thread = self._resolve_thread(self.context)
+        if thread:
+            if "messages" not in thread: thread["messages"] = []
+            # Use 'system' role for internal events so they show up in UI but distinct from assistant/user
+            thread["messages"].append({"role": "system", "content": msg})
+             
+            # Also log to global event stream
+            logger.info(f"Logged Tool Event to Thread {thread.get('id')}: {msg}")
+            self.sim_state.notify_state_change()
+            
+
+
     def _get_builtin_python_tools(self):
         """Returns schemas and registry for built-in Python tools."""
         tools_schema = []
@@ -1254,15 +1334,21 @@ def {sanitized_name}({args_str}):
             if hasattr(tools, func_name):
                 func = getattr(tools, func_name)
                 # Wrap it to handle and return string errors
-                def make_wrapper(f):
+                def make_wrapper(f, name):
                     def wrapper(**kwargs):
+                        # Log the tool call
+                        try:
+                            self._log_tool_event(name, kwargs)
+                        except Exception as log_err:
+                            logger.error(f"Failed to log tool event: {log_err}")
+
                         try:
                             res = f(**kwargs)
                             return str(res)
                         except Exception as e:
                             return f"Error: {e}"
                     return wrapper
-                tool_registry[schema['function']['name']] = make_wrapper(func)
+                tool_registry[schema['function']['name']] = make_wrapper(func, func_name)
                 
         return tools_schema, tool_registry
 
@@ -1368,19 +1454,38 @@ def {sanitized_name}({args_str}):
         required = []
         for arg in tool_def.get('args', []):
             arg_name = arg['name']
-            arg_type = arg['type']
+            arg_type = str(arg.get('type', 'string')).lower()
             
-            json_type = "string"
-            if arg_type.lower() in ['number', 'float', 'int', 'integer']:
-                json_type = "number"
-            elif arg_type.lower() in ['boolean', 'bool']:
-                json_type = "boolean"
-            elif arg_type.lower() in ['list', 'array']:
-                json_type = "array"
-            elif arg_type.lower() in ['map', 'dict', 'object']:
-                json_type = "object"
+            p_def = {"description": f"Argument {arg_name}"}
             
-            properties[arg_name] = {"type": json_type, "description": f"Argument {arg_name}"}
+            if arg_type in ['number', 'float', 'int', 'integer']:
+                p_def["type"] = "number"
+            elif arg_type in ['boolean', 'bool']:
+                p_def["type"] = "boolean"
+            elif arg_type in ['list', 'array'] or arg_type.startswith('list:'):
+                p_def["type"] = "array"
+                # Determine item type
+                item_type = "string" # Default
+                if ":" in arg_type:
+                    parts = arg_type.split(":")
+                    if len(parts) > 1:
+                        it = parts[1].lower()
+                        if it in ['number', 'float', 'int']: item_type = "number"
+                        elif it in ['boolean', 'bool', 'logical']: item_type = "boolean"
+                        elif it in ['object', 'map', 'dict', 'struct']: item_type = "object"
+                
+                # Special cases for known builtins
+                if arg_name == 'replacement_chunks' and item_type == "string":
+                    item_type = "object"
+                
+                p_def["items"] = {"type": item_type}
+            elif arg_type in ['map', 'dict', 'object'] or arg_type.startswith('map:') or arg_type.startswith('struct:'):
+                p_def["type"] = "object"
+            else:
+                p_def["type"] = "string"
+                
+            properties[arg_name] = p_def
+            
             # Add to required if not explicitly optional
             if not arg.get('optional', False):
                 required.append(arg_name)

@@ -14,9 +14,17 @@ class LocalLlamaClient(LLMClient):
         self.api_url = api_url
 
     def call_api(self, messages, tools=None, tool_choice="auto"):
+        # Pre-process messages to ensure 'content' is never None/null for local backends
+        processed_messages = []
+        for msg in messages:
+            m = msg.copy()
+            if m.get('content') is None:
+                m['content'] = ""
+            processed_messages.append(m)
+
         payload = {
             "model": self.model_name,
-            "messages": messages,
+            "messages": processed_messages,
             "tools": tools if tools else [],
             "tool_choice": tool_choice if tools else None
         }
@@ -47,7 +55,7 @@ class LocalLlamaClient(LLMClient):
             self.logger.error(f"Error calling local Llama API: {e}")
             raise
 
-    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=10):
+    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=100):
         # Local client doesn't have state, so we just continue from the provided list
         
         # Safety Check: Some backends (llama-server) fail 500 if history ends in Assistant.
@@ -62,6 +70,10 @@ class LocalLlamaClient(LLMClient):
             choice = response_data['choices'][0]
             message = choice['message']
             
+            # Ensure content is at least an empty string for history consistency
+            if message.get('content') is None:
+                message['content'] = ""
+                
             tool_calls = message.get('tool_calls', [])
             
             if tool_calls:

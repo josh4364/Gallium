@@ -98,7 +98,7 @@ class GeminiClient(LLMClient):
         
         return gemini_history
 
-    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=10):
+    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=100):
         """
         Runs a chat turn starting with the provided history.
         
@@ -174,74 +174,100 @@ class GeminiClient(LLMClient):
 
             # Loop for tool calls
             while current_turn < max_turns:
-                part = None
-                if response.candidates and response.candidates[0].content.parts:
-                    part = response.candidates[0].content.parts[0]
+                current_parts = response.candidates[0].content.parts if (
+                    response.candidates and 
+                    response.candidates[0].content and 
+                    response.candidates[0].content.parts
+                ) else []
                 
-                if part and part.function_call:
-                    # 1. Log Assistant Tool Call
-                    fc = part.function_call
-                    args = fc.args
-                    
-                    # Log internally (OpenAI format for return)
+                function_calls = [p.function_call for p in current_parts if p.function_call]
+                
+                if function_calls:
+                    # 1. Prepare Assistant Message (OpenAI format)
+                    assistant_txt = ""
+                    try:
+                        assistant_txt = response.text
+                    except:
+                        pass
+                        
                     assistant_msg = {
                         "role": "assistant",
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "call_" + fc.name,
+                        "content": assistant_txt,
+                        "tool_calls": []
+                    }
+                    
+                    # Generate unique IDs for this turn's tool calls
+                    call_ids = [f"call_{fc.name}_{current_turn}_{i}" for i, fc in enumerate(function_calls)]
+                    
+                    for i, fc in enumerate(function_calls):
+                        assistant_msg["tool_calls"].append({
+                            "id": call_ids[i],
                             "type": "function",
                             "function": {
                                 "name": fc.name,
-                                "arguments": json.dumps(args)
+                                "arguments": json.dumps(fc.args)
                             }
-                        }]
-                    }
+                        })
+                    
                     messages.append(assistant_msg)
+                    self.logger.info(f"Agent calls: {[fc.name for fc in function_calls]}")
                     
-                    self.logger.info(f"Agent calls: {fc.name}({args})")
+                    # 2. Execute all tools and prepare Gemini response parts
+                    gemini_response_parts = []
                     
-                    # 2. Execute Tool
-                    result_data = {}
-                    try:
-                        if tool_registry and fc.name in tool_registry:
-                            raw_result = tool_registry[fc.name](**args)
-                            try:
-                                result_data = json.loads(raw_result)
-                            except:
-                                result_data = {"result": raw_result}
-                        else:
-                            result_data = {"error": f"Tool {fc.name} not found"}
-                    except Exception as e:
-                        result_data = {"error": str(e)}
+                    for i, fc in enumerate(function_calls):
+                        args = fc.args
+                        self.logger.info(f"Executing tool: {fc.name}({args})")
+                        
+                        result_data = {}
+                        try:
+                            if tool_registry and fc.name in tool_registry:
+                                raw_result = tool_registry[fc.name](**args)
+                                try:
+                                    # Try to parse as JSON if it's a string, otherwise use as-is if it's already a dict
+                                    if isinstance(raw_result, str):
+                                        result_data = json.loads(raw_result)
+                                    else:
+                                        result_data = raw_result
+                                except:
+                                    result_data = {"result": raw_result}
+                            else:
+                                result_data = {"error": f"Tool {fc.name} not found"}
+                        except Exception as e:
+                            self.logger.error(f"Error executing tool {fc.name}: {e}")
+                            result_data = {"error": str(e)}
 
-                    self.logger.info(f"Tool Result: {result_data}")
+                        self.logger.info(f"Tool Result: {result_data}")
 
-                    # 3. Add Tool Response to return messages
-                    tool_msg = {
-                        "role": "tool",
-                        "tool_call_id": "call_" + fc.name,
-                        "name": fc.name,
-                        "content": json.dumps(result_data)
-                    }
-                    messages.append(tool_msg)
-                    
-                    # 4. Send back to Gemini
-                    response = chat.send_message(
-                        types.Content(
-                            parts=[
-                                types.Part(
-                                    function_response=types.FunctionResponse(
-                                        name=fc.name,
-                                        response=result_data
-                                    )
+                        # 3. Add Tool Response to return messages (OpenAI format)
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": call_ids[i],
+                            "name": fc.name,
+                            "content": json.dumps(result_data)
+                        })
+                        
+                        # Add to Gemini response parts
+                        gemini_response_parts.append(
+                            types.Part(
+                                function_response=types.FunctionResponse(
+                                    name=fc.name,
+                                    response=result_data
                                 )
-                            ]
+                            )
                         )
-                    )
+
+                    # 4. Send back to Gemini
+                    # Passing a list of parts instead of a Content object
+                    response = chat.send_message(gemini_response_parts)
                     current_turn += 1
                 else:
                     # Text response
-                    txt = response.text
+                    try:
+                        txt = response.text
+                    except:
+                        txt = "No text response received."
+                        
                     messages.append({
                         "role": "assistant",
                         "content": txt

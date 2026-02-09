@@ -163,8 +163,8 @@
         {
             "id": "node_4ltkpw08n",
             "type": "struct_make",
-            "x": 2183.5810401702197,
-            "y": 239.67108386142039,
+            "x": 2417.553430382945,
+            "y": 325.86836439033294,
             "width": 300,
             "height": 120,
             "title": "Make ChatMessage",
@@ -398,7 +398,7 @@
             "params": {
                 "provider": "local",
                 "model": "",
-                "system_prompt": "You are a software engineer discussing a plan for work to be implemented.\nWe are ONLY creating `plan.md`\nCreate `plan.md` in the workspace root and add the work to be completed to it as a multi step plan.",
+                "system_prompt": "You are a software engineer discussing a plan.\n\nDO NOT MAKE ANYTHING OTHER THAN PLAN.MD",
                 "message_list": [],
                 "tool_list": []
             },
@@ -723,6 +723,66 @@
                     "type": "exec"
                 }
             ]
+        },
+        {
+            "id": "node_zy1hl3biu",
+            "type": "string_format",
+            "x": 2205.1942666777577,
+            "y": 108.20316754661796,
+            "width": 763,
+            "height": 224,
+            "title": "String Format",
+            "params": {
+                "format": "ONLY Create `plan.md` in the workspace root using `write_to_file`.\nMake sure the plan begins with the top level goal:\n{}\nThen the rest of the work as a multi step plan.\nEach task should be a item that can be crossed off.\nExample:\n[ ] Implement the visuals for the renderer",
+                "arg1": null
+            },
+            "inputs": [
+                {
+                    "id": "node_zy1hl3biu_in_arg1_ubn4",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_zy1hl3biu_result_j0gm",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_6a3c5tla9",
+            "type": "display_file_editor",
+            "x": 3486.991709734764,
+            "y": -42.35678555032725,
+            "width": 321,
+            "height": 120,
+            "title": "Display File Editor",
+            "params": {
+                "file_path": "plan.md"
+            },
+            "inputs": [
+                {
+                    "id": "node_6a3c5tla9_exec_in_tqj5",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_6a3c5tla9_file_path",
+                    "label": "File Path",
+                    "type": "string",
+                    "key": "file_path"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_6a3c5tla9_exec_out_wu8u",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
         }
     ],
     "connections": [
@@ -737,12 +797,6 @@
             "fromPort": "node_4ltkpw08n_obj",
             "toNode": "node_yxd2ohmec",
             "toPort": "node_yxd2ohmec_message"
-        },
-        {
-            "fromNode": "node_fa8b0k8kz",
-            "fromPort": "node_fa8b0k8kz_goal_s0td",
-            "toNode": "node_4ltkpw08n",
-            "toPort": "node_4ltkpw08n_in_message"
         },
         {
             "fromNode": "node_yxd2ohmec",
@@ -877,12 +931,6 @@
             "toPort": "node_h8dxt14vf_exec_in_gj1v"
         },
         {
-            "fromNode": "node_h8dxt14vf",
-            "fromPort": "node_h8dxt14vf_exec_out_2ib9",
-            "toNode": "node_ipplfqxy8",
-            "toPort": "node_ipplfqxy8_exec_in_cw9j"
-        },
-        {
             "fromNode": "node_lxqromy7p",
             "fromPort": "node_lxqromy7p_value_31a6",
             "toNode": "node_e5r9y33zd",
@@ -911,6 +959,30 @@
             "fromPort": "node_cqe7nn3ud_exec_out_64n8",
             "toNode": "node_r6aw0ap0p",
             "toPort": "node_r6aw0ap0p_exec_in_tjl1"
+        },
+        {
+            "fromNode": "node_fa8b0k8kz",
+            "fromPort": "node_fa8b0k8kz_goal_s0td",
+            "toNode": "node_zy1hl3biu",
+            "toPort": "node_zy1hl3biu_in_arg1_ubn4"
+        },
+        {
+            "fromNode": "node_zy1hl3biu",
+            "fromPort": "node_zy1hl3biu_result_j0gm",
+            "toNode": "node_4ltkpw08n",
+            "toPort": "node_4ltkpw08n_in_message"
+        },
+        {
+            "fromNode": "node_h8dxt14vf",
+            "fromPort": "node_h8dxt14vf_exec_out_2ib9",
+            "toNode": "node_6a3c5tla9",
+            "toPort": "node_6a3c5tla9_exec_in_tqj5"
+        },
+        {
+            "fromNode": "node_6a3c5tla9",
+            "fromPort": "node_6a3c5tla9_exec_out_wu8u",
+            "toNode": "node_ipplfqxy8",
+            "toPort": "node_ipplfqxy8_exec_in_cw9j"
         }
     ],
     "types": {
@@ -983,11 +1055,11 @@
         ]
     },
     "view": {
-        "panX": -1466.3710053178052,
-        "panY": 476.9800641392007,
-        "zoom": 1.5686221386188457
+        "panX": -3220.5370176519573,
+        "panY": 74.7265287694313,
+        "zoom": 1.1317099407705242
     },
-    "name": "discuss plan",
+    "name": "create plan",
     "description": "",
     "inputs": [
         {

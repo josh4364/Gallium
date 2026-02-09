@@ -19,7 +19,11 @@ const STATE = {
     agents: [],
     workflows: [],
     structs: [],
-    auto_run: false
+    workflows: [],
+    structs: [],
+    auto_run: false,
+    fileEditor: null,
+    fileEditorPath: null
 };
 
 // --- DOM Elements ---
@@ -54,6 +58,9 @@ function init() {
     // Setup Workflow Tab
     // Setup Workflow Tab
     setupWorkflowTab();
+    // Setup Workflow Tab
+    setupWorkflowTab();
+    setupFileEditor();
 }
 
 function setupTabs() {
@@ -321,6 +328,18 @@ function handleMessage(msg) {
                     if (claude.api_key) document.getElementById('llm-claude-key').value = claude.api_key;
                 }
             }
+            break;
+
+        case 'display_file':
+            if (STATE.fileEditorPath !== msg.file_path) {
+                showToast(`Opened ${msg.file_path}`);
+            }
+            openFileEditor(msg.file_path, msg.content);
+            break;
+
+        case 'save_file_response':
+            if (msg.success) showToast("File Saved", "success");
+            else showToast("Failed to save file: " + msg.error, "error");
             break;
 
         default:
@@ -935,3 +954,119 @@ function updateAutoRunUI() {
 
 // Run
 window.addEventListener('DOMContentLoaded', init);
+
+// --- File Editor Logic ---
+function setupFileEditor() {
+    console.log("Setting up file editor...");
+    const btnSave = document.getElementById('btn-save-file');
+    const btnClose = document.getElementById('btn-close-file');
+
+    if (btnSave) {
+        btnSave.addEventListener('click', () => {
+            saveCurrentFile();
+        });
+    } else {
+        console.warn("btn-save-file not found");
+    }
+
+    if (btnClose) {
+        btnClose.addEventListener('click', () => {
+            const col = document.getElementById('file-display-column');
+            if (col) col.style.display = 'none';
+            // STATE.fileEditorPath = null;
+        });
+    }
+}
+
+function openFileEditor(path, content) {
+    const col = document.getElementById('file-display-column');
+    if (col) col.style.display = 'flex';
+
+    // Update Title
+    const title = document.getElementById('file-display-title');
+    if (title) {
+        const name = path.split(/[/\\]/).pop();
+        title.innerText = name || "File Editor";
+        title.title = path;
+    }
+
+    // Initialize or Update Editor
+    setTimeout(() => {
+        if (!STATE.fileEditor) {
+            initMonaco(path, content);
+        } else {
+            STATE.fileEditorPath = path;
+            if (STATE.fileEditor.getValue() !== (content || "")) {
+                STATE.fileEditor.setValue(content || "");
+            }
+            const model = STATE.fileEditor.getModel();
+            if (model) {
+                monaco.editor.setModelLanguage(model, getLanguageFromPath(path));
+            }
+            STATE.fileEditor.layout();
+        }
+    }, 100);
+}
+
+function initMonaco(path, content) {
+    if (typeof window.require === 'undefined') {
+        console.error("Monaco loader not found");
+        return;
+    }
+
+    require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+
+    require(['vs/editor/editor.main'], function () {
+        const container = document.getElementById('monaco-container');
+        if (!container) return;
+
+        // Check if created in meantime
+        if (STATE.fileEditor) return;
+
+        STATE.fileEditorPath = path;
+
+        STATE.fileEditor = monaco.editor.create(container, {
+            value: content || "",
+            language: getLanguageFromPath(path),
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: false }
+        });
+
+        // Key Binding: Ctrl+S
+        STATE.fileEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            saveCurrentFile();
+        });
+
+        // Auto-Save / Debounce
+        let debounceTimer;
+        STATE.fileEditor.onDidChangeModelContent(() => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                saveCurrentFile();
+            }, 2000); // 2s debounce
+        });
+    });
+}
+
+function getLanguageFromPath(path) {
+    if (!path) return 'plaintext';
+    if (path.endsWith('.js')) return 'javascript';
+    if (path.endsWith('.py')) return 'python';
+    if (path.endsWith('.html')) return 'html';
+    if (path.endsWith('.css')) return 'css';
+    if (path.endsWith('.json')) return 'json';
+    if (path.endsWith('.md')) return 'markdown';
+    return 'plaintext';
+}
+
+function saveCurrentFile() {
+    if (!STATE.fileEditor || !STATE.fileEditorPath) return;
+
+    const content = STATE.fileEditor.getValue();
+
+    // Avoid saving if file path is null
+    if (!STATE.fileEditorPath) return;
+
+    sendAction('save_file', { path: STATE.fileEditorPath, content: content });
+}

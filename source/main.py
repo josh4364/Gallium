@@ -80,6 +80,10 @@ def main():
     
     # Wire up event streaming
     def stream_event(event):
+        if event.get("type") == "display_file":
+             server.broadcast(event)
+             return
+             
         msg_type = "info"
         if event["type"] == "error":
             msg_type = "error"
@@ -94,6 +98,13 @@ def main():
         })
         
     sim_state.set_event_handler(stream_event)
+
+    def stream_state(state):
+        server.broadcast({
+            "type": "state_update",
+            "data": state
+        })
+    sim_state.set_state_change_handler(stream_state)
 
     try:
         url = server.start()
@@ -122,6 +133,7 @@ def main():
                 })
                 time.sleep(1.0)
             else:
+                sim_state._check_watched_files()
                 time.sleep(0.1)
             
     except KeyboardInterrupt:

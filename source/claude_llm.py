@@ -58,7 +58,7 @@ class ClaudeClient(LLMClient):
                     
         return system_prompt, anthropic_messages
 
-    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=10):
+    def run_chat(self, messages, tools_schema=None, tool_registry=None, max_turns=100):
         if not self.api_key:
             raise ValueError("Anthropic API key not found. Set ANTHROPIC_API_KEY environment variable.")
 

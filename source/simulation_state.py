@@ -1,10 +1,9 @@
 import logging
 import json
 import time
+import os
 from datetime import datetime
 from pathlib import Path
-from source.graph_interpreter import GraphInterpreter
-from source.function_manager import FunctionManager
 from source.graph_interpreter import GraphInterpreter
 from source.function_manager import FunctionManager
 from source.struct_manager import StructManager
@@ -16,6 +15,7 @@ class SimulationState:
         self.tick_count = 0
         self.events = []
         self.on_event = None
+        self.on_state_change = None
         
         # Capture the system root (where Gallium was launched)
         self.system_root = Path(system_root).resolve() if system_root else Path.cwd()
@@ -41,18 +41,28 @@ class SimulationState:
         # Manifest State
         self._load_state_from_manifest()
 
+        # File Watching
+        self.watched_files = {} # path -> mtime
+
     def set_event_handler(self, handler):
         self.on_event = handler
 
-    def _add_event(self, message, event_type="info"):
+    def set_state_change_handler(self, handler):
+        self.on_state_change = handler
+
+    def notify_state_change(self):
+        if self.on_state_change:
+            self.on_state_change(self.get_state())
+
+    def _add_event(self, message, event_type="info", data=None):
         # Log to console
         if event_type == "error":
             logger.error(f"Event: {message}")
         elif event_type == "warn":
             logger.warning(f"Event: {message}")
-        else:
+        elif event_type == "info":
             logger.info(f"Event: {message}")
-
+            
         event = {
             "id": len(self.events),
             "tick": self.tick_count,
@@ -60,6 +70,10 @@ class SimulationState:
             "type": event_type,
             "message": message
         }
+        
+        if data:
+            event.update(data)
+            
         self.events.append(event)
         # Keep log size manageable
         if len(self.events) > 1000:
@@ -68,7 +82,47 @@ class SimulationState:
         if self.on_event:
             self.on_event(event)
             
+        # Automatically watch if this is a display_file event
+        if event_type == "display_file" and data and "file_path" in data:
+            self.watch_file(data["file_path"])
+
         return event
+
+    def watch_file(self, path):
+        """Registers a file for watching."""
+        try:
+            abs_path = str(Path(path).resolve())
+            if os.path.exists(abs_path):
+                self.watched_files[abs_path] = os.path.getmtime(abs_path)
+                logger.info(f"Watching file: {abs_path}")
+        except Exception as e:
+            logger.warning(f"Failed to watch file {path}: {e}")
+
+    def _check_watched_files(self):
+        """Checks if any watched files have changed on disk."""
+        for path, last_mtime in list(self.watched_files.items()):
+            try:
+                if not os.path.exists(path):
+                    continue
+                
+                current_mtime = os.path.getmtime(path)
+                if current_mtime > last_mtime:
+                    self.watched_files[path] = current_mtime
+                    logger.info(f"File changed on disk: {path}")
+                    
+                    # Read new content and notify
+                    try:
+                        from source import tools
+                        content = tools.read_file(path)
+                        self._add_event(
+                            f"File updated: {path}",
+                            event_type="display_file",
+                            data={"file_path": path, "content": content}
+                        )
+                    except Exception as re:
+                        logger.warning(f"Failed to read updated file {path}: {re}")
+            except Exception as e:
+                logger.warning(f"Error checking watched file {path}: {e}")
 
     def run_graph_by_id(self, graph_id, context=None):
         """Queues a graph for execution."""
@@ -87,9 +141,12 @@ class SimulationState:
         return self.get_state()
 
     def step(self):
-        """Advances the simulation by one tick."""
+        # Advances the simulation by one tick.
         self.tick_count += 1
         
+        # Check for file changes
+        self._check_watched_files()
+
         # Evaluate dynamic workflow instances
         self._evaluate_workflow_instances()
         
@@ -152,9 +209,10 @@ class SimulationState:
             instance["messages"].append({"role": "user", "content": message, "responded": False})
             
             self._add_event(f"Added message to thread {self.active_thread_id} memory", "info")
-        else:
             # Fallback to global
             self.workflow_memory["latest_user_message"] = message
+        
+        self.notify_state_change()
 
     def handle_start_goal(self, prompt, workflow_id):
         """Initializes a new workflow instance from a user goal/prompt."""
@@ -189,6 +247,8 @@ class SimulationState:
         
         self.threads[thread_id] = instance
         self.active_thread_id = thread_id
+        
+        self.notify_state_change()
         
         # Immediate evaluation to enter start state
         self._evaluate_workflow_instances()
@@ -233,6 +293,7 @@ class SimulationState:
                 if "messages" not in instance: instance["messages"] = []
                 instance["messages"].append({"role": "system", "content": f"Entered state: {state_name}"})
                 self._add_event(f"Thread {instance['id']} entered start state: {state_name}", "info")
+                self.notify_state_change()
             else:
                 self._add_event(f"Agent {agent_id} has no start state", "error")
                 instance["status"] = "error"
@@ -281,6 +342,7 @@ class SimulationState:
                 instance["messages"].append({"role": "system", "content": f"Transitioned to: {state_name}"})
                 
                 self._add_event(f"Thread {instance['id']} transitioned to {state_name}", "info")
+                self.notify_state_change()
                 return # Only one transition per tick
 
         # 4. Increment Ticks
