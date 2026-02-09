@@ -235,14 +235,20 @@ input[type="text"],
 textarea,
 select {
     width: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    background: #121214;
     border: 1px solid var(--border);
-    color: var(--text-primary);
+    color: #ffffff;
     padding: 8px;
     border-radius: 2px;
     font-family: inherit;
     font-size: 13px;
     box-sizing: border-box;
+    color-scheme: dark;
+}
+
+select option {
+    background-color: #1a1a20;
+    color: var(--text-primary);
 }
 
 input[type="text"]:focus,

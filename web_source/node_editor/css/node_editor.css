@@ -265,7 +265,7 @@ html {
 }
 
 .node-input {
-    background: rgba(0, 0, 0, 0.2);
+    background: #121214;
     border: 1px solid var(--node-border);
     border-radius: 4px;
     color: var(--text-main);
@@ -277,6 +277,7 @@ html {
     box-sizing: border-box;
     /* Ensure padding doesn't break width */
     transition: border-color 0.2s;
+    color-scheme: dark;
 }
 
 /* Prevent body inputs from hitting output ports */
@@ -459,7 +460,7 @@ html {
 }
 
 .node-textarea {
-    background: rgba(0, 0, 0, 0.3);
+    background: #121214;
     border: 1px solid var(--node-border);
     border-radius: 4px;
     color: var(--text-main);
@@ -479,11 +480,12 @@ html {
     box-sizing: border-box;
     outline: none;
     transition: border-color 0.2s;
+    color-scheme: dark;
 }
 
 .node-textarea:focus {
     border-color: var(--primary-accent);
-    background: rgba(0, 0, 0, 0.4);
+    background: #1a1a1d;
 }
 
 .node-textarea::-webkit-resizer {
@@ -1126,10 +1128,6 @@ body.func-panel-hidden #type-panel {
     left: 20px;
 }
 
-/* Internal layout for type panel to handle large area */
-#type-panel .panel-section {
-    /* override padding for large view */
-}
 
 #type-list-container {
     flex: 1;

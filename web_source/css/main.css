@@ -241,6 +241,29 @@ input[type="password"] {
     outline: none;
     transition: all 0.2s;
     box-sizing: border-box;
+    color-scheme: dark;
+}
+
+select option {
+    background-color: #1a1a20;
+    color: var(--text-primary);
+}
+
+.workflow-selector {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    padding: 2px 0;
+}
+
+.workflow-selector:focus {
+    border: none;
+    box-shadow: none;
 }
 
 select:focus,
