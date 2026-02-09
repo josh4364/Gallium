@@ -8,7 +8,7 @@ For the spirit of the hackathon I've done all of the development using google ge
 Disclamer: This isn't intended on being a fully finished and polished project. This is simply to express a fully working idea, to get it into the hands of people and let them experiment and figure out what works for them. Its all open sourced and free so have fun.
 
 ## Why "gallium"
-For all of my projects privately and with my friends we pick a placeholder name as soon as possible for a projec that doesn't have to mean anything as far as the project goes. This allows easily discussing it as a object without having to describe it fully to make sure we're on the same page. We pick plant species, elements, or any name really. For this paticular one I took a quick look at the periodic table and looked for a metal we haven't used.
+For all of my projects privately and with my friends we pick a placeholder name as soon as possible for a project that doesn't have to mean anything as far as the project goes. This allows easily discussing it as a object without having to describe it fully to make sure we're on the same page. We pick plant species, elements, or any name really. For this paticular one I took a quick look at the periodic table and looked for a metal we haven't used.
 
 ## Project Summary
 
@@ -117,7 +117,7 @@ Setup whatever llm connections you want to use.
 Here on the second tab, workflows, we can see that its got simple descriptions of workflow names, the primary "router" agent which you can think of as the entry point, and a bunch of Workflow Roles with names, provider and optional model tags.
 <img src="./docs/images/workflows.png" alt="Gallium screenshot of the workflows tab, showing a discuss-ralph-loop workflow with the same named router agent and a workflow role of plan and implement, with plan set to gemini 3 flash and implement set to Local provider">
 
-Next up is the actualy implementation of the router agent which is the Agent Editor tab.
+Next up is the actual implementation of the router agent which is the Agent Editor tab.
 You can see that its a simple finite state machine with a green Start node and several other nodes branching off of it to form a loop.
 <img src="./docs/images/simple state machine.png" alt="Gallium screenshot of the agent editor tab, showing a simple finite state machine with a green Start node and several other nodes branching off of it to form a loop.">
 Heres a slightly more complex one as an idea of what I'm envisioning in the future as workflows get more complex:
