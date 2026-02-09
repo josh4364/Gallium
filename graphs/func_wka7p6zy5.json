@@ -1,0 +1,453 @@
+{
+    "nodes": [
+        {
+            "id": "node_byi63dj6j",
+            "type": "start",
+            "x": 299.10575505290967,
+            "y": 318.4509033896651,
+            "width": 300,
+            "height": 147,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_byi63dj6j_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_byi63dj6j_out_fqat7",
+                    "label": "ctx",
+                    "type": "context"
+                },
+                {
+                    "id": "node_byi63dj6j_out_yg7c4",
+                    "label": "tick",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_p3avckbvl",
+            "type": "ai_eval",
+            "x": 775.8672625798155,
+            "y": 306.9840551008621,
+            "width": 380,
+            "height": 499,
+            "title": "Single LLM Eval",
+            "params": {
+                "provider": "local",
+                "model": "",
+                "system_prompt": "You are a software engineer tasked with working on the plan described in `plan.md`",
+                "prompt": "Take one item from the plan.md and implement it fully. Do not take more than you can do in one pass, and if needed split the work as subtasks in the plan.md.\nOnly when your sure the work is done should you cross off the item in plan.md.\nWhen done, reply with the work you have completed as a short status update."
+            },
+            "inputs": [
+                {
+                    "id": "node_p3avckbvl_exec_in_52ce",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_p3avckbvl_provider",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_p3avckbvl_model",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
+                },
+                {
+                    "id": "node_p3avckbvl_system_prompt",
+                    "label": "System Prompt",
+                    "type": "string",
+                    "key": "system_prompt"
+                },
+                {
+                    "id": "node_p3avckbvl_prompt",
+                    "label": "Prompt",
+                    "type": "string",
+                    "key": "prompt"
+                },
+                {
+                    "id": "node_p3avckbvl_tools",
+                    "label": "Tools",
+                    "type": "list:tool",
+                    "key": "tools"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_p3avckbvl_exec_out_wc7a",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_p3avckbvl_response",
+                    "label": "Response",
+                    "type": "string",
+                    "key": "response"
+                },
+                {
+                    "id": "node_p3avckbvl_changed_files",
+                    "label": "Changed Files",
+                    "type": "list:string",
+                    "key": "changed_files"
+                }
+            ]
+        },
+        {
+            "id": "node_xxi5rquj0",
+            "type": "context_send_message",
+            "x": 1331.6991024432955,
+            "y": 489.638487469306,
+            "width": 300,
+            "height": 186,
+            "title": "Send Thread Message",
+            "params": {
+                "message": "",
+                "role": 1
+            },
+            "inputs": [
+                {
+                    "id": "node_xxi5rquj0_exec_in_19vv",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_xxi5rquj0_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_xxi5rquj0_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_xxi5rquj0_role",
+                    "label": "Role",
+                    "type": "enum:enum_role",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_xxi5rquj0_exec_out_2ihr",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_b5evelx3k",
+            "type": "ai_eval",
+            "x": 1760.565969512599,
+            "y": 506.0235522699186,
+            "width": 380,
+            "height": 294,
+            "title": "Single LLM Eval",
+            "params": {
+                "provider": "local",
+                "model": "",
+                "system_prompt": "You are a helpful coding assistant.",
+                "prompt": ""
+            },
+            "inputs": [
+                {
+                    "id": "node_b5evelx3k_exec_in_tx4d",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_b5evelx3k_provider",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_b5evelx3k_model",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
+                },
+                {
+                    "id": "node_b5evelx3k_system_prompt",
+                    "label": "System Prompt",
+                    "type": "string",
+                    "key": "system_prompt"
+                },
+                {
+                    "id": "node_b5evelx3k_prompt",
+                    "label": "Prompt",
+                    "type": "string",
+                    "key": "prompt"
+                },
+                {
+                    "id": "node_b5evelx3k_tools",
+                    "label": "Tools",
+                    "type": "list:tool",
+                    "key": "tools"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_b5evelx3k_exec_out_54xn",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_b5evelx3k_response",
+                    "label": "Response",
+                    "type": "string",
+                    "key": "response"
+                },
+                {
+                    "id": "node_b5evelx3k_changed_files",
+                    "label": "Changed Files",
+                    "type": "list:string",
+                    "key": "changed_files"
+                }
+            ]
+        },
+        {
+            "id": "node_b9jsj1rly",
+            "type": "string_format",
+            "x": 1264.6592661854152,
+            "y": 836.2717663390993,
+            "width": 761,
+            "height": 220,
+            "title": "String Format",
+            "params": {
+                "format": "Look over `plan.md` Does it seem as if all of the work is completed on the task.\nYou can investigate the files on disk if all of the items are checked off.\nIf all of the items are checked off, but you find missing work: \nedit plan.md to uncheck the work thats not actually done, or add a subtask to describe the thing that was missed.\n\nIf the work is done reply with exactly: \"true\" otherwise \"false\"\nReply only \"true\" or \"false\""
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_b9jsj1rly_result_2p8l",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_m4ypccmo7",
+            "type": "set_context_key_value",
+            "x": 2322.736068542984,
+            "y": 581.9058279945522,
+            "width": 300,
+            "height": 186,
+            "title": "Set Context Key",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_m4ypccmo7_exec_in_blpq",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_m4ypccmo7_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_m4ypccmo7_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                },
+                {
+                    "id": "node_m4ypccmo7_value",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_m4ypccmo7_exec_out_vd9r",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_tsdw2ute0",
+            "type": "string",
+            "x": 1988.2127966864998,
+            "y": 342.50259190556693,
+            "width": 300,
+            "height": 124,
+            "title": "String Constant",
+            "params": {
+                "value": "is-done"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_tsdw2ute0__boan",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_byi63dj6j",
+            "fromPort": "node_byi63dj6j_flow",
+            "toNode": "node_p3avckbvl",
+            "toPort": "node_p3avckbvl_exec_in_52ce"
+        },
+        {
+            "fromNode": "node_p3avckbvl",
+            "fromPort": "node_p3avckbvl_exec_out_wc7a",
+            "toNode": "node_xxi5rquj0",
+            "toPort": "node_xxi5rquj0_exec_in_19vv"
+        },
+        {
+            "fromNode": "node_p3avckbvl",
+            "fromPort": "node_p3avckbvl_response",
+            "toNode": "node_xxi5rquj0",
+            "toPort": "node_xxi5rquj0_message"
+        },
+        {
+            "fromNode": "node_byi63dj6j",
+            "fromPort": "node_byi63dj6j_out_fqat7",
+            "toNode": "node_xxi5rquj0",
+            "toPort": "node_xxi5rquj0_ctx"
+        },
+        {
+            "fromNode": "node_xxi5rquj0",
+            "fromPort": "node_xxi5rquj0_exec_out_2ihr",
+            "toNode": "node_b5evelx3k",
+            "toPort": "node_b5evelx3k_exec_in_tx4d"
+        },
+        {
+            "fromNode": "node_b9jsj1rly",
+            "fromPort": "node_b9jsj1rly_result_2p8l",
+            "toNode": "node_b5evelx3k",
+            "toPort": "node_b5evelx3k_prompt"
+        },
+        {
+            "fromNode": "node_tsdw2ute0",
+            "fromPort": "node_tsdw2ute0__boan",
+            "toNode": "node_m4ypccmo7",
+            "toPort": "node_m4ypccmo7_key"
+        },
+        {
+            "fromNode": "node_b5evelx3k",
+            "fromPort": "node_b5evelx3k_response",
+            "toNode": "node_m4ypccmo7",
+            "toPort": "node_m4ypccmo7_value"
+        },
+        {
+            "fromNode": "node_b5evelx3k",
+            "fromPort": "node_b5evelx3k_exec_out_54xn",
+            "toNode": "node_m4ypccmo7",
+            "toPort": "node_m4ypccmo7_exec_in_blpq"
+        },
+        {
+            "fromNode": "node_byi63dj6j",
+            "fromPort": "node_byi63dj6j_out_fqat7",
+            "toNode": "node_m4ypccmo7",
+            "toPort": "node_m4ypccmo7_ctx"
+        }
+    ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "enum:enum_role",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ],
+        "enums": [
+            {
+                "id": "enum_role",
+                "name": "Chat Role",
+                "tag": "ChatMessage",
+                "values": [
+                    {
+                        "name": "User",
+                        "value": 0
+                    },
+                    {
+                        "name": "Assistant",
+                        "value": 1
+                    },
+                    {
+                        "name": "Tool",
+                        "value": 2
+                    },
+                    {
+                        "name": "System",
+                        "value": 3
+                    }
+                ]
+            }
+        ]
+    },
+    "view": {
+        "panX": -781.4522366948772,
+        "panY": 80.74296962514973,
+        "zoom": 0.6854171496186693
+    },
+    "name": "implement",
+    "description": "implement a plan.md file at the root of the project and when we think were done set is-done to true in the thread context",
+    "inputs": [
+        {
+            "id": "fqat7",
+            "name": "ctx",
+            "type": "context"
+        },
+        {
+            "id": "yg7c4",
+            "name": "tick",
+            "type": "number"
+        }
+    ],
+    "outputs": [],
+    "tags": []
+}

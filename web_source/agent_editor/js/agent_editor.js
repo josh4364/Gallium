@@ -304,18 +304,20 @@ class AgentEditor {
 
         // Handle Linking Click (if initiated via Context Menu)
         if (this.linkingNode && !e.shiftKey && !this.isLinkMode) {
-            const wx = (mx - this.cameraX) / this.scale;
-            const wy = (my - this.cameraY) / this.scale;
+            if (e.button === 0) {
+                const wx = (mx - this.cameraX) / this.scale;
+                const wy = (my - this.cameraY) / this.scale;
 
-            // Hit test for target
-            const hitState = this.states.slice().reverse().find(s => {
-                const dx = s.x - wx;
-                const dy = s.y - wy;
-                return dx * dx + dy * dy < 40 * 40;
-            });
+                // Hit test for target
+                const hitState = this.states.slice().reverse().find(s => {
+                    const dx = s.x - wx;
+                    const dy = s.y - wy;
+                    return dx * dx + dy * dy < 40 * 40;
+                });
 
-            if (hitState && hitState !== this.linkingNode) {
-                this.createTransition(this.linkingNode, hitState);
+                if (hitState && hitState !== this.linkingNode) {
+                    this.createTransition(this.linkingNode, hitState);
+                }
             }
             // Always clear linking node on click (finish or cancel)
             this.linkingNode = null;
@@ -323,47 +325,52 @@ class AgentEditor {
             return;
         }
 
-        // Hit Test States
-        // Simple circle hit test, r=40
-        const hitState = this.states.slice().reverse().find(s => {
-            const dx = s.x - wx;
-            const dy = s.y - wy;
-            return dx * dx + dy * dy < 40 * 40;
-        });
-
-        if (hitState) {
-            if (e.shiftKey || this.isLinkMode) {
-                // Start Linking
-                this.linkingNode = hitState;
-            } else {
-                // Select / Drag
-                this.selection = { type: 'state', id: hitState.id };
-                this.dragNode = hitState;
-                this.updatePropertiesPanel();
-            }
-        } else {
-            // Hit Test Transitions
-            const hitTransition = this.transitions.find(t => {
-                const sFrom = this.states.find(s => s.id === t.from);
-                const sTo = this.states.find(s => s.id === t.to);
-                if (!sFrom || !sTo) return false;
-                // Hit test loosely against the line
-                return this.distToSegment({ x: wx, y: wy }, sFrom, sTo) < 10;
+        if (e.button === 0) {
+            // Hit Test States
+            // Simple circle hit test, r=40
+            const hitState = this.states.slice().reverse().find(s => {
+                const dx = s.x - wx;
+                const dy = s.y - wy;
+                return dx * dx + dy * dy < 40 * 40;
             });
 
-            if (hitTransition) {
-                this.selection = { type: 'transition', id: hitTransition.id };
-                this.updatePropertiesPanel();
-            } else {
-                // Click on Background
-                this.selection = null;
-                this.updatePropertiesPanel();
-
-                if (e.button === 0 || e.button === 1) {
-                    this.isDragging = true;
-                    this.lastX = mx;
-                    this.lastY = my;
+            if (hitState) {
+                if (e.shiftKey || this.isLinkMode) {
+                    // Start Linking
+                    this.linkingNode = hitState;
+                } else {
+                    // Select / Drag
+                    this.selection = { type: 'state', id: hitState.id };
+                    this.dragNode = hitState;
+                    this.updatePropertiesPanel();
                 }
+            } else {
+                // Hit Test Transitions
+                const hitTransition = this.transitions.find(t => {
+                    const sFrom = this.states.find(s => s.id === t.from);
+                    const sTo = this.states.find(s => s.id === t.to);
+                    if (!sFrom || !sTo) return false;
+                    // Hit test loosely against the line
+                    return this.distToSegment({ x: wx, y: wy }, sFrom, sTo) < 10;
+                });
+
+                if (hitTransition) {
+                    this.selection = { type: 'transition', id: hitTransition.id };
+                    this.updatePropertiesPanel();
+                } else {
+                    // Click on Background
+                    this.selection = null;
+                    this.updatePropertiesPanel();
+                }
+            }
+        }
+
+        // Background Dragging
+        if (e.button === 0 || e.button === 1) {
+            if (!this.dragNode) { // Only drag background if not dragging a node
+                this.isDragging = true;
+                this.lastX = mx;
+                this.lastY = my;
             }
         }
 

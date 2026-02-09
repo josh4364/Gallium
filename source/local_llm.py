@@ -102,8 +102,10 @@ class LocalLlamaClient(LLMClient):
                 self.logger.info(f"Agent: {content}")
                 return content, messages
 
-        self.logger.warning("Agent reached maximum turns.")
-        return None, messages
+        err_msg = f"Agent turn hit tool call limit of {max_turns}"
+        self.logger.warning(err_msg)
+        messages.append({"role": "assistant", "content": err_msg})
+        return err_msg, messages
 
 # Example usage/testing block
 if __name__ == "__main__":

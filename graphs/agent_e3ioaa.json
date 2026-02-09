@@ -3,34 +3,34 @@
     "states": [
         {
             "id": "start",
-            "x": 420,
-            "y": 220,
+            "x": 295.33333333333326,
+            "y": 139.99999999999997,
             "name": "Start",
             "function_id": "func_swpofky04",
             "isStart": true
         },
         {
             "id": "state_ub343q",
-            "x": 424,
-            "y": 386,
-            "name": "ralph",
-            "function_id": "func_sa1l6ljve",
+            "x": 297,
+            "y": 297,
+            "name": "refine",
+            "function_id": "func_jm9b8qqc2",
             "isStart": false
         },
         {
             "id": "state_43fssc",
-            "x": 287,
-            "y": 545,
-            "name": "idle",
-            "function_id": null,
+            "x": 298,
+            "y": 453,
+            "name": "Ralph (implement)",
+            "function_id": "func_wka7p6zy5",
             "isStart": false
         },
         {
-            "id": "state_unjkdy",
-            "x": 215,
-            "y": 383,
-            "name": "new plan",
-            "function_id": "func_swpofky04",
+            "id": "state_1hbu1w",
+            "x": 302,
+            "y": 593,
+            "name": "Done",
+            "function_id": null,
             "isStart": false
         }
     ],
@@ -53,31 +53,19 @@
             "to": "state_43fssc",
             "conditions": [
                 {
-                    "key": "is-done",
+                    "key": "is-plan-ready",
                     "op": "==",
                     "value": "true"
                 }
             ]
         },
         {
-            "id": "trans_x1bjkz",
+            "id": "trans_r951kd",
             "from": "state_43fssc",
-            "to": "state_unjkdy",
+            "to": "state_1hbu1w",
             "conditions": [
                 {
-                    "key": "new-message",
-                    "op": "==",
-                    "value": "true"
-                }
-            ]
-        },
-        {
-            "id": "trans_3sq5kb",
-            "from": "state_unjkdy",
-            "to": "state_ub343q",
-            "conditions": [
-                {
-                    "key": "have-plan",
+                    "key": "is-done",
                     "op": "==",
                     "value": "true"
                 }

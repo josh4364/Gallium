@@ -1,0 +1,891 @@
+{
+    "nodes": [
+        {
+            "id": "node_qrhl9icpe",
+            "type": "start",
+            "x": -35.02571535735882,
+            "y": 515.6842065427882,
+            "width": 300,
+            "height": 147,
+            "title": "Start",
+            "params": {},
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_qrhl9icpe_flow",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_qrhl9icpe_out_322om",
+                    "label": "ctx",
+                    "type": "context"
+                },
+                {
+                    "id": "node_qrhl9icpe_out_fc3ve",
+                    "label": "tick",
+                    "type": "number"
+                }
+            ]
+        },
+        {
+            "id": "node_rhz2cmvzl",
+            "type": "context_any_pending_messages",
+            "x": 370.9698942656338,
+            "y": 593.3175534926552,
+            "width": 300,
+            "height": 120,
+            "title": "Any Pending Messages",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_rhz2cmvzl_ctx_qwli",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_rhz2cmvzl_result_qag3",
+                    "label": "Result",
+                    "type": "boolean",
+                    "key": "result"
+                }
+            ]
+        },
+        {
+            "id": "node_vk05yrdpu",
+            "type": "condition",
+            "x": 757.9462458516451,
+            "y": 535.1879357180367,
+            "width": 300,
+            "height": 120,
+            "title": "Branch",
+            "params": {
+                "condition": false
+            },
+            "inputs": [
+                {
+                    "id": "node_vk05yrdpu_undefined_zt5w",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_vk05yrdpu_condition_3t3q",
+                    "label": "Condition",
+                    "type": "boolean",
+                    "key": "condition"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_vk05yrdpu_undefined_lk9k",
+                    "label": "exec_true",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_vk05yrdpu_undefined_9mhg",
+                    "label": "exec_false",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_bti1apbus",
+            "type": "send_llm_chat_message",
+            "x": 1279.950213467721,
+            "y": 543.3260822064833,
+            "width": 300,
+            "height": 147,
+            "title": "Send LLM Chat Message",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_bti1apbus_undefined_9as5",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_bti1apbus_llm_chat_44qw",
+                    "label": "Chat Object",
+                    "type": "chat_state",
+                    "key": "llm_chat"
+                },
+                {
+                    "id": "node_bti1apbus_message_53t3",
+                    "label": "Message",
+                    "type": "struct:struct_chat_message",
+                    "key": "message"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_bti1apbus_undefined_mifq",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_bti1apbus_result_message_8f9b",
+                    "label": "Result Message",
+                    "type": "struct:struct_chat_message",
+                    "key": "result_message"
+                }
+            ]
+        },
+        {
+            "id": "node_hki411zb9",
+            "type": "struct_access",
+            "x": 1747.6090992126856,
+            "y": 731.1388241614845,
+            "width": 300,
+            "height": 120,
+            "title": "Access ChatMessage",
+            "params": {
+                "structId": "struct_chat_message"
+            },
+            "inputs": [
+                {
+                    "id": "node_hki411zb9_obj",
+                    "label": "Object",
+                    "type": "struct:struct_chat_message",
+                    "key": "object"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_hki411zb9_out_message",
+                    "label": "message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_hki411zb9_out_role",
+                    "label": "role",
+                    "type": "enum:enum_role",
+                    "key": "role"
+                }
+            ]
+        },
+        {
+            "id": "node_by2d6b5qh",
+            "type": "context_get_new_messages",
+            "x": 753.3434593795122,
+            "y": 816.2435917374627,
+            "width": 300,
+            "height": 120,
+            "title": "Get New Messages",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_by2d6b5qh_ctx_jgoi",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_by2d6b5qh_messages_1i60",
+                    "label": "Messages",
+                    "type": "list:string",
+                    "key": "messages"
+                }
+            ]
+        },
+        {
+            "id": "node_vqiv6lp7x",
+            "type": "list_get",
+            "x": 753.6924738321673,
+            "y": 955.3907826560096,
+            "width": 300,
+            "height": 120,
+            "title": "List Get (String)",
+            "params": {
+                "element_type": "string"
+            },
+            "inputs": [
+                {
+                    "id": "node_vqiv6lp7x_list",
+                    "label": "List",
+                    "type": "list:string",
+                    "key": "list"
+                },
+                {
+                    "id": "node_vqiv6lp7x_index",
+                    "label": "Index",
+                    "type": "number",
+                    "key": "index"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_vqiv6lp7x_val",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ]
+        },
+        {
+            "id": "node_wjbp26ujg",
+            "type": "struct_make",
+            "x": 1276.0228038579226,
+            "y": 741.4305036404938,
+            "width": 300,
+            "height": 120,
+            "title": "Make ChatMessage",
+            "params": {
+                "structId": "struct_chat_message"
+            },
+            "inputs": [
+                {
+                    "id": "node_wjbp26ujg_in_message",
+                    "label": "message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_wjbp26ujg_in_role",
+                    "label": "role",
+                    "type": "enum:enum_role",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_wjbp26ujg_obj",
+                    "label": "Object",
+                    "type": "struct:struct_chat_message"
+                }
+            ]
+        },
+        {
+            "id": "node_u37j272u8",
+            "type": "get_context_key_value",
+            "x": 759.5543815345973,
+            "y": 678.8294011613307,
+            "width": 300,
+            "height": 120,
+            "title": "Get Context Key",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_u37j272u8_ctx_ic63",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_u37j272u8_key_57kg",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_u37j272u8_undefined_svay",
+                    "label": "Value",
+                    "type": "chat_state"
+                }
+            ]
+        },
+        {
+            "id": "node_5p0pl1233",
+            "type": "string",
+            "x": 369.4934409588851,
+            "y": 727.8826392774849,
+            "width": 300,
+            "height": 124,
+            "title": "String Constant",
+            "params": {
+                "value": "chat"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_5p0pl1233_undefined_6zmf",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_cm25kr9y5",
+            "type": "get_variable",
+            "x": 1746.4650292750803,
+            "y": 873.2085969803454,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "ctx"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_cm25kr9y5_undefined_71ol",
+                    "label": "Value",
+                    "type": "context"
+                }
+            ]
+        },
+        {
+            "id": "node_m499oppop",
+            "type": "set_variable",
+            "x": 369.0438533305887,
+            "y": 464.06029954237897,
+            "width": 340,
+            "height": 120,
+            "title": "Set Local Variable",
+            "params": {
+                "name": "ctx",
+                "value": null
+            },
+            "inputs": [
+                {
+                    "id": "node_m499oppop_exec_in_foe8",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_m499oppop_value",
+                    "label": "Value",
+                    "type": "context",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_m499oppop_exec_out_xquj",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_0nqaiwgi8",
+            "type": "enum_constant",
+            "x": 758.0540453044327,
+            "y": 1099.2915927262018,
+            "width": 300,
+            "height": 120,
+            "title": "Enum Constant",
+            "params": {
+                "enum_id": "enum_role",
+                "value": 1
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_0nqaiwgi8_undefined_o56r",
+                    "label": "",
+                    "type": "enum:enum_role"
+                }
+            ]
+        },
+        {
+            "id": "node_af9e1hetq",
+            "type": "context_send_message",
+            "x": 1748.9906505635863,
+            "y": 533.1219368061911,
+            "width": 300,
+            "height": 186,
+            "title": "Send Thread Message",
+            "params": {
+                "message": "",
+                "role": 1
+            },
+            "inputs": [
+                {
+                    "id": "node_af9e1hetq_exec_in_sc5b",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_af9e1hetq_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_af9e1hetq_message",
+                    "label": "Message",
+                    "type": "string",
+                    "key": "message"
+                },
+                {
+                    "id": "node_af9e1hetq_role",
+                    "label": "Role",
+                    "type": "enum:enum_role",
+                    "key": "role"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_af9e1hetq_exec_out_vsaq",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_4224fyyq2",
+            "type": "string_format",
+            "x": 1169.8919606980141,
+            "y": 899.6571176462372,
+            "width": 459,
+            "height": 273,
+            "title": "String Format",
+            "params": {
+                "format": "Incorporate the users feedback into the plan and notify them of what they changed.\nYou are ONLY updating the `plan.md` \nDo not begin on work.\nUser feedback:\n{}",
+                "arg1": null
+            },
+            "inputs": [
+                {
+                    "id": "node_4224fyyq2_in_arg1_jiuv",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_4224fyyq2_result_uv4l",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_fsyquye0o",
+            "type": "ai_eval",
+            "x": 1931.3042197511027,
+            "y": 1236.0265825179588,
+            "width": 380,
+            "height": 307,
+            "title": "Single LLM Eval",
+            "params": {
+                "provider": "local",
+                "model": "",
+                "system_prompt": "You are a agent who makes sharp absolute decisions.",
+                "prompt": ""
+            },
+            "inputs": [
+                {
+                    "id": "node_fsyquye0o_exec_in_w82h",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_fsyquye0o_provider",
+                    "label": "Provider",
+                    "type": "string",
+                    "key": "provider"
+                },
+                {
+                    "id": "node_fsyquye0o_model",
+                    "label": "Model",
+                    "type": "string",
+                    "key": "model"
+                },
+                {
+                    "id": "node_fsyquye0o_system_prompt",
+                    "label": "System Prompt",
+                    "type": "string",
+                    "key": "system_prompt"
+                },
+                {
+                    "id": "node_fsyquye0o_prompt",
+                    "label": "Prompt",
+                    "type": "string",
+                    "key": "prompt"
+                },
+                {
+                    "id": "node_fsyquye0o_tools",
+                    "label": "Tools",
+                    "type": "list:tool",
+                    "key": "tools"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_fsyquye0o_exec_out_bcig",
+                    "label": "exec_out",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_fsyquye0o_response",
+                    "label": "Response",
+                    "type": "string",
+                    "key": "response"
+                },
+                {
+                    "id": "node_fsyquye0o_changed_files",
+                    "label": "Changed Files",
+                    "type": "list:string",
+                    "key": "changed_files"
+                }
+            ]
+        },
+        {
+            "id": "node_png2da56o",
+            "type": "string_format",
+            "x": 1204.7598987854317,
+            "y": 1288.4816086977848,
+            "width": 669,
+            "height": 320,
+            "title": "String Format",
+            "params": {
+                "format": "Based on this reply from the user does it seem like they want to proceed with the plan and begin working on it?\nif they do want begin reply exactly \"true\" or \"false\"\nUser:{}",
+                "arg1": null
+            },
+            "inputs": [
+                {
+                    "id": "node_png2da56o_in_arg1_zvay",
+                    "label": "Arg 1",
+                    "type": "string",
+                    "key": "arg1"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_png2da56o_result_6igc",
+                    "label": "Result",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "id": "node_7qb1q8xz7",
+            "type": "set_context_key_value",
+            "x": 2533.448522432605,
+            "y": 1320.9977009660772,
+            "width": 300,
+            "height": 186,
+            "title": "Set Context Key",
+            "params": {},
+            "inputs": [
+                {
+                    "id": "node_7qb1q8xz7_exec_in_2yu2",
+                    "label": "exec_in",
+                    "type": "exec"
+                },
+                {
+                    "id": "node_7qb1q8xz7_ctx",
+                    "label": "Context",
+                    "type": "context",
+                    "key": "ctx"
+                },
+                {
+                    "id": "node_7qb1q8xz7_key",
+                    "label": "Key",
+                    "type": "string",
+                    "key": "key"
+                },
+                {
+                    "id": "node_7qb1q8xz7_value",
+                    "label": "Value",
+                    "type": "string",
+                    "key": "value"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "node_7qb1q8xz7_exec_out_k9i2",
+                    "label": "exec_out",
+                    "type": "exec"
+                }
+            ]
+        },
+        {
+            "id": "node_pn9uj22sz",
+            "type": "get_variable",
+            "x": 2532.2298174184543,
+            "y": 1522.1358708767395,
+            "width": 300,
+            "height": 120,
+            "title": "Get Local Variable",
+            "params": {
+                "name": "ctx"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_pn9uj22sz_undefined_v26t",
+                    "label": "Value",
+                    "type": "context"
+                }
+            ]
+        },
+        {
+            "id": "node_nxgfwv3ot",
+            "type": "string",
+            "x": 2525.99552987533,
+            "y": 1654.8449048571126,
+            "width": 300,
+            "height": 124,
+            "title": "String Constant",
+            "params": {
+                "value": "is-plan-ready"
+            },
+            "inputs": [],
+            "outputs": [
+                {
+                    "id": "node_nxgfwv3ot__ybd7",
+                    "label": "",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "fromNode": "node_rhz2cmvzl",
+            "fromPort": "node_rhz2cmvzl_result_qag3",
+            "toNode": "node_vk05yrdpu",
+            "toPort": "node_vk05yrdpu_condition_3t3q"
+        },
+        {
+            "fromNode": "node_vk05yrdpu",
+            "fromPort": "node_vk05yrdpu_undefined_lk9k",
+            "toNode": "node_bti1apbus",
+            "toPort": "node_bti1apbus_undefined_9as5"
+        },
+        {
+            "fromNode": "node_u37j272u8",
+            "fromPort": "node_u37j272u8_undefined_svay",
+            "toNode": "node_bti1apbus",
+            "toPort": "node_bti1apbus_llm_chat_44qw"
+        },
+        {
+            "fromNode": "node_5p0pl1233",
+            "fromPort": "node_5p0pl1233_undefined_6zmf",
+            "toNode": "node_u37j272u8",
+            "toPort": "node_u37j272u8_key_57kg"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_out_322om",
+            "toNode": "node_m499oppop",
+            "toPort": "node_m499oppop_value"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_flow",
+            "toNode": "node_m499oppop",
+            "toPort": "node_m499oppop_exec_in_foe8"
+        },
+        {
+            "fromNode": "node_m499oppop",
+            "fromPort": "node_m499oppop_exec_out_xquj",
+            "toNode": "node_vk05yrdpu",
+            "toPort": "node_vk05yrdpu_undefined_zt5w"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_out_322om",
+            "toNode": "node_rhz2cmvzl",
+            "toPort": "node_rhz2cmvzl_ctx_qwli"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_out_322om",
+            "toNode": "node_by2d6b5qh",
+            "toPort": "node_by2d6b5qh_ctx_jgoi"
+        },
+        {
+            "fromNode": "node_qrhl9icpe",
+            "fromPort": "node_qrhl9icpe_out_322om",
+            "toNode": "node_u37j272u8",
+            "toPort": "node_u37j272u8_ctx_ic63"
+        },
+        {
+            "fromNode": "node_by2d6b5qh",
+            "fromPort": "node_by2d6b5qh_messages_1i60",
+            "toNode": "node_vqiv6lp7x",
+            "toPort": "node_vqiv6lp7x_list"
+        },
+        {
+            "fromNode": "node_wjbp26ujg",
+            "fromPort": "node_wjbp26ujg_obj",
+            "toNode": "node_bti1apbus",
+            "toPort": "node_bti1apbus_message_53t3"
+        },
+        {
+            "fromNode": "node_0nqaiwgi8",
+            "fromPort": "node_0nqaiwgi8_undefined_o56r",
+            "toNode": "node_wjbp26ujg",
+            "toPort": "node_wjbp26ujg_in_role"
+        },
+        {
+            "fromNode": "node_bti1apbus",
+            "fromPort": "node_bti1apbus_result_message_8f9b",
+            "toNode": "node_hki411zb9",
+            "toPort": "node_hki411zb9_obj"
+        },
+        {
+            "fromNode": "node_bti1apbus",
+            "fromPort": "node_bti1apbus_undefined_mifq",
+            "toNode": "node_af9e1hetq",
+            "toPort": "node_af9e1hetq_exec_in_sc5b"
+        },
+        {
+            "fromNode": "node_hki411zb9",
+            "fromPort": "node_hki411zb9_out_message",
+            "toNode": "node_af9e1hetq",
+            "toPort": "node_af9e1hetq_message"
+        },
+        {
+            "fromNode": "node_cm25kr9y5",
+            "fromPort": "node_cm25kr9y5_undefined_71ol",
+            "toNode": "node_af9e1hetq",
+            "toPort": "node_af9e1hetq_ctx"
+        },
+        {
+            "fromNode": "node_vqiv6lp7x",
+            "fromPort": "node_vqiv6lp7x_val",
+            "toNode": "node_4224fyyq2",
+            "toPort": "node_4224fyyq2_in_arg1_jiuv"
+        },
+        {
+            "fromNode": "node_4224fyyq2",
+            "fromPort": "node_4224fyyq2_result_uv4l",
+            "toNode": "node_wjbp26ujg",
+            "toPort": "node_wjbp26ujg_in_message"
+        },
+        {
+            "fromNode": "node_vqiv6lp7x",
+            "fromPort": "node_vqiv6lp7x_val",
+            "toNode": "node_png2da56o",
+            "toPort": "node_png2da56o_in_arg1_zvay"
+        },
+        {
+            "fromNode": "node_af9e1hetq",
+            "fromPort": "node_af9e1hetq_exec_out_vsaq",
+            "toNode": "node_fsyquye0o",
+            "toPort": "node_fsyquye0o_exec_in_w82h"
+        },
+        {
+            "fromNode": "node_png2da56o",
+            "fromPort": "node_png2da56o_result_6igc",
+            "toNode": "node_fsyquye0o",
+            "toPort": "node_fsyquye0o_prompt"
+        },
+        {
+            "fromNode": "node_pn9uj22sz",
+            "fromPort": "node_pn9uj22sz_undefined_v26t",
+            "toNode": "node_7qb1q8xz7",
+            "toPort": "node_7qb1q8xz7_ctx"
+        },
+        {
+            "fromNode": "node_fsyquye0o",
+            "fromPort": "node_fsyquye0o_exec_out_bcig",
+            "toNode": "node_7qb1q8xz7",
+            "toPort": "node_7qb1q8xz7_exec_in_2yu2"
+        },
+        {
+            "fromNode": "node_fsyquye0o",
+            "fromPort": "node_fsyquye0o_response",
+            "toNode": "node_7qb1q8xz7",
+            "toPort": "node_7qb1q8xz7_value"
+        },
+        {
+            "fromNode": "node_nxgfwv3ot",
+            "fromPort": "node_nxgfwv3ot__ybd7",
+            "toNode": "node_7qb1q8xz7",
+            "toPort": "node_7qb1q8xz7_key"
+        }
+    ],
+    "types": {
+        "structs": [
+            {
+                "id": "struct_chat_message",
+                "name": "ChatMessage",
+                "fields": [
+                    {
+                        "name": "message",
+                        "type": "string"
+                    },
+                    {
+                        "name": "role",
+                        "type": "enum:enum_role",
+                        "default": 0
+                    }
+                ],
+                "tag": "AI"
+            },
+            {
+                "id": "struct_yzf6l19kx",
+                "name": "Blob",
+                "fields": [
+                    {
+                        "name": "field 1",
+                        "type": "string"
+                    },
+                    {
+                        "name": "field 2",
+                        "type": "number"
+                    }
+                ]
+            },
+            {
+                "id": "struct_r36fs95ld",
+                "name": "Struct2",
+                "fields": [
+                    {
+                        "name": "nested blobs",
+                        "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ],
+        "enums": [
+            {
+                "id": "enum_role",
+                "name": "Chat Role",
+                "tag": "ChatMessage",
+                "values": [
+                    {
+                        "name": "User",
+                        "value": 0
+                    },
+                    {
+                        "name": "Assistant",
+                        "value": 1
+                    },
+                    {
+                        "name": "Tool",
+                        "value": 2
+                    },
+                    {
+                        "name": "System",
+                        "value": 3
+                    }
+                ]
+            }
+        ]
+    },
+    "view": {
+        "panX": -457.5464273786379,
+        "panY": -385.88053959100716,
+        "zoom": 0.6720031179755953
+    },
+    "name": "refine plan",
+    "description": "",
+    "inputs": [
+        {
+            "id": "322om",
+            "name": "ctx",
+            "type": "context"
+        },
+        {
+            "id": "fc3ve",
+            "name": "tick",
+            "type": "number"
+        }
+    ],
+    "outputs": [],
+    "tags": []
+}

@@ -453,7 +453,7 @@ def write_to_file(target_file: str, code_content: str, overwrite: bool = False, 
         
     if os.path.exists(safe_path):
         if not overwrite:
-             raise FileExistsError(f"File exists: {target_file}. Set Overwrite to true to replace.")
+             raise FileExistsError(f"File exists: {target_file}. Set overwrite to true to replace.")
         if os.path.isdir(safe_path):
              raise IsADirectoryError(f"Target is a directory: {target_file}")
              

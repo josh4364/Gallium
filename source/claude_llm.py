@@ -158,5 +158,7 @@ class ClaudeClient(LLMClient):
             else:
                 return text_content, current_openai_messages
 
-        self.logger.warning("Claude reached max turns.")
-        return None, current_openai_messages
+        err_msg = f"Agent turn hit tool call limit of {max_turns}"
+        self.logger.warning(err_msg)
+        current_openai_messages.append({"role": "assistant", "content": err_msg})
+        return err_msg, current_openai_messages

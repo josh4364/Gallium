@@ -32,31 +32,54 @@ class GraphInterpreter:
             {"id": "builtin_list_dir", "name": "list_dir", "description": "List the contents of a directory. Returns list of items.", 
              "args": [{"name": "directory_path", "type": "string"}]},
             {"id": "builtin_find_by_name", "name": "find_by_name", "description": "Search for files and subdirectories by name pattern using fd.", 
-             "args": [{"name": "search_directory", "type": "string"}, {"name": "pattern", "type": "string"}]},
+             "args": [
+                 {"name": "search_directory", "type": "string"}, 
+                 {"name": "pattern", "type": "string"},
+                 {"name": "excludes", "type": "list", "optional": True},
+                 {"name": "extensions", "type": "list", "optional": True},
+                 {"name": "full_path", "type": "boolean", "optional": True},
+                 {"name": "max_depth", "type": "number", "optional": True},
+                 {"name": "type_filter", "type": "string", "optional": True}
+             ]},
             {"id": "builtin_grep_search", "name": "grep_search", "description": "Search for text within files using ripgrep.", 
-             "args": [{"name": "search_path", "type": "string"}, {"name": "query", "type": "string"}]},
+             "args": [
+                 {"name": "search_path", "type": "string"}, 
+                 {"name": "query", "type": "string"},
+                 {"name": "case_insensitive", "type": "boolean", "optional": True},
+                 {"name": "includes", "type": "list", "optional": True},
+                 {"name": "is_regex", "type": "boolean", "optional": True},
+                 {"name": "match_per_line", "type": "boolean", "optional": True}
+             ]},
             {"id": "builtin_view_file", "name": "view_file", "description": "View the contents of a file with line numbers.", 
-             "args": [{"name": "absolute_path", "type": "string"}, {"name": "start_line", "type": "number"}, {"name": "end_line", "type": "number"}]},
+             "args": [{"name": "absolute_path", "type": "string"}, {"name": "start_line", "type": "number", "optional": True}, {"name": "end_line", "type": "number", "optional": True}]},
             {"id": "builtin_read_file", "name": "read_file", "description": "Read the raw content of a file.", 
              "args": [{"name": "absolute_path", "type": "string"}]},
             {"id": "builtin_view_file_outline", "name": "view_file_outline", "description": "View classes and functions in a python file.", 
-             "args": [{"name": "absolute_path", "type": "string"}]},
+             "args": [{"name": "absolute_path", "type": "string"}, {"name": "item_offset", "type": "number", "optional": True}]},
             {"id": "builtin_view_code_item", "name": "view_code_item", "description": "View specific classes or functions by name in a file.", 
              "args": [{"name": "file_path", "type": "string"}, {"name": "node_paths", "type": "list"}]},
-            {"id": "builtin_write_to_file", "name": "write_to_file", "description": "Write or overwrite content to a file.", 
-             "args": [{"name": "target_file", "type": "string"}, {"name": "code_content", "type": "string"}]},
+            {"id": "builtin_write_to_file", "name": "write_to_file", "description": "Write content to a file. Use overwrite=true to replace existing files.", 
+             "args": [{"name": "target_file", "type": "string"}, {"name": "code_content", "type": "string"}, {"name": "overwrite", "type": "boolean", "optional": True}, {"name": "empty_file", "type": "boolean", "optional": True}]},
             {"id": "builtin_replace_file_content", "name": "replace_file_content", "description": "Replace a block of text in a file.", 
-             "args": [{"name": "target_file", "type": "string"}, {"name": "start_line", "type": "number"}, {"name": "end_line", "type": "number"}, {"name": "target_content", "type": "string"}, {"name": "replacement_content", "type": "string"}]},
+             "args": [
+                 {"name": "target_file", "type": "string"}, 
+                 {"name": "start_line", "type": "number"}, 
+                 {"name": "end_line", "type": "number"}, 
+                 {"name": "target_content", "type": "string"}, 
+                 {"name": "replacement_content", "type": "string"},
+                 {"name": "allow_multiple", "type": "boolean", "optional": True}
+             ]},
             {"id": "builtin_multi_replace_file_content", "name": "multi_replace_file_content", "description": "Apply multiple replacements to a file. replacement_chunks is a list of {StartLine, EndLine, TargetContent, ReplacementContent, AllowMultiple}", 
              "args": [{"name": "target_file", "type": "string"}, {"name": "replacement_chunks", "type": "list"}]},
             {"id": "builtin_calculate", "name": "calculate", "description": "Execute a mathematical expression.", 
              "args": [{"name": "expression", "type": "string"}]},
             {"id": "builtin_run_command", "name": "run_command", "description": "Execute a shell command in the background.", 
-             "args": [{"name": "command_line", "type": "string"}, {"name": "cwd", "type": "string"}]},
+             "args": [{"name": "command_line", "type": "string"}, {"name": "cwd", "type": "string"}, {"name": "safe_to_auto_run", "type": "boolean", "optional": True}, {"name": "wait_ms_before_async", "type": "number", "optional": True}]},
             {"id": "builtin_command_status", "name": "command_status", "description": "Check the status and output of a background command.", 
-             "args": [{"name": "command_id", "type": "string"}]},
+             "args": [{"name": "command_id", "type": "string"}, {"name": "output_character_count", "type": "number", "optional": True}, {"name": "wait_duration_seconds", "type": "number", "optional": True}]},
             
         ]
+
 
         # Initialize Handlers
         self.node_handlers = {}
@@ -1358,8 +1381,9 @@ def {sanitized_name}({args_str}):
                 json_type = "object"
             
             properties[arg_name] = {"type": json_type, "description": f"Argument {arg_name}"}
-            # All args required by default for simplicity
-            required.append(arg_name)
+            # Add to required if not explicitly optional
+            if not arg.get('optional', False):
+                required.append(arg_name)
             
         return {
             "type": "function",

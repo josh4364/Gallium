@@ -1363,6 +1363,7 @@ Object.assign(NodeGraph.prototype, {
             input.className = 'node-input';
             input.value = node.params.name || node.title;
             input.placeholder = 'Task Name...';
+            input.onmousedown = (e) => e.stopPropagation();
             input.onclick = (e) => e.stopPropagation();
             input.oninput = (e) => node.params.name = e.target.value;
             input.onchange = () => this.saveHistory('Renamed Action');
@@ -1416,6 +1417,7 @@ Object.assign(NodeGraph.prototype, {
                 const toggle = document.createElement('div');
                 toggle.className = `bool-toggle ${val ? 'is-true' : 'is-false'}`;
                 toggle.innerText = val ? 'TRUE' : 'FALSE';
+                toggle.onmousedown = (e) => e.stopPropagation();
                 toggle.onclick = (e) => {
                     node.params[key] = !node.params[key];
                     toggle.className = `bool-toggle ${node.params[key] ? 'is-true' : 'is-false'}`;
@@ -1493,6 +1495,7 @@ Object.assign(NodeGraph.prototype, {
                 enumSelector.appendChild(opt);
             });
 
+            enumSelector.onmousedown = (e) => e.stopPropagation();
             enumSelector.onchange = (e) => {
                 const newId = e.target.value;
                 this.onNodeParamChanged(node, 'enum_id', newId);
@@ -1536,6 +1539,7 @@ Object.assign(NodeGraph.prototype, {
                         valSelector.appendChild(opt);
                     });
 
+                    valSelector.onmousedown = (e) => e.stopPropagation();
                     valSelector.onchange = (e) => {
                         this.onNodeParamChanged(node, 'value', parseInt(e.target.value));
                         this.saveHistory('Changed Enum Value');
@@ -1583,6 +1587,7 @@ Object.assign(NodeGraph.prototype, {
             addBtn.className = 'node-button';
             addBtn.style.marginTop = '8px';
             addBtn.innerHTML = '<i class="fas fa-plus"></i> Add Case';
+            addBtn.onmousedown = (e) => e.stopPropagation();
             addBtn.onclick = (e) => {
                 e.stopPropagation();
                 const cases = node.params.cases || [];
@@ -1602,6 +1607,7 @@ Object.assign(NodeGraph.prototype, {
                 removeBtn.className = 'node-button secondary';
                 removeBtn.style.marginTop = '4px';
                 removeBtn.innerHTML = '<i class="fas fa-minus"></i> Remove Last';
+                removeBtn.onmousedown = (e) => e.stopPropagation();
                 removeBtn.onclick = (e) => {
                     e.stopPropagation();
                     const cases = node.params.cases || [];
@@ -2012,6 +2018,7 @@ Object.assign(NodeGraph.prototype, {
                 modSelect.appendChild(opt);
             });
 
+            typeSelect.onmousedown = (e) => e.stopPropagation();
             typeSelect.onchange = (e) => {
                 const newBase = e.target.value;
                 if (modifier === 'list') onUpdate(`list:${newBase}`);
@@ -2019,6 +2026,7 @@ Object.assign(NodeGraph.prototype, {
                 else onUpdate(newBase);
             };
 
+            modSelect.onmousedown = (e) => e.stopPropagation();
             modSelect.onchange = (e) => {
                 const newMod = e.target.value;
                 if (newMod === 'list') onUpdate(`list:${baseType}`);

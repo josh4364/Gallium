@@ -624,7 +624,7 @@
                     },
                     {
                         "name": "role",
-                        "type": "number",
+                        "type": "enum:enum_role",
                         "default": 0
                     }
                 ],
@@ -651,6 +651,31 @@
                     {
                         "name": "nested blobs",
                         "type": "list:struct:struct_yzf6l19kx"
+                    }
+                ]
+            }
+        ],
+        "enums": [
+            {
+                "id": "enum_role",
+                "name": "Chat Role",
+                "tag": "ChatMessage",
+                "values": [
+                    {
+                        "name": "User",
+                        "value": 0
+                    },
+                    {
+                        "name": "Assistant",
+                        "value": 1
+                    },
+                    {
+                        "name": "Tool",
+                        "value": 2
+                    },
+                    {
+                        "name": "System",
+                        "value": 3
                     }
                 ]
             }

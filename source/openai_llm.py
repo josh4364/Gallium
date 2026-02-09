@@ -75,5 +75,7 @@ class OpenAIClient(LLMClient):
                 current_messages.append(message)
                 return content, current_messages
 
-        self.logger.warning("OpenAI reached max turns.")
-        return None, current_messages
+        err_msg = f"Agent turn hit tool call limit of {max_turns}"
+        self.logger.warning(err_msg)
+        current_messages.append({"role": "assistant", "content": err_msg})
+        return err_msg, current_messages

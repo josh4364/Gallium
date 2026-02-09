@@ -3,8 +3,8 @@
         {
             "id": "node_9ckdax8it",
             "type": "start",
-            "x": -6.266799138917472,
-            "y": 58.91526537824984,
+            "x": 176.3333794276116,
+            "y": 54.151782459123,
             "width": 300,
             "height": 147,
             "title": "Start",
@@ -24,97 +24,6 @@
                 {
                     "id": "node_9ckdax8it_out_zs7lp",
                     "label": "tick",
-                    "type": "number"
-                }
-            ]
-        },
-        {
-            "id": "node_gdw547pcw",
-            "type": "condition",
-            "x": 779.747418782784,
-            "y": 36.70215146767638,
-            "width": 300,
-            "height": 120,
-            "title": "Branch",
-            "params": {
-                "condition": false
-            },
-            "inputs": [
-                {
-                    "id": "node_gdw547pcw_exec_in_id9t",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_gdw547pcw_condition",
-                    "label": "Condition",
-                    "type": "boolean",
-                    "key": "condition"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_gdw547pcw_exec_true_ufpn",
-                    "label": "exec_true",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_gdw547pcw_exec_false_lx0y",
-                    "label": "exec_false",
-                    "type": "exec"
-                }
-            ]
-        },
-        {
-            "id": "node_bo6v1380h",
-            "type": "compare_equal",
-            "x": 780.1344363444701,
-            "y": 165.0571221981996,
-            "width": 300,
-            "height": 120,
-            "title": "Equal",
-            "params": {
-                "a": null,
-                "b": null
-            },
-            "inputs": [
-                {
-                    "id": "node_bo6v1380h_a",
-                    "label": "A",
-                    "type": "number",
-                    "key": "a"
-                },
-                {
-                    "id": "node_bo6v1380h_b",
-                    "label": "B",
-                    "type": "number",
-                    "key": "b"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_bo6v1380h_result_biqe",
-                    "label": "Result",
-                    "type": "boolean"
-                }
-            ]
-        },
-        {
-            "id": "node_cy38e0ocr",
-            "type": "number",
-            "x": 780.7335100187513,
-            "y": 300.16019999159494,
-            "width": 300,
-            "height": 120,
-            "title": "Number Constant",
-            "params": {
-                "value": 0
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_cy38e0ocr__wg73",
-                    "label": "",
                     "type": "number"
                 }
             ]
@@ -344,276 +253,6 @@
             ]
         },
         {
-            "id": "node_tearf2up0",
-            "type": "context_any_pending_messages",
-            "x": 836.4000364271967,
-            "y": 747.9548307776429,
-            "width": 300,
-            "height": 120,
-            "title": "Any Pending Messages",
-            "params": {},
-            "inputs": [
-                {
-                    "id": "node_tearf2up0_ctx",
-                    "label": "Context",
-                    "type": "context",
-                    "key": "ctx"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_tearf2up0_result",
-                    "label": "Result",
-                    "type": "boolean",
-                    "key": "result"
-                }
-            ]
-        },
-        {
-            "id": "node_zoi1v99hg",
-            "type": "condition",
-            "x": 1223.376388013208,
-            "y": 689.8252130030244,
-            "width": 300,
-            "height": 120,
-            "title": "Branch",
-            "params": {
-                "condition": false
-            },
-            "inputs": [
-                {
-                    "id": "node_zoi1v99hg_exec_in_qklx",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_zoi1v99hg_condition",
-                    "label": "Condition",
-                    "type": "boolean",
-                    "key": "condition"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_zoi1v99hg_exec_true_cwu4",
-                    "label": "exec_true",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_zoi1v99hg_exec_false_01x5",
-                    "label": "exec_false",
-                    "type": "exec"
-                }
-            ]
-        },
-        {
-            "id": "node_14kz7zke4",
-            "type": "send_llm_chat_message",
-            "x": 1745.3803556292837,
-            "y": 697.963359491471,
-            "width": 300,
-            "height": 147,
-            "title": "Send LLM Chat Message",
-            "params": {},
-            "inputs": [
-                {
-                    "id": "node_14kz7zke4_exec_in_f9b0",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_14kz7zke4_llm_chat",
-                    "label": "Chat Object",
-                    "type": "chat_state",
-                    "key": "llm_chat"
-                },
-                {
-                    "id": "node_14kz7zke4_message",
-                    "label": "Message",
-                    "type": "struct:struct_chat_message",
-                    "key": "message"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_14kz7zke4_exec_out_vx70",
-                    "label": "exec_out",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_14kz7zke4_result_message",
-                    "label": "Result Message",
-                    "type": "struct:struct_chat_message",
-                    "key": "result_message"
-                }
-            ]
-        },
-        {
-            "id": "node_lwc10p3hb",
-            "type": "context_send_message",
-            "x": 2212.7940909177983,
-            "y": 719.9321946911373,
-            "width": 300,
-            "height": 147,
-            "title": "Send Thread Message",
-            "params": {
-                "message": ""
-            },
-            "inputs": [
-                {
-                    "id": "node_lwc10p3hb_exec_in_9ve3",
-                    "label": "exec_in",
-                    "type": "exec"
-                },
-                {
-                    "id": "node_lwc10p3hb_ctx",
-                    "label": "Context",
-                    "type": "context",
-                    "key": "ctx"
-                },
-                {
-                    "id": "node_lwc10p3hb_message",
-                    "label": "Message",
-                    "type": "string",
-                    "key": "message"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_lwc10p3hb_exec_out_5bmb",
-                    "label": "exec_out",
-                    "type": "exec"
-                }
-            ]
-        },
-        {
-            "id": "node_lg7smv1mj",
-            "type": "struct_access",
-            "x": 2213.0392413742484,
-            "y": 885.7761014464722,
-            "width": 300,
-            "height": 120,
-            "title": "Access ChatMessage",
-            "params": {
-                "structId": "struct_chat_message"
-            },
-            "inputs": [
-                {
-                    "id": "node_lg7smv1mj_obj",
-                    "label": "Object",
-                    "type": "struct:struct_chat_message",
-                    "key": "object"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_lg7smv1mj_out_message",
-                    "label": "message",
-                    "type": "string",
-                    "key": "message"
-                },
-                {
-                    "id": "node_lg7smv1mj_out_role",
-                    "label": "role",
-                    "type": "enum:enum_role",
-                    "key": "role"
-                }
-            ]
-        },
-        {
-            "id": "node_jy8eunxo9",
-            "type": "context_get_new_messages",
-            "x": 1193.1939418804516,
-            "y": 986.7315177647948,
-            "width": 300,
-            "height": 120,
-            "title": "Get New Messages",
-            "params": {},
-            "inputs": [
-                {
-                    "id": "node_jy8eunxo9_ctx",
-                    "label": "Context",
-                    "type": "context",
-                    "key": "ctx"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_jy8eunxo9_messages",
-                    "label": "Messages",
-                    "type": "list:string",
-                    "key": "messages"
-                }
-            ]
-        },
-        {
-            "id": "node_02ajy823f",
-            "type": "list_get",
-            "x": 1192.2639733500755,
-            "y": 1116.4229748561531,
-            "width": 300,
-            "height": 120,
-            "title": "List Get (String)",
-            "params": {
-                "element_type": "string"
-            },
-            "inputs": [
-                {
-                    "id": "node_02ajy823f_list",
-                    "label": "List",
-                    "type": "list:string",
-                    "key": "list"
-                },
-                {
-                    "id": "node_02ajy823f_index",
-                    "label": "Index",
-                    "type": "number",
-                    "key": "index"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_02ajy823f_val",
-                    "label": "Value",
-                    "type": "string",
-                    "key": "value"
-                }
-            ]
-        },
-        {
-            "id": "node_up0odlxi5",
-            "type": "struct_make",
-            "x": 1575.1851582254326,
-            "y": 1119.8898029559368,
-            "width": 300,
-            "height": 120,
-            "title": "Make ChatMessage",
-            "params": {
-                "structId": "struct_chat_message"
-            },
-            "inputs": [
-                {
-                    "id": "node_up0odlxi5_in_message",
-                    "label": "message",
-                    "type": "string",
-                    "key": "message"
-                },
-                {
-                    "id": "node_up0odlxi5_in_role",
-                    "label": "role",
-                    "type": "enum:enum_role",
-                    "key": "role"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_up0odlxi5_obj",
-                    "label": "Object",
-                    "type": "struct:struct_chat_message"
-                }
-            ]
-        },
-        {
             "id": "node_b6zjqwp56",
             "type": "set_context_key_value",
             "x": 1728.2743272044813,
@@ -676,61 +315,10 @@
             ]
         },
         {
-            "id": "node_9syan1o4r",
-            "type": "get_context_key_value",
-            "x": 1229.9378514281427,
-            "y": 834.457343992715,
-            "width": 300,
-            "height": 120,
-            "title": "Get Context Key",
-            "params": {},
-            "inputs": [
-                {
-                    "id": "node_9syan1o4r_ctx",
-                    "label": "Context",
-                    "type": "context",
-                    "key": "ctx"
-                },
-                {
-                    "id": "node_9syan1o4r_key",
-                    "label": "Key",
-                    "type": "string",
-                    "key": "key"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "node_9syan1o4r_value_vbxz",
-                    "label": "Value",
-                    "type": "chat_state"
-                }
-            ]
-        },
-        {
-            "id": "node_8jy315t8m",
-            "type": "string",
-            "x": 834.923583120448,
-            "y": 882.5199165624726,
-            "width": 300,
-            "height": 126,
-            "title": "String Constant",
-            "params": {
-                "value": "chat"
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_8jy315t8m__3u9g",
-                    "label": "",
-                    "type": "string"
-                }
-            ]
-        },
-        {
             "id": "node_cqe7nn3ud",
             "type": "set_variable",
-            "x": 373.8632772786722,
-            "y": 9.705825602194555,
+            "x": 629.5035272718129,
+            "y": 47.813688955209315,
             "width": 346,
             "height": 120,
             "title": "Set Local Variable",
@@ -756,46 +344,6 @@
                     "id": "node_cqe7nn3ud_exec_out_64n8",
                     "label": "exec_out",
                     "type": "exec"
-                }
-            ]
-        },
-        {
-            "id": "node_e333k6rth",
-            "type": "get_variable",
-            "x": 484.2208646382213,
-            "y": 980.0570317432175,
-            "width": 300,
-            "height": 120,
-            "title": "Get Local Variable",
-            "params": {
-                "name": "ctx"
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_e333k6rth_value_fyb9",
-                    "label": "Value",
-                    "type": "context"
-                }
-            ]
-        },
-        {
-            "id": "node_haumvvmnd",
-            "type": "get_variable",
-            "x": 2211.895171436643,
-            "y": 1027.8458742653331,
-            "width": 300,
-            "height": 120,
-            "title": "Get Local Variable",
-            "params": {
-                "name": "ctx"
-            },
-            "inputs": [],
-            "outputs": [
-                {
-                    "id": "node_haumvvmnd_value_tfbq",
-                    "label": "Value",
-                    "type": "context"
                 }
             ]
         },
@@ -850,7 +398,7 @@
             "params": {
                 "provider": "local",
                 "model": "",
-                "system_prompt": "You are a software engineer discussing a plan for work to be implemented",
+                "system_prompt": "You are a software engineer discussing a plan for work to be implemented.\nWe are ONLY creating `plan.md`\nCreate `plan.md` in the workspace root and add the work to be completed to it as a multi step plan.",
                 "message_list": [],
                 "tool_list": []
             },
@@ -966,8 +514,8 @@
         {
             "id": "node_tp444beg0",
             "type": "get_variable",
-            "x": 3205.842254815394,
-            "y": 460.58567744881,
+            "x": 3556.7521631910713,
+            "y": 268.45853304402726,
             "width": 300,
             "height": 120,
             "title": "Get Local Variable",
@@ -986,8 +534,8 @@
         {
             "id": "node_ipplfqxy8",
             "type": "set_context_key_value",
-            "x": 3704.930836403071,
-            "y": 315.6512884163228,
+            "x": 3935.165844160869,
+            "y": -27.319481760809992,
             "width": 300,
             "height": 186,
             "title": "Set Context Key",
@@ -1028,8 +576,8 @@
         {
             "id": "node_ztwxg9kgw",
             "type": "string",
-            "x": 3204.67342909739,
-            "y": 591.4941578652501,
+            "x": 3555.5833374730673,
+            "y": 407.30615165901213,
             "width": 300,
             "height": 124,
             "title": "String Constant",
@@ -1048,8 +596,8 @@
         {
             "id": "node_g6ufq6ixj",
             "type": "boolean",
-            "x": 3204.6734290973895,
-            "y": 731.7532440257216,
+            "x": 3555.5833374730673,
+            "y": 550.7408930989016,
             "width": 300,
             "height": 120,
             "title": "Boolean Constant",
@@ -1179,24 +727,6 @@
     ],
     "connections": [
         {
-            "fromNode": "node_9ckdax8it",
-            "fromPort": "node_9ckdax8it_out_zs7lp",
-            "toNode": "node_bo6v1380h",
-            "toPort": "node_bo6v1380h_a"
-        },
-        {
-            "fromNode": "node_bo6v1380h",
-            "fromPort": "node_bo6v1380h_result_biqe",
-            "toNode": "node_gdw547pcw",
-            "toPort": "node_gdw547pcw_condition"
-        },
-        {
-            "fromNode": "node_cy38e0ocr",
-            "fromPort": "node_cy38e0ocr__wg73",
-            "toNode": "node_bo6v1380h",
-            "toPort": "node_bo6v1380h_b"
-        },
-        {
             "fromNode": "node_5ac8zki8w",
             "fromPort": "node_5ac8zki8w_tool_7ykn",
             "toNode": "node_vsgqr00bl",
@@ -1221,76 +751,10 @@
             "toPort": "node_9w893gs2u_obj"
         },
         {
-            "fromNode": "node_gdw547pcw",
-            "fromPort": "node_gdw547pcw_exec_false_lx0y",
-            "toNode": "node_zoi1v99hg",
-            "toPort": "node_zoi1v99hg_exec_in_qklx"
-        },
-        {
-            "fromNode": "node_tearf2up0",
-            "fromPort": "node_tearf2up0_result",
-            "toNode": "node_zoi1v99hg",
-            "toPort": "node_zoi1v99hg_condition"
-        },
-        {
-            "fromNode": "node_14kz7zke4",
-            "fromPort": "node_14kz7zke4_result_message",
-            "toNode": "node_lg7smv1mj",
-            "toPort": "node_lg7smv1mj_obj"
-        },
-        {
-            "fromNode": "node_lg7smv1mj",
-            "fromPort": "node_lg7smv1mj_out_message",
-            "toNode": "node_lwc10p3hb",
-            "toPort": "node_lwc10p3hb_message"
-        },
-        {
-            "fromNode": "node_14kz7zke4",
-            "fromPort": "node_14kz7zke4_exec_out_vx70",
-            "toNode": "node_lwc10p3hb",
-            "toPort": "node_lwc10p3hb_exec_in_9ve3"
-        },
-        {
-            "fromNode": "node_zoi1v99hg",
-            "fromPort": "node_zoi1v99hg_exec_true_cwu4",
-            "toNode": "node_14kz7zke4",
-            "toPort": "node_14kz7zke4_exec_in_f9b0"
-        },
-        {
-            "fromNode": "node_jy8eunxo9",
-            "fromPort": "node_jy8eunxo9_messages",
-            "toNode": "node_02ajy823f",
-            "toPort": "node_02ajy823f_list"
-        },
-        {
-            "fromNode": "node_02ajy823f",
-            "fromPort": "node_02ajy823f_val",
-            "toNode": "node_up0odlxi5",
-            "toPort": "node_up0odlxi5_in_message"
-        },
-        {
-            "fromNode": "node_up0odlxi5",
-            "fromPort": "node_up0odlxi5_obj",
-            "toNode": "node_14kz7zke4",
-            "toPort": "node_14kz7zke4_message"
-        },
-        {
             "fromNode": "node_zrlctbcn7",
             "fromPort": "node_zrlctbcn7__pt4y",
             "toNode": "node_b6zjqwp56",
             "toPort": "node_b6zjqwp56_key"
-        },
-        {
-            "fromNode": "node_9syan1o4r",
-            "fromPort": "node_9syan1o4r_value_vbxz",
-            "toNode": "node_14kz7zke4",
-            "toPort": "node_14kz7zke4_llm_chat"
-        },
-        {
-            "fromNode": "node_8jy315t8m",
-            "fromPort": "node_8jy315t8m__3u9g",
-            "toNode": "node_9syan1o4r",
-            "toPort": "node_9syan1o4r_key"
         },
         {
             "fromNode": "node_9ckdax8it",
@@ -1299,40 +763,10 @@
             "toPort": "node_cqe7nn3ud_exec_in_uwpu"
         },
         {
-            "fromNode": "node_cqe7nn3ud",
-            "fromPort": "node_cqe7nn3ud_exec_out_64n8",
-            "toNode": "node_gdw547pcw",
-            "toPort": "node_gdw547pcw_exec_in_id9t"
-        },
-        {
             "fromNode": "node_9ckdax8it",
             "fromPort": "node_9ckdax8it_out_rglz9",
             "toNode": "node_cqe7nn3ud",
             "toPort": "node_cqe7nn3ud_value"
-        },
-        {
-            "fromNode": "node_e333k6rth",
-            "fromPort": "node_e333k6rth_value_fyb9",
-            "toNode": "node_9syan1o4r",
-            "toPort": "node_9syan1o4r_ctx"
-        },
-        {
-            "fromNode": "node_e333k6rth",
-            "fromPort": "node_e333k6rth_value_fyb9",
-            "toNode": "node_jy8eunxo9",
-            "toPort": "node_jy8eunxo9_ctx"
-        },
-        {
-            "fromNode": "node_e333k6rth",
-            "fromPort": "node_e333k6rth_value_fyb9",
-            "toNode": "node_tearf2up0",
-            "toPort": "node_tearf2up0_ctx"
-        },
-        {
-            "fromNode": "node_haumvvmnd",
-            "fromPort": "node_haumvvmnd_value_tfbq",
-            "toNode": "node_lwc10p3hb",
-            "toPort": "node_lwc10p3hb_ctx"
         },
         {
             "fromNode": "node_lxqromy7p",
@@ -1351,12 +785,6 @@
             "fromPort": "node_r6aw0ap0p_llm_chat",
             "toNode": "node_b40ovsyva",
             "toPort": "node_b40ovsyva_in_arg1_57jg"
-        },
-        {
-            "fromNode": "node_gdw547pcw",
-            "fromPort": "node_gdw547pcw_exec_true_ufpn",
-            "toNode": "node_r6aw0ap0p",
-            "toPort": "node_r6aw0ap0p_exec_in_tjl1"
         },
         {
             "fromNode": "node_vsgqr00bl",
@@ -1477,6 +905,12 @@
             "fromPort": "node_e5r9y33zd_exec_out_xqwc",
             "toNode": "node_yxd2ohmec",
             "toPort": "node_yxd2ohmec_exec_in_wthp"
+        },
+        {
+            "fromNode": "node_cqe7nn3ud",
+            "fromPort": "node_cqe7nn3ud_exec_out_64n8",
+            "toNode": "node_r6aw0ap0p",
+            "toPort": "node_r6aw0ap0p_exec_in_tjl1"
         }
     ],
     "types": {
@@ -1549,9 +983,9 @@
         ]
     },
     "view": {
-        "panX": -1142.3880494381606,
-        "panY": 453.52535367535484,
-        "zoom": 0.8054923286671175
+        "panX": -1466.3710053178052,
+        "panY": 476.9800641392007,
+        "zoom": 1.5686221386188457
     },
     "name": "discuss plan",
     "description": "",

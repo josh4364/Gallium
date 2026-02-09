@@ -360,7 +360,7 @@
                     },
                     {
                         "name": "role",
-                        "type": "number",
+                        "type": "enum:enum_role",
                         "default": 0
                     }
                 ],
@@ -390,12 +390,37 @@
                     }
                 ]
             }
+        ],
+        "enums": [
+            {
+                "id": "enum_role",
+                "name": "Chat Role",
+                "tag": "ChatMessage",
+                "values": [
+                    {
+                        "name": "User",
+                        "value": 0
+                    },
+                    {
+                        "name": "Assistant",
+                        "value": 1
+                    },
+                    {
+                        "name": "Tool",
+                        "value": 2
+                    },
+                    {
+                        "name": "System",
+                        "value": 3
+                    }
+                ]
+            }
         ]
     },
     "view": {
-        "panX": 430.4848363927041,
-        "panY": 220.08902644922313,
-        "zoom": 0.605412794014159
+        "panX": 663.3566520351719,
+        "panY": 259.63772200355993,
+        "zoom": 0.7325494807571326
     },
     "name": "router-on-tick",
     "description": "",

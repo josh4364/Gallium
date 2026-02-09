@@ -249,7 +249,10 @@ class GeminiClient(LLMClient):
                     self.logger.info(f"Agent: {txt}")
                     return txt, messages
                     
-            return "Max turns reached", messages
+            err_msg = f"Agent turn hit tool call limit of {max_turns}"
+            self.logger.warning(err_msg)
+            messages.append({"role": "assistant", "content": err_msg})
+            return err_msg, messages
 
         except Exception as e:
             self.logger.error(f"Error calling Gemini API: {e}")
